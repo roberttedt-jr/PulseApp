@@ -6,14 +6,20 @@ import { PulseLogo } from "@/components/pulse-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { persistSessionToken, readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
+import { issueRecoveryCode, resetWithRecovery } from "@/lib/pulse/password-reset";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
+type Mode = "in" | "up" | "forgot";
+
+type AuthErr = { message?: string; code?: string } | null | undefined;
+
 /**
  * Google / X federate through the Grok auth broker. The shared preview client
- * only accepts callbacks on `*.grok-sandbox.com`. On Vercel (or any other host)
- * those buttons 302 to the broker and it replies `Invalid redirect URI`.
+ * only accepts callbacks on `*.grok-sandbox.com`. On Vercel those buttons 302
+ * to the broker and it replies `Invalid redirect URI`.
  * Email / password is this app's own Better Auth and works everywhere.
  */
 function socialLoginAvailable(): boolean {
@@ -21,48 +27,182 @@ function socialLoginAvailable(): boolean {
   return window.location.hostname.endsWith(".grok-sandbox.com");
 }
 
+function alreadyRegistered(error: AuthErr): boolean {
+  const code = error?.code ?? "";
+  const raw = (error?.message ?? "").toLowerCase();
+  return (
+    code.includes("USER_ALREADY_EXISTS") ||
+    raw.includes("already exists") ||
+    raw.includes("ya está registrado")
+  );
+}
+
+function mapAuthError(error: AuthErr, kind: Mode): string {
+  const code = error?.code ?? "";
+  const raw = (error?.message ?? "").toLowerCase();
+  if (alreadyRegistered(error)) {
+    return "Este correo ya está registrado. Inicia sesión o restablece tu contraseña.";
+  }
+  if (code === "PASSWORD_TOO_SHORT" || raw.includes("too short")) {
+    return "La contraseña debe tener al menos 8 caracteres.";
+  }
+  if (code === "INVALID_EMAIL" || raw.includes("invalid email")) {
+    return "El email no es válido.";
+  }
+  if (kind === "up") return "No se ha podido crear la cuenta. Inténtalo de nuevo.";
+  if (kind === "forgot") return "No se ha podido restablecer la contraseña.";
+  return "El email o la contraseña no son correctos.";
+}
+
+function captureAuthToken(ctx: { response?: Response }) {
+  persistSessionToken(ctx.response?.headers.get("set-auth-token"));
+}
+
+/** Persist the session token and refresh the client store. Never throws. */
+async function persistAndEnter(token: string | null | undefined): Promise<boolean> {
+  persistSessionToken(token);
+  try {
+    const session = await authClient.getSession();
+    return Boolean(session.data?.user);
+  } catch {
+    return false;
+  }
+}
+
+async function issueAndStoreRecovery(email: string): Promise<void> {
+  try {
+    const issued = await issueRecoveryCode();
+    if (issued?.code) storeRecoveryCode(email, issued.code);
+  } catch {
+    /* recovery code is optional — do not block sign-in */
+  }
+}
+
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<Mode>("up");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    const available = socialLoginAvailable();
-    setSocial(available);
-    if (!available) setMode("up");
+    setSocial(socialLoginAvailable());
     const params = new URLSearchParams(window.location.search);
     if (params.has("error")) {
       toast.error("No se pudo conectar con Google o X. Entra con tu email.");
     }
   }, []);
 
-  if (!isPending && user) {
-    void navigate({ to: "/" });
+  useEffect(() => {
+    if (!isPending && user) {
+      void navigate({ to: "/" });
+    }
+  }, [isPending, user, navigate]);
+
+  async function enterApp(token: string | null | undefined, recoveryEmail: string) {
+    await persistAndEnter(token);
+    void issueAndStoreRecovery(recoveryEmail);
+    await navigate({ to: "/" });
   }
 
   async function onEmail(e: React.FormEvent) {
     e.preventDefault();
+    const trimmed = email.trim().toLowerCase();
+    const pwd = password;
+    const displayName = name.trim() || trimmed.split("@")[0] || "Atleta";
+    setFormError(null);
     setBusy(true);
     try {
-      if (mode === "up") {
-        const { error } = await authClient.signUp.email({
-          email,
-          password,
-          name: name.trim() || email.split("@")[0],
+      if (mode === "forgot") {
+        if (pwd.length < 8) {
+          setFormError("La contraseña debe tener al menos 8 caracteres.");
+          toast.error("La contraseña debe tener al menos 8 caracteres.");
+          return;
+        }
+        if (pwd !== confirm) {
+          setFormError("Las contraseñas no coinciden.");
+          toast.error("Las contraseñas no coinciden.");
+          return;
+        }
+        const code = recoveryCode.trim() || readRecoveryCode(trimmed) || "";
+        if (!code) {
+          setFormError("Introduce el código de recuperación (PULSE-XXXX-XXXX) o entra con tu contraseña.");
+          toast.error("Introduce el código de recuperación (PULSE-XXXX-XXXX) o entra con tu contraseña.");
+          return;
+        }
+        await resetWithRecovery({
+          data: { email: trimmed, recoveryCode: code, newPassword: pwd },
         });
-        if (error) throw new Error(error.message);
-      } else {
-        const { error } = await authClient.signIn.email({ email, password });
-        if (error) throw new Error(error.message);
+        const signed = await authClient.signIn.email({
+          email: trimmed,
+          password: pwd,
+          rememberMe: true,
+          fetchOptions: { onSuccess: captureAuthToken },
+        });
+        if (signed.error) {
+          setFormError("El email o la contraseña no son correctos.");
+          toast.error("El email o la contraseña no son correctos.");
+          return;
+        }
+        await enterApp(signed.data?.token, trimmed);
+        return;
       }
-      window.location.href = "/";
+
+      if (mode === "up") {
+        const { data, error } = await authClient.signUp.email({
+          email: trimmed,
+          password: pwd,
+          name: displayName,
+          fetchOptions: { onSuccess: captureAuthToken },
+        });
+        if (error) {
+          const message = mapAuthError(error, "up");
+          if (alreadyRegistered(error)) {
+            setMode("in");
+            setFormError(message);
+            toast.error(message);
+            return;
+          }
+          setFormError(message);
+          toast.error(message);
+          return;
+        }
+        if (!data?.user) {
+          setFormError("No se ha podido crear la cuenta. Inténtalo de nuevo.");
+          toast.error("No se ha podido crear la cuenta. Inténtalo de nuevo.");
+          return;
+        }
+        // Better Auth auto-signs in on register. Do NOT call signIn.email here —
+        // a second credential POST is what used to surface "invalid credentials"
+        // after the user row already existed.
+        await enterApp(data.token, trimmed);
+        return;
+      }
+
+      const { data, error } = await authClient.signIn.email({
+        email: trimmed,
+        password: pwd,
+        rememberMe: true,
+        fetchOptions: { onSuccess: captureAuthToken },
+      });
+      if (error) {
+        const message = mapAuthError(error, "in");
+        setFormError(message);
+        toast.error(message);
+        return;
+      }
+      await enterApp(data?.token, trimmed);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "No se pudo entrar");
+      const message = err instanceof Error ? err.message : mapAuthError(null, mode);
+      setFormError(message);
+      toast.error(message);
+    } finally {
       setBusy(false);
     }
   }
@@ -80,6 +220,19 @@ function Login() {
       setBusy(false);
     }
   }
+
+  const submitLabel =
+    busy
+      ? mode === "up"
+        ? "Creando cuenta…"
+        : mode === "forgot"
+          ? "Guardando…"
+          : "Entrando…"
+      : mode === "up"
+        ? "Crear cuenta"
+        : mode === "forgot"
+          ? "Restablecer contraseña"
+          : "Entrar";
 
   return (
     <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-5">
@@ -116,15 +269,26 @@ function Login() {
               </div>
             ) : (
               <p className="pb-1 text-center text-[13px] leading-relaxed text-muted-foreground">
-                {mode === "up" ? "Crea tu cuenta con email para guardar tus entrenamientos." : "Entra con el email de tu cuenta."}
+                {mode === "up"
+                  ? "Crea tu cuenta con email para guardar tus entrenamientos."
+                  : mode === "forgot"
+                    ? "Introduce tu email, una nueva contraseña y el código de recuperación."
+                    : "Entra con el email de tu cuenta."}
               </p>
             )}
 
-            <form onSubmit={onEmail} className="space-y-3">
+            <form onSubmit={(ev) => void onEmail(ev)} className="space-y-3">
               {mode === "up" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Nombre</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex" autoComplete="name" />
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(ev) => setName(ev.target.value)}
+                    placeholder="Alex"
+                    autoComplete="name"
+                    disabled={busy}
+                  />
                 </div>
               )}
               <div className="space-y-1.5">
@@ -134,34 +298,89 @@ function Login() {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(ev) => setEmail(ev.target.value)}
                   placeholder="alex@email.com"
                   autoComplete="email"
                   inputMode="email"
                   autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  disabled={busy}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password">{mode === "forgot" ? "Nueva contraseña" : "Contraseña"}</Label>
                 <Input
                   id="password"
                   type="password"
                   required
                   minLength={8}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(ev) => setPassword(ev.target.value)}
                   placeholder="Mínimo 8 caracteres"
-                  autoComplete={mode === "up" ? "new-password" : "current-password"}
+                  autoComplete={mode === "in" ? "current-password" : "new-password"}
+                  disabled={busy}
                 />
               </div>
+              {mode === "forgot" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirm">Repite la contraseña</Label>
+                    <Input
+                      id="confirm"
+                      type="password"
+                      required
+                      minLength={8}
+                      value={confirm}
+                      onChange={(ev) => setConfirm(ev.target.value)}
+                      placeholder="Confirma la nueva contraseña"
+                      autoComplete="new-password"
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="recovery">Código de recuperación</Label>
+                    <Input
+                      id="recovery"
+                      value={recoveryCode}
+                      onChange={(ev) => setRecoveryCode(ev.target.value)}
+                      placeholder="PULSE-XXXX-XXXX (si estás en otro dispositivo)"
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      disabled={busy}
+                    />
+                  </div>
+                </>
+              )}
+              {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Entrando…" : mode === "up" ? "Crear cuenta" : "Entrar"}
+                {submitLabel}
               </Button>
             </form>
+
+            {mode === "in" ? (
+              <button
+                type="button"
+                className="w-full pt-1 text-center text-sm text-primary"
+                onClick={() => {
+                  setMode("forgot");
+                  setFormError(null);
+                }}
+              >
+                ¿Has olvidado la contraseña?
+              </button>
+            ) : null}
+
             <button
               type="button"
               className="w-full pt-1 text-center text-sm text-muted-foreground"
-              onClick={() => setMode(mode === "up" ? "in" : "up")}
+              onClick={() => {
+                setMode(mode === "up" ? "in" : "up");
+                setFormError(null);
+                setConfirm("");
+                setRecoveryCode("");
+              }}
             >
               {mode === "up" ? "¿Ya tienes cuenta? Entra" : "¿Nueva aquí? Crea una cuenta"}
             </button>

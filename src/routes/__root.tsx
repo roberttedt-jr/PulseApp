@@ -3,8 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { restoreSessionToken } from "@/lib/session-token";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
+
+restoreSessionToken();
 
 const APP_NAME = "Pulse";
 const queryClient = new QueryClient({

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Download, Info, Trophy, Users } from "lucide-react";
+import { Calendar, ChevronRight, Download, Info, KeyRound, Trophy, Users } from "lucide-react";
+import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { deleteAccountData, exportData, getBootstrap, updateProfile } from "@/lib/pulse/fns";
+import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
+import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -20,6 +23,9 @@ function SettingsPage() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const p = data?.profile;
+  const email = user?.primaryEmail ?? "";
+  const [recovery, setRecovery] = useState(() => (email ? readRecoveryCode(email) : null));
+  const [minting, setMinting] = useState(false);
 
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data: patch }),
@@ -95,6 +101,40 @@ function SettingsPage() {
               />
             </div>
           </div>
+        </section>
+
+        <section className="space-y-3 rounded-3xl bg-card p-4 hairline">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <KeyRound className="size-4" /> ¿Has olvidado la contraseña?
+          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Guarda este código. En la pantalla de acceso, pulsa «¿Has olvidado la contraseña?» e introdúcelo para elegir una nueva.
+          </p>
+          {recovery ? (
+            <p className="rounded-2xl bg-secondary px-3 py-2 font-mono text-sm tracking-wide">{recovery}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Aún no hay código en este dispositivo.</p>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={minting || !email}
+            onClick={() => {
+              setMinting(true);
+              void issueRecoveryCode()
+                .then((issued) => {
+                  if (issued?.code) {
+                    storeRecoveryCode(email, issued.code);
+                    setRecovery(issued.code);
+                    toast.success("Código nuevo. Guárdalo.");
+                  }
+                })
+                .catch(() => toast.error("No se pudo generar el código"))
+                .finally(() => setMinting(false));
+            }}
+          >
+            {minting ? "Generando…" : recovery ? "Generar otro código" : "Generar código"}
+          </Button>
         </section>
 
         <section className="divide-y divide-border rounded-3xl bg-card hairline">
@@ -258,3 +298,4 @@ function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats" | "/feed"; icon:
     </Link>
   );
 }
+

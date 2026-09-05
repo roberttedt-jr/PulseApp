@@ -1,5 +1,45 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
+/**
+ * Better Auth reads BETTER_AUTH_URL at module init (via `@/lib/auth/server`).
+ * This file is imported first, so we align that URL with the live Vercel host
+ * BEFORE Better Auth builds `trustedOrigins`. Without this, email/password
+ * POSTs from https://*.vercel.app return 403 INVALID_ORIGIN because the
+ * template only trusts BETTER_AUTH_URL + localhost + grok-sandbox hosts.
+ *
+ * Preview / local: VERCEL is unset — no-op, live-preview origin derivation
+ * stays intact. Platform-injected BETTER_AUTH_URL that already matches the
+ * live host is left alone.
+ */
+function applyVercelAuthOrigin(): void {
+  if (typeof process === "undefined") return;
+  if (!process.env.VERCEL) return;
+
+  const raw =
+    process.env.VERCEL_ENV === "production"
+      ? process.env.VERCEL_PROJECT_PRODUCTION_URL || "pulse-psi-blond.vercel.app"
+      : process.env.VERCEL_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (!raw?.trim()) return;
+
+  const host = raw.trim().replace(/\/$/, "");
+  const liveUrl =
+    host.startsWith("http://") || host.startsWith("https://")
+      ? host
+      : `https://${host}`;
+
+  const current = process.env.BETTER_AUTH_URL?.trim().replace(/\/$/, "");
+  if (current) {
+    try {
+      if (new URL(current).host === new URL(liveUrl).host) return;
+    } catch {
+      /* malformed current value — replace it */
+    }
+  }
+  process.env.BETTER_AUTH_URL = liveUrl;
+}
+
+applyVercelAuthOrigin();
+
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 

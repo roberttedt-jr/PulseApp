@@ -1,0 +1,29 @@
+# dependencies
+node_modules
+
+# env / secrets — never commit
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# build
+dist
+.output
+.vinxi
+.nitro
+.tanstack
+.vercel
+*.tsbuildinfo
+
+# logs / os
+*.log
+.DS_Store
+Thumbs.db
+
+# tests / local artifacts
+coverage
+playwright-report
+test-results
+/tmp

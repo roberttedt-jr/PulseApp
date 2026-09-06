@@ -244,10 +244,21 @@ export const auth = betterAuth({
     defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
     ipAddress: {
       ipAddressHeaders: [
-        "x-vercel-forwarded-for",
         "x-real-ip",
+        "x-vercel-forwarded-for",
         "cf-connecting-ip",
         "x-forwarded-for",
+      ],
+      // Multi-value XFF is rejected unless we can strip trusted hops.
+      // Vercel / private CIDRs sit on the right of the chain; the first
+      // untrusted address from the right is the client.
+      trustedProxies: [
+        "127.0.0.1/32",
+        "::1/128",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "fc00::/7",
       ],
     },
     cookies: {

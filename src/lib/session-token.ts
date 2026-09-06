@@ -1,28 +1,31 @@
 /**
- * Email/password sessions return a token in the JSON body and as
- * `set-auth-token`. Some mobile browsers (WhatsApp WebView, Safari ITP) drop
- * `__Host-` cookies set by fetch, so a full reload looks signed-out even though
- * the user was just created. The preview client already reads this
- * sessionStorage key and sends `Authorization: Bearer …` — reuse it on Vercel.
+ * Session source of truth: HttpOnly `__Host-` cookies (Secure + SameSite=Lax).
+ *
+ * Tab-scoped fallback: `sessionStorage` bearer for (1) the live-preview iframe
+ * where cookies are partitioned, and (2) mobile WebViews that drop Set-Cookie
+ * on fetch during the same visit. Never `localStorage` — that survives logout
+ * and would restore a server-revoked session after "Cerrar sesión".
  */
 export const AUTH_BEARER_KEY = "grok-auth.bearer-token";
 
-export function restoreSessionToken(): void {
-  if (typeof window === "undefined") return;
+function wipePersistentBearer(): void {
   try {
-    if (window.sessionStorage.getItem(AUTH_BEARER_KEY)) return;
-    const persisted = window.localStorage.getItem(AUTH_BEARER_KEY);
-    if (persisted) window.sessionStorage.setItem(AUTH_BEARER_KEY, persisted);
+    window.localStorage.removeItem(AUTH_BEARER_KEY);
   } catch {
     /* storage unavailable */
   }
+}
+
+export function restoreSessionToken(): void {
+  if (typeof window === "undefined") return;
+  wipePersistentBearer();
 }
 
 export function persistSessionToken(token: string | null | undefined): void {
   if (typeof window === "undefined" || !token) return;
   try {
     window.sessionStorage.setItem(AUTH_BEARER_KEY, token);
-    window.localStorage.setItem(AUTH_BEARER_KEY, token);
+    wipePersistentBearer();
   } catch {
     /* storage unavailable */
   }
@@ -32,7 +35,7 @@ export function clearSessionToken(): void {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.removeItem(AUTH_BEARER_KEY);
-    window.localStorage.removeItem(AUTH_BEARER_KEY);
+    wipePersistentBearer();
   } catch {
     /* storage unavailable */
   }

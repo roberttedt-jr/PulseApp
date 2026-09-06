@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { PulseLogo } from "@/components/pulse-logo";
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,11 @@ type Mode = "in" | "up" | "forgot";
 
 type AuthErr = { message?: string; code?: string; status?: number } | null | undefined;
 
-/**
- * Google / X federate through the Grok auth broker. The shared preview client
- * only accepts callbacks on `*.grok-sandbox.com`. On Vercel those buttons 302
- * to the broker and it replies `Invalid redirect URI`.
- * Email / password is this app's own Better Auth and works everywhere.
- */
-function socialLoginAvailable(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.location.hostname.endsWith(".grok-sandbox.com");
-}
+const RATE_LIMIT_MSG =
+  "Has hecho demasiados intentos. Espera unos segundos antes de volver a intentarlo.";
+const SLOW_MSG = "Estamos tardando más de lo normal. No cierres la pantalla.";
+const CONNECT_MSG = "No se ha podido conectar. Inténtalo de nuevo.";
+const HARD_WAIT_MS = 20_000;
 
 function alreadyRegistered(error: AuthErr): boolean {
   const code = error?.code ?? "";
@@ -62,7 +57,7 @@ function isNetworkFailure(err: unknown): boolean {
 }
 
 function mapAuthError(error: AuthErr, kind: Mode): string {
-  if (isRateLimited(error)) return "No se ha podido conectar. Inténtalo de nuevo.";
+  if (isRateLimited(error)) return RATE_LIMIT_MSG;
   const code = error?.code ?? "";
   const raw = (error?.message ?? "").toLowerCase();
   if (alreadyRegistered(error)) {
@@ -77,7 +72,7 @@ function mapAuthError(error: AuthErr, kind: Mode): string {
   if (code === "INVALID_EMAIL" || (raw.includes("invalid email") && !raw.includes("password"))) {
     return "El email no es válido.";
   }
-  if (kind === "up") return "No se ha podido conectar. Inténtalo de nuevo.";
+  if (kind === "up") return CONNECT_MSG;
   if (kind === "forgot") return "No se ha podido restablecer la contraseña.";
   return "El correo o la contraseña no son correctos.";
 }
@@ -125,20 +120,19 @@ function Login() {
   const [name, setName] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [social, setSocial] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [slowNotice, setSlowNotice] = useState(false);
   const submittingRef = useRef(false);
+  const userCancelRef = useRef(false);
+  const requestIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
   const slowTimerRef = useRef<number | null>(null);
+  const hardTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setSocial(socialLoginAvailable());
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("error")) {
-      toast.error("No se pudo conectar con Google o X. Entra con tu email.");
-    }
     return () => {
       if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     };
   }, []);
 
@@ -150,10 +144,14 @@ function Login() {
 
   function armSlowNotice() {
     if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+    if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
     setSlowNotice(false);
     slowTimerRef.current = window.setTimeout(() => {
       setSlowNotice(true);
     }, 8000);
+    hardTimerRef.current = window.setTimeout(() => {
+      abortRef.current?.abort();
+    }, HARD_WAIT_MS);
   }
 
   function disarmSlowNotice() {
@@ -161,13 +159,28 @@ function Login() {
       window.clearTimeout(slowTimerRef.current);
       slowTimerRef.current = null;
     }
+    if (hardTimerRef.current) {
+      window.clearTimeout(hardTimerRef.current);
+      hardTimerRef.current = null;
+    }
     setSlowNotice(false);
+  }
+
+  function onCancelWait() {
+    // Abort the in-flight request. Does not start a second one.
+    userCancelRef.current = true;
+    requestIdRef.current += 1;
+    abortRef.current?.abort();
+    disarmSlowNotice();
+    submittingRef.current = false;
+    setBusy(false);
+    setFormError(null);
   }
 
   async function enterApp(token: string | null | undefined, recoveryEmail: string) {
     const ok = await persistAndEnter(token);
     if (!ok && !token) {
-      throw new Error("No se ha podido conectar. Inténtalo de nuevo.");
+      throw new Error(CONNECT_MSG);
     }
     window.setTimeout(() => void issueAndStoreRecovery(recoveryEmail), 1500);
     await navigate({ to: "/" });
@@ -177,6 +190,11 @@ function Login() {
     e.preventDefault();
     if (busy || submittingRef.current) return;
     submittingRef.current = true;
+    userCancelRef.current = false;
+    const requestId = ++requestIdRef.current;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
     const form = e.currentTarget as HTMLFormElement;
     const fd = new FormData(form);
     const trimmed = String(fd.get("email") || email).trim().toLowerCase();
@@ -185,6 +203,7 @@ function Login() {
     setFormError(null);
     setBusy(true);
     armSlowNotice();
+    const fetchOptions = { onSuccess: captureAuthToken, signal: ac.signal };
     try {
       if (mode === "forgot") {
         if (pwd.length < 8) {
@@ -206,12 +225,14 @@ function Login() {
         await resetWithRecovery({
           data: { email: trimmed, recoveryCode: code, newPassword: pwd },
         });
+        if (requestId !== requestIdRef.current) return;
         const signed = await authClient.signIn.email({
           email: trimmed,
           password: pwd,
           rememberMe: true,
-          fetchOptions: { onSuccess: captureAuthToken },
+          fetchOptions,
         });
+        if (requestId !== requestIdRef.current) return;
         if (signed.error) {
           const message = mapAuthError(signed.error, "in");
           setFormError(message);
@@ -227,8 +248,9 @@ function Login() {
           email: trimmed,
           password: pwd,
           name: displayName,
-          fetchOptions: { onSuccess: captureAuthToken },
+          fetchOptions,
         });
+        if (requestId !== requestIdRef.current) return;
         if (error) {
           const message = mapAuthError(error, "up");
           if (alreadyRegistered(error)) {
@@ -242,8 +264,8 @@ function Login() {
           return;
         }
         if (!data?.user) {
-          setFormError("No se ha podido conectar. Inténtalo de nuevo.");
-          toast.error("No se ha podido conectar. Inténtalo de nuevo.");
+          setFormError(CONNECT_MSG);
+          toast.error(CONNECT_MSG);
           return;
         }
         await enterApp(data.token, trimmed);
@@ -254,8 +276,9 @@ function Login() {
         email: trimmed,
         password: pwd,
         rememberMe: true,
-        fetchOptions: { onSuccess: captureAuthToken },
+        fetchOptions,
       });
+      if (requestId !== requestIdRef.current) return;
       if (error) {
         const message = mapAuthError(error, "in");
         setFormError(message);
@@ -264,30 +287,29 @@ function Login() {
       }
       await enterApp(data?.token, trimmed);
     } catch (err) {
+      if (requestId !== requestIdRef.current || userCancelRef.current) return;
+      const rateErr =
+        err && typeof err === "object"
+          ? (err as AuthErr)
+          : err instanceof Error
+            ? { message: err.message }
+            : null;
+      if (isRateLimited(rateErr) || (err instanceof Error && /too many|429/i.test(err.message))) {
+        setFormError(RATE_LIMIT_MSG);
+        toast.error(RATE_LIMIT_MSG);
+        return;
+      }
       const message = isNetworkFailure(err)
-        ? "No se ha podido conectar. Inténtalo de nuevo."
+        ? CONNECT_MSG
         : err instanceof Error
           ? err.message
           : mapAuthError(null, mode);
       setFormError(message);
       toast.error(message);
     } finally {
+      if (requestId !== requestIdRef.current) return;
       disarmSlowNotice();
       submittingRef.current = false;
-      setBusy(false);
-    }
-  }
-
-  async function onSocial(providerId: string) {
-    if (!socialLoginAvailable()) {
-      toast.error("Google y X no están disponibles en esta URL. Crea una cuenta con email.");
-      return;
-    }
-    setBusy(true);
-    try {
-      await signIn(providerId, { callbackURL: "/", errorCallbackURL: "/login?error=oauth" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "No se pudo conectar");
       setBusy(false);
     }
   }
@@ -317,36 +339,13 @@ function Login() {
 
         {authEnabled ? (
           <div className="space-y-3">
-            {social
-              ? GROK_PROVIDERS.map((p) => (
-                  <Button
-                    key={p.providerId}
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    disabled={busy}
-                    onClick={() => void onSocial(p.providerId)}
-                  >
-                    Continuar con {p.label}
-                  </Button>
-                ))
-              : null}
-
-            {social ? (
-              <div className="flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">o con email</span>
-                <span className="h-px flex-1 bg-border" />
-              </div>
-            ) : (
-              <p className="pb-1 text-center text-[13px] leading-relaxed text-muted-foreground">
-                {mode === "up"
-                  ? "Crea tu cuenta con email para guardar tus entrenamientos."
-                  : mode === "forgot"
-                    ? "Introduce tu email, una nueva contraseña y el código de recuperación."
-                    : "Entra con el email de tu cuenta."}
-              </p>
-            )}
+            <p className="pb-1 text-center text-[13px] leading-relaxed text-muted-foreground">
+              {mode === "up"
+                ? "Crea tu cuenta con email para guardar tus entrenamientos."
+                : mode === "forgot"
+                  ? "Introduce tu email, una nueva contraseña y el código de recuperación."
+                  : "Entra con el email de tu cuenta."}
+            </p>
 
             <form onSubmit={(ev) => void onEmail(ev)} className="space-y-3">
               {mode === "up" && (
@@ -429,9 +428,16 @@ function Login() {
               )}
               {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
               {busy && slowNotice && !formError ? (
-                <p className="text-sm text-muted-foreground">
-                  Estamos tardando más de lo normal. No cierres la pantalla.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">{SLOW_MSG}</p>
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+                    onClick={onCancelWait}
+                  >
+                    Volver
+                  </button>
+                </div>
               ) : null}
               <Button type="submit" className="w-full" disabled={busy} loading={busy} loadingText={submitLabel}>
                 {submitLabel}

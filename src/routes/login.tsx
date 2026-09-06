@@ -75,6 +75,9 @@ function mapAuthError(error: AuthErr, kind: Mode): string {
   if (alreadyRegistered(error)) {
     return "Este correo ya está registrado. Inicia sesión.";
   }
+  if (error?.status === 403 || code.includes("ORIGIN") || raw.includes("invalid origin")) {
+    return CONNECT_MSG;
+  }
   if (code === "PASSWORD_TOO_SHORT" || raw.includes("too short")) {
     return "La contraseña debe tener al menos 8 caracteres.";
   }
@@ -86,7 +89,8 @@ function mapAuthError(error: AuthErr, kind: Mode): string {
   }
   if (kind === "up") return CONNECT_MSG;
   if (kind === "forgot") return "No se ha podido restablecer la contraseña.";
-  return "El correo o la contraseña no son correctos.";
+  if (kind === "in") return CONNECT_MSG;
+  return CONNECT_MSG;
 }
 
 function captureAuthToken(ctx: { response?: Response }) {
@@ -140,6 +144,9 @@ function Login() {
   const abortRef = useRef<AbortController | null>(null);
   const slowTimerRef = useRef<number | null>(null);
   const hangTimerRef = useRef<number | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -217,25 +224,43 @@ function Login() {
     abortRef.current = ac;
     const form = e.currentTarget as HTMLFormElement;
     const fd = new FormData(form);
-    const trimmed = String(fd.get("email") || email).trim().toLowerCase();
-    const pwd = String(fd.get("password") || password);
+    // Password managers (especially iOS) often fill the DOM without React
+    // onChange, and sometimes omit the value from FormData. Prefer the live
+    // input value so signup and login submit the same characters.
+    const trimmed = String(
+      emailRef.current?.value || fd.get("email") || email || "",
+    )
+      .trim()
+      .toLowerCase();
+    const pwd = String(passwordRef.current?.value || fd.get("password") || password || "");
+    const confirmPwd = String(confirmRef.current?.value || confirm || "");
     const displayName = String(fd.get("name") || name).trim() || trimmed.split("@")[0] || "Atleta";
+    setEmail(trimmed);
+    setPassword(pwd);
+    if (!trimmed) {
+      submittingRef.current = false;
+      setFormError("El email no es válido.");
+      toast.error("El email no es válido.");
+      return;
+    }
+    if (pwd.length < 8) {
+      submittingRef.current = false;
+      setFormError("La contraseña debe tener al menos 8 caracteres.");
+      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if ((mode === "up" || mode === "forgot") && pwd !== confirmPwd) {
+      submittingRef.current = false;
+      setFormError("Las contraseñas no coinciden.");
+      toast.error("Las contraseñas no coinciden.");
+      return;
+    }
     setFormError(null);
     setBusy(true);
     armSlowNotice();
     const fetchOptions = { onSuccess: captureAuthToken, signal: ac.signal };
     try {
       if (mode === "forgot") {
-        if (pwd.length < 8) {
-          setFormError("La contraseña debe tener al menos 8 caracteres.");
-          toast.error("La contraseña debe tener al menos 8 caracteres.");
-          return;
-        }
-        if (pwd !== confirm) {
-          setFormError("Las contraseñas no coinciden.");
-          toast.error("Las contraseñas no coinciden.");
-          return;
-        }
         const code = recoveryCode.trim() || readRecoveryCode(trimmed) || "";
         if (!code) {
           setFormError("Introduce el código de recuperación (PULSE-XXXX-XXXX) o entra con tu contraseña.");
@@ -385,14 +410,16 @@ function Login() {
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
+                  ref={emailRef}
                   id="email"
                   name="email"
                   type="email"
                   required
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
+                  onInput={(ev) => setEmail(ev.currentTarget.value)}
                   placeholder="alex@email.com"
-                  autoComplete="email"
+                  autoComplete={mode === "in" ? "username" : "email"}
                   inputMode="email"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -403,49 +430,52 @@ function Login() {
               <div className="space-y-1.5">
                 <Label htmlFor="password">{mode === "forgot" ? "Nueva contraseña" : "Contraseña"}</Label>
                 <Input
+                  ref={passwordRef}
                   id="password"
                   name="password"
                   type="password"
                   required
                   minLength={8}
-                  value={password}
-                  onChange={(ev) => setPassword(ev.target.value)}
+                  defaultValue=""
+                  onInput={(ev) => setPassword(ev.currentTarget.value)}
                   placeholder="Mínimo 8 caracteres"
                   autoComplete={mode === "in" ? "current-password" : "new-password"}
                   disabled={busy}
                 />
               </div>
-              {mode === "forgot" && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirm">Repite la contraseña</Label>
-                    <Input
-                      id="confirm"
-                      type="password"
-                      required
-                      minLength={8}
-                      value={confirm}
-                      onChange={(ev) => setConfirm(ev.target.value)}
-                      placeholder="Confirma la nueva contraseña"
-                      autoComplete="new-password"
-                      disabled={busy}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="recovery">Código de recuperación</Label>
-                    <Input
-                      id="recovery"
-                      value={recoveryCode}
-                      onChange={(ev) => setRecoveryCode(ev.target.value)}
-                      placeholder="PULSE-XXXX-XXXX (si estás en otro dispositivo)"
-                      autoCapitalize="characters"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      disabled={busy}
-                    />
-                  </div>
-                </>
-              )}
+              {mode === "up" || mode === "forgot" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm">Repite la contraseña</Label>
+                  <Input
+                    ref={confirmRef}
+                    id="confirm"
+                    name="confirm"
+                    type="password"
+                    required
+                    minLength={8}
+                    defaultValue=""
+                    onInput={(ev) => setConfirm(ev.currentTarget.value)}
+                    placeholder="Confirma la contraseña"
+                    autoComplete="new-password"
+                    disabled={busy}
+                  />
+                </div>
+              ) : null}
+              {mode === "forgot" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="recovery">Código de recuperación</Label>
+                  <Input
+                    id="recovery"
+                    value={recoveryCode}
+                    onChange={(ev) => setRecoveryCode(ev.target.value)}
+                    placeholder="PULSE-XXXX-XXXX (si estás en otro dispositivo)"
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    disabled={busy}
+                  />
+                </div>
+              ) : null}
               {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
               {busy && slowNotice && !formError ? (
                 <div className="space-y-2">
@@ -472,6 +502,10 @@ function Login() {
                 onClick={() => {
                   setMode("forgot");
                   setFormError(null);
+                  setPassword("");
+                  setConfirm("");
+                  if (passwordRef.current) passwordRef.current.value = "";
+                  if (confirmRef.current) confirmRef.current.value = "";
                 }}
               >
                 ¿Has olvidado la contraseña?

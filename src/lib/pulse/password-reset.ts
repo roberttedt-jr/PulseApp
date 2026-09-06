@@ -76,7 +76,7 @@ export const resetWithRecovery = createServerFn({ method: "POST" })
     const { hashPassword } = await import("better-auth/crypto");
     const passwordHash = await hashPassword(newPassword);
     const updated = await sql.query<{ id: string }>(
-      `update account
+      `update "account"
        set password = $1, "updatedAt" = now()
        where "userId" = $2 and "providerId" = 'credential'
        returning id`,
@@ -84,7 +84,7 @@ export const resetWithRecovery = createServerFn({ method: "POST" })
     );
     if (!updated[0]) {
       await sql.query(
-        `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+        `insert into "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
          values ($1, $2, 'credential', $2, $3, now(), now())`,
         [crypto.randomUUID(), user.id, passwordHash],
       );

@@ -43,7 +43,7 @@ function identity(): Pick<
   const hasUrl = Boolean(runtimeEnv("DATABASE_URL"));
   return {
     ok: true,
-    revision: 3,
+    revision: 4,
     dbSource,
     hasDatabaseUrl: hasUrl,
     betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),

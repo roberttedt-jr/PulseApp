@@ -1,5 +1,5 @@
-/** Tab order for Inicio → Entrenar → Actividad → Progreso → Historial → Perfil. */
-export const TAB_PATHS = ["/", "/routines", "/feed", "/progress", "/history", "/settings"] as const;
+/** Tab order for Inicio → Entrenar → Actividad → Progreso → Perfil. */
+export const TAB_PATHS = ["/", "/routines", "/feed", "/progress", "/settings"] as const;
 
 export const MOTION = {
   tabMs: 200,
@@ -25,11 +25,11 @@ export function tabIndex(pathname: string): number {
   ) {
     return 1;
   }
-  if (pathname.startsWith("/feed") || pathname.startsWith("/u/")) return 2;
+  if (pathname.startsWith("/feed") || pathname.startsWith("/u/") || pathname.startsWith("/compare")) return 2;
   if (pathname.startsWith("/progress") || pathname.startsWith("/stats")) return 3;
-  if (pathname.startsWith("/history")) return 4;
+  if (pathname.startsWith("/history")) return 0;
   if (pathname.startsWith("/settings") || pathname.startsWith("/onboarding")) {
-    return 5;
+    return 4;
   }
   return -1;
 }

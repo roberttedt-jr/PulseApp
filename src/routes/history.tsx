@@ -101,7 +101,7 @@ function HistoryList() {
               onClick={() => setRange(k)}
               className={cn(
                 "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
-                range === k ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hairline",
+                range === k ? "bg-primary text-primary-foreground" : "glass-lite text-muted-foreground",
               )}
             >
               {lab}
@@ -124,7 +124,7 @@ function HistoryList() {
               onClick={() => setKind(k)}
               className={cn(
                 "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
-                kind === k ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hairline",
+                kind === k ? "bg-primary text-primary-foreground" : "glass-lite text-muted-foreground",
               )}
             >
               {lab}

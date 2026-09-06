@@ -44,7 +44,7 @@ function WelcomePage() {
         El ritmo de tu fuerza.
       </h1>
       <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-        Registra tus entrenamientos y sigue tu progreso.
+        Registra tus entrenamientos y siente cada descanso.
       </p>
     </div>,
     <div key="train" className="flex flex-1 flex-col">
@@ -52,7 +52,7 @@ function WelcomePage() {
         Todo tu entrenamiento, en un sitio.
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Crea rutinas, registra series, peso y repeticiones mientras entrenas.
+        Crea rutinas, series, peso y repeticiones en tiempo real.
       </p>
       <div className="mt-8 rounded-3xl bg-card p-4 hairline">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">Press de banca</p>
@@ -70,12 +70,32 @@ function WelcomePage() {
         ))}
       </div>
     </div>,
+    <div key="community" className="flex flex-1 flex-col">
+      <h1 className="text-[clamp(1.7rem,7vw,2.1rem)] leading-tight font-semibold tracking-tight">
+        Entrena con tu comunidad.
+      </h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+        Sigue a tus amigos, comparte tus sesiones terminadas, celebra sus récords y motívate día a día.
+      </p>
+      <div className="mt-8 space-y-3">
+        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Actividad</p>
+          <p className="mt-2 text-sm font-medium">Leo ha terminado Empuje</p>
+          <p className="text-xs text-muted-foreground">48 min · 5 ejercicios · PR en press</p>
+        </div>
+        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Siguiendo</p>
+          <p className="mt-2 text-sm font-medium">Nia ha compartido una sesión</p>
+          <p className="text-xs text-muted-foreground">Solo ves lo que tus amigos deciden publicar</p>
+        </div>
+      </div>
+    </div>,
     <div key="progress" className="flex flex-1 flex-col">
       <h1 className="text-[clamp(1.7rem,7vw,2.1rem)] leading-tight font-semibold tracking-tight">
         Haz visible tu progreso.
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Consulta tu historial, compara tus resultados y celebra tus mejores marcas.
+        Historial completo, récords personales (PRs) y balance muscular.
       </p>
       <div className="mt-8 space-y-3">
         <div className="rounded-3xl bg-card px-4 py-3 hairline">
@@ -94,16 +114,16 @@ function WelcomePage() {
   return (
     <FlowShell
       step={step}
-      total={3}
-      onSkip={() => finish("up")}
+      total={4}
+      onSkip={() => finish("in")}
       onBack={() => setStep((s) => Math.max(0, s - 1))}
       footer={
-        step < 2 ? (
+        step < 3 ? (
           <FlowActions primary={() => setStep(step + 1)} primaryLabel={step === 0 ? "Continuar" : "Siguiente"} />
         ) : (
           <>
             <Button className="w-full" size="lg" onClick={() => finish("up")}>
-              Crear cuenta
+              Empezar
             </Button>
             <Button className="w-full" variant="secondary" onClick={() => finish("in")}>
               Ya tengo una cuenta

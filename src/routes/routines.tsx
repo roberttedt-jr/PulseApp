@@ -56,6 +56,10 @@ function RoutinesPage() {
   if (pathname.startsWith("/routines/") && pathname !== "/routines/") {
     return <Outlet />;
   }
+  return <RoutinesList />;
+}
+
+function RoutinesList() {
   const { templates } = Route.useSearch();
   const { data, isPending } = useQuery({ queryKey: ["routines"], queryFn: () => listRoutines({ data: {} }) });
   const navigate = useNavigate();

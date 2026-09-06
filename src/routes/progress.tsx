@@ -164,7 +164,7 @@ function ProgressPage() {
             />
           ) : (
           <>
-          <div className="mb-4 flex gap-1 rounded-full bg-muted p-1">
+          <div className="mb-4 flex gap-1 rounded-full glass-lite p-1">
             {(
               [
                 ["week", "Semana"],

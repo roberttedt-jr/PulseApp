@@ -32,7 +32,10 @@
   --color-ring: #ff2d55;
   --color-ios-fill: #2c2c2e;
   --color-ios-elevated: #3a3a3c;
-  --color-glass: rgb(28 28 30 / 0.72);
+  --color-glass: rgb(30 30 34 / 0.72);
+  --color-glass-solid: rgb(24 24 28 / 0.96);
+  --color-glass-border: rgb(255 255 255 / 0.14);
+  --color-glass-highlight: rgb(255 255 255 / 0.08);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Inter", "Segoe UI", system-ui, sans-serif;
@@ -51,6 +54,7 @@
   --shadow-card: 0 8px 30px rgb(0 0 0 / 0.35);
   --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45);
   --shadow-ring: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 28px rgb(0 0 0 / 0.4);
+  --shadow-glass: 0 12px 32px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.08);
 
   --spacing-touch: 2.75rem;
 
@@ -83,9 +87,13 @@
   --color-input: rgb(0 0 0 / 0.06);
   --color-ios-fill: #e5e5ea;
   --color-ios-elevated: #d1d1d6;
-  --color-glass: rgb(255 255 255 / 0.72);
+  --color-glass: rgb(246 246 248 / 0.78);
+  --color-glass-solid: rgb(246 246 248 / 0.96);
+  --color-glass-border: rgb(0 0 0 / 0.08);
+  --color-glass-highlight: rgb(255 255 255 / 0.7);
   --shadow-card: 0 8px 30px rgb(0 0 0 / 0.08);
   --shadow-float: 0 12px 40px rgb(0 0 0 / 0.12);
+  --shadow-glass: 0 12px 32px rgb(0 0 0 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
 
 :root {
@@ -205,17 +213,43 @@
   padding-top: max(0.7rem, var(--safe-top));
 }
 
-.bottom-navigation {
-  padding-bottom: max(12px, var(--safe-bottom));
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
-}
-
 @layer utilities {
   .glass {
-    background: var(--color-glass);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: var(--color-glass-solid);
+    border: 1px solid var(--color-glass-border);
+    box-shadow: var(--shadow-glass);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background: var(--color-glass);
+      backdrop-filter: blur(24px) saturate(145%);
+      -webkit-backdrop-filter: blur(24px) saturate(145%);
+    }
+  }
+
+  .glass-lite {
+    background: color-mix(in srgb, var(--color-ios-fill) 88%, transparent);
+    border: 1px solid var(--color-glass-border);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-lite {
+      background: color-mix(in srgb, var(--color-ios-fill) 55%, transparent);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+  }
+
+  .glass-control {
+    background: var(--color-glass-solid);
+    border: 1px solid var(--color-glass-border);
+    box-shadow: inset 0 1px 0 var(--color-glass-highlight);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-control {
+      background: var(--color-glass);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
   }
 
   .hairline {
@@ -223,7 +257,9 @@
   }
 
   .pressable {
-    transition: transform 120ms var(--ease-out-ios), opacity 120ms var(--ease-out-ios);
+    transition:
+      transform 120ms var(--ease-out-ios),
+      opacity 120ms var(--ease-out-ios);
   }
   .pressable:active:not(:disabled) {
     transform: scale(0.98);
@@ -295,6 +331,68 @@
   }
 }
 
+.pulse-tabbar {
+  view-transition-name: pulse-tabbar;
+  position: fixed;
+  z-index: 40;
+  left: max(16px, var(--safe-left));
+  right: max(16px, var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  max-width: 32rem;
+  margin-inline: auto;
+  border-radius: 28px;
+  background: var(--color-glass-solid);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: var(--shadow-glass);
+  transition:
+    transform 220ms var(--ease-out-ios),
+    opacity 220ms var(--ease-out-ios);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pulse-tabbar {
+    background: var(--color-glass);
+    backdrop-filter: blur(24px) saturate(145%);
+    -webkit-backdrop-filter: blur(24px) saturate(145%);
+  }
+}
+.pulse-tabbar.is-collapsed {
+  transform: translate3d(0, calc(100% + 24px), 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pulse-sidebar {
+  view-transition-name: pulse-sidebar;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-lite,
+  .glass-control,
+  .pulse-tabbar,
+  .page-header {
+    background: var(--color-glass-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass,
+  .glass-lite,
+  .glass-control,
+  .pulse-tabbar {
+    background: var(--color-card);
+    border-color: rgb(255 255 255 / 0.32);
+  }
+  .light .glass,
+  .light .glass-lite,
+  .light .glass-control,
+  .light .pulse-tabbar {
+    border-color: rgb(0 0 0 / 0.28);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -302,6 +400,28 @@
   .pressable:active:not(:disabled) {
     transform: none;
   }
+  .pulse-tabbar {
+    transition: none;
+  }
+  .pulse-tabbar.is-collapsed {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+body:has([data-vaul-drawer][data-state="open"]) .pulse-tabbar,
+html:has([data-vaul-drawer][data-state="open"]) .pulse-tabbar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 12px, 0);
+}
+
+html:has([data-vaul-drawer][data-state="open"]),
+body:has([data-vaul-drawer][data-state="open"]) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 @keyframes pulse-glow {
@@ -584,12 +704,6 @@
   }
 }
 
-.pulse-tabbar {
-  view-transition-name: pulse-tabbar;
-}
-.pulse-sidebar {
-  view-transition-name: pulse-sidebar;
-}
 .pulse-page {
   view-transition-name: pulse-page;
 }
@@ -629,7 +743,7 @@
 @keyframes pulse-dialog-in {
   from {
     opacity: 0;
-    scale: 0.98;
+    scale: 0.96;
   }
   to {
     opacity: 1;
@@ -694,4 +808,3 @@ body[data-scroll-locked] {
     animation: pulse-fade 120ms ease both;
   }
 }
-

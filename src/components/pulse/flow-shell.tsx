@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -26,33 +27,33 @@ export function FlowShell({
   const reduced = useReducedMotion();
   return (
     <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-x-hidden bg-background px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_top,rgba(255,45,85,0.16),transparent_62%)]" />
       <div className="relative flex min-h-11 items-center justify-between gap-3">
         {step > 0 && onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="min-h-11 px-1 text-sm font-medium text-muted-foreground"
+            aria-label="Atrás"
+            className="glass-control grid size-11 place-items-center rounded-full text-foreground pressable"
           >
-            Atrás
+            <ChevronLeft className="size-5" />
           </button>
         ) : (
-          <span className="min-h-11 w-14" />
+          <span className="size-11" />
         )}
         {onSkip ? (
           <button
             type="button"
             onClick={onSkip}
-            className="min-h-11 px-1 text-sm font-medium text-muted-foreground"
+            className="glass-control h-11 rounded-full px-4 text-sm font-medium text-muted-foreground pressable"
           >
             {skipLabel}
           </button>
         ) : (
-          <span className="min-h-11 w-14" />
+          <span className="size-11" />
         )}
       </div>
       <div
-        className="relative mb-6 flex gap-1.5"
+        className="relative mb-6 mt-4 flex gap-1.5"
         role="progressbar"
         aria-valuemin={1}
         aria-valuemax={total}
@@ -60,10 +61,7 @@ export function FlowShell({
         aria-label={`Paso ${step + 1} de ${total}`}
       >
         {Array.from({ length: total }, (_, i) => (
-          <span
-            key={i}
-            className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-primary" : "bg-muted")}
-          />
+          <span key={i} className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-primary" : "bg-muted")} />
         ))}
       </div>
       <AnimatePresence mode="wait">

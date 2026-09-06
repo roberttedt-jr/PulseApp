@@ -1,9 +1,29 @@
 [data-vaul-drawer] {
-  touch-action: none;
   will-change: transform;
-  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-  animation-duration: 0.5s;
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  animation-duration: 0.4s;
   animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+[data-vaul-handle] {
+  display: block;
+  position: relative;
+  opacity: 0.7;
+  margin-left: auto;
+  margin-right: auto;
+  height: 5px;
+  width: 36px;
+  border-radius: 1rem;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+[data-sheet-scroll] {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 [data-vaul-drawer][data-vaul-snap-points="false"][data-vaul-drawer-direction="bottom"][data-state="open"] {
@@ -20,7 +40,7 @@
 }
 
 [data-vaul-overlay][data-vaul-snap-points="false"] {
-  animation-duration: 0.5s;
+  animation-duration: 0.4s;
   animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
 [data-vaul-overlay][data-vaul-snap-points="false"][data-state="open"] {
@@ -28,18 +48,6 @@
 }
 [data-vaul-overlay][data-state="closed"] {
   animation-name: vaul-fade-out;
-}
-
-[data-vaul-handle] {
-  display: block;
-  position: relative;
-  opacity: 0.7;
-  margin-left: auto;
-  margin-right: auto;
-  height: 5px;
-  width: 32px;
-  border-radius: 1rem;
-  touch-action: pan-y;
 }
 
 @keyframes vaul-fade-in {

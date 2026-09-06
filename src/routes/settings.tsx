@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound } from "lucide-react";
+import { Calendar, ChevronRight, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { AppleHealthRow } from "@/components/pulse/apple-health";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { deleteAccountData, devToolsAvailable, exportData, getBootstrap, purgeMySeededData, updateProfile } from "@/lib/pulse/fns";
+import { deleteAccountData, devToolsAvailable, getBootstrap, purgeMySeededData, updateProfile } from "@/lib/pulse/fns";
 import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
@@ -30,7 +30,6 @@ export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
   const user = useCurrentUser();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const tools = useQuery({ queryKey: ["dev-tools"], queryFn: () => devToolsAvailable() });
@@ -60,7 +59,7 @@ function SettingsPage() {
       : 0;
 
   return (
-    <AppPage title="Perfil">
+    <AppPage>
       <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
         <div className="rounded-3xl bg-card p-5 text-center hairline">
           <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
@@ -296,32 +295,6 @@ function SettingsPage() {
         </nav>
 
         <div className="flex flex-col gap-2">
-          <Button variant="secondary" onClick={() => void navigate({ to: "/welcome", search: { replay: true } })}>
-            Ver presentación
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              const json = await exportData();
-              const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = "pulse-export.json";
-              a.click();
-              const csv = [
-                "id,title,started_at,duration,status",
-                ...json.workouts.map(
-                  (w) => `${w.id},${w.title},${w.startedAt},${w.durationSeconds},${w.status}`,
-                ),
-              ].join("\n");
-              const a2 = document.createElement("a");
-              a2.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-              a2.download = "pulse-workouts.csv";
-              a2.click();
-            }}
-          >
-            <Download /> Exportar JSON + CSV
-          </Button>
           {tools.data?.enabled && (
             <Button
               variant="secondary"
@@ -352,7 +325,9 @@ function SettingsPage() {
           <p className="flex items-center gap-2 font-medium text-foreground">
             <Info className="size-4" /> About Pulse
           </p>
-          <p className="mt-2">Versión 1.2 · Tracker de entrenamientos con el pulso de iOS.</p>
+          <p className="mt-3 text-foreground">Versión 3.2</p>
+          <p className="mt-1">Diseñada por Roberto</p>
+          <p className="mt-3 text-xs">© {new Date().getFullYear()} Pulse. Todos los derechos reservados.</p>
         </div>
       </div>
       <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />

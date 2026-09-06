@@ -115,7 +115,7 @@ export function RestTimer({
     >
       <div
         className={cn(
-          "pointer-events-auto mx-auto max-w-lg rounded-[24px] bg-card/96 px-3 py-2.5 shadow-float hairline backdrop-blur-xl",
+          "pointer-events-auto mx-auto max-w-lg rounded-[24px] glass px-3 py-2.5",
           urgent && "ring-1 ring-primary/50",
         )}
       >

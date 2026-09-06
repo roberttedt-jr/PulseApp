@@ -175,14 +175,20 @@ function Dashboard() {
 
       <section className="rounded-[24px] bg-card px-4 py-4 hairline">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Última sesión</p>
-          <Link to="/history" className="text-sm text-accent">
-            Historial
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Historial</p>
+            <p className="mt-1 text-[17px] font-semibold tracking-tight">Tus sesiones</p>
+          </div>
+          <Link
+            to="/history"
+            className="glass-control inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-foreground pressable"
+          >
+            Ver todo
           </Link>
         </div>
         {data.lastSession ? (
-          <Link to="/history/$workoutId" params={{ workoutId: data.lastSession.id }} className="mt-2 block">
-            <p className="text-[17px] font-semibold tracking-tight">{data.lastSession.title}</p>
+          <Link to="/history/$workoutId" params={{ workoutId: data.lastSession.id }} className="mt-3 block rounded-2xl bg-muted/60 px-3 py-3">
+            <p className="text-[15px] font-semibold tracking-tight">{data.lastSession.title}</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {data.lastSession.startedAt ? format(new Date(data.lastSession.startedAt), "d MMM", { locale: es }) : ""}
               {data.lastSession.durationSeconds ? ` · ${formatDuration(data.lastSession.durationSeconds)}` : ""}
@@ -190,7 +196,7 @@ function Dashboard() {
             </p>
           </Link>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Aún no hay sesiones. Empieza tu primer entrenamiento.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Aún no hay sesiones. Empieza tu primer entrenamiento.</p>
         )}
       </section>
 
@@ -199,9 +205,9 @@ function Dashboard() {
           <p className="text-xs text-muted-foreground">Progreso</p>
           <p className="mt-1 text-sm font-medium">Ver marcas y volumen</p>
         </Link>
-        <Link to="/history" className="rounded-3xl bg-card px-4 py-4 hairline">
-          <p className="text-xs text-muted-foreground">Historial</p>
-          <p className="mt-1 text-sm font-medium">Todas las sesiones</p>
+        <Link to="/plan" className="rounded-3xl bg-card px-4 py-4 hairline">
+          <p className="text-xs text-muted-foreground">Plan</p>
+          <p className="mt-1 text-sm font-medium">Semana y rutinas</p>
         </Link>
       </div>
 

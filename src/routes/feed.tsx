@@ -51,16 +51,16 @@ function ActivityPage() {
       title="Actividad"
       action={
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" aria-label="Publicar" onClick={() => setComposer(true)}>
+          <Button size="icon" variant="ghost" className="glass-control" aria-label="Publicar" onClick={() => setComposer(true)}>
             <PenLine className="size-5" />
           </Button>
-          <Button asChild size="icon" variant="ghost" aria-label="Solicitudes">
+          <Button asChild size="icon" variant="ghost" className="glass-control" aria-label="Solicitudes">
             <Link to="/feed/requests" className="relative">
               <Bell className="size-5" />
               {pending > 0 && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />}
             </Link>
           </Button>
-          <Button asChild size="icon" variant="ghost" aria-label="Buscar personas">
+          <Button asChild size="icon" variant="ghost" className="glass-control" aria-label="Buscar personas">
             <Link to="/feed/search">
               <Search className="size-5" />
             </Link>

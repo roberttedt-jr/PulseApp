@@ -7,7 +7,7 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensurePulseV7, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
 import { parseVisibility, parseWorkoutVisibility } from "./social";
 import type { ExperienceLevel, GoalId, Profile, TrainingLocation } from "./types";
@@ -84,6 +84,7 @@ async function ensureProfile(sql: Sql, userId: string) {
   await ensurePulseV4(sql);
   await ensurePulseV5(sql);
   await ensurePulseV6(sql);
+  await ensurePulseV7(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
@@ -599,7 +600,7 @@ export const listRoutines = createServerFn({ method: "GET" }).middleware([authMi
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
   return (await sql<AnyRow>`
-      select r.id, r.name, r.description, r.icon, r.color, r.is_public, r.is_archived, r.is_template, r.share_slug,
+      select r.id, r.name, r.description, r.icon, r.color, r.is_public, r.is_archived, r.is_template, r.share_slug, r.visibility, r.copied_from_id,
         (select count(*)::int from routine_exercises re where re.routine_id = r.id) as n,
         (select max(w.started_at) from workouts w where w.routine_id = r.id and w.user_id = ${context.userId}) as last
       from routines r
@@ -612,6 +613,8 @@ export const listRoutines = createServerFn({ method: "GET" }).middleware([authMi
     icon: r.icon ?? "dumbbell",
     color: r.color ?? "#FF2D55",
     isPublic: bool(r.is_public),
+    visibility: parseWorkoutVisibility(r.visibility) === "me" && bool(r.is_public) ? "public" : parseWorkoutVisibility(r.visibility),
+    copiedFromId: r.copied_from_id ? String(r.copied_from_id) : null,
     isArchived: bool(r.is_archived),
     isTemplate: bool(r.is_template),
     shareSlug: r.share_slug,
@@ -637,6 +640,7 @@ export const getRoutine = createServerFn({ method: "GET" }).middleware([authMidd
     icon: r[0].icon ?? "dumbbell",
     color: r[0].color ?? "#FF2D55",
     isPublic: bool(r[0].is_public),
+    visibility: parseWorkoutVisibility(r[0].visibility) === "me" && bool(r[0].is_public) ? "public" : parseWorkoutVisibility(r[0].visibility),
     isArchived: bool(r[0].is_archived),
     isTemplate: bool(r[0].is_template),
     shareSlug: r[0].share_slug,
@@ -707,7 +711,8 @@ export const duplicateRoutine = createServerFn({ method: "POST" }).middleware([a
 export const shareRoutine = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   const sql = await getSql();
   await sql<AnyRow>`
-      update routines set is_public = true, share_slug = coalesce(share_slug, ${slugify(data.id).slice(0, 8) + nid().slice(0, 8)})
+      update routines set is_public = true, visibility = 'public',
+        share_slug = coalesce(share_slug, ${slugify(data.id).slice(0, 8) + nid().slice(0, 8)})
       where id = ${data.id} and user_id = ${context.userId}
     `;
   return { slug: (await sql<AnyRow>`select share_slug from routines where id = ${data.id} and user_id = ${context.userId}`)[0]?.share_slug };
@@ -1743,6 +1748,7 @@ export const deleteAccountData = createServerFn({ method: "POST" }).middleware([
   const sql = await getSql();
   const uid = context.userId;
   await ensurePulseV6(sql);
+  await ensurePulseV7(sql);
   await sql<AnyRow>`delete from hidden_posts where user_id = ${uid} or post_id in (select id from activity_feed where user_id = ${uid})`;
   await sql<AnyRow>`delete from reports where reporter_id = ${uid} or (target_type = 'user' and target_id = ${uid})`;
   await sql<AnyRow>`delete from user_blocks where blocker_id = ${uid} or blocked_id = ${uid}`;

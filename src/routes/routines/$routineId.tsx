@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   type DragEndEvent,
@@ -51,6 +51,7 @@ function Editor({
   initial: Awaited<ReturnType<typeof getRoutine>> | undefined;
 }) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("dumbbell");
@@ -108,6 +109,8 @@ function Editor({
       }),
     onSuccess: () => {
       toast.success("Rutina guardada");
+      void qc.invalidateQueries({ queryKey: ["routines"] });
+      void qc.invalidateQueries({ queryKey: ["routine"] });
       void navigate({ to: "/routines" });
     },
     onError: (e) => toast.error(e.message),

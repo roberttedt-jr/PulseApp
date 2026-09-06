@@ -4,22 +4,28 @@ import { getSql, type Sql } from "@/lib/db";
 import { nid, toIso } from "@/lib/utils";
 import { normalizeMuscle } from "./exercise-meta";
 import { isDemoUserId } from "./seed-flags";
-import { ensurePulseV6 } from "./seed";
+import { ensurePulseV6, ensurePulseV7 } from "./seed";
 import {
+  COMMENT_MAX,
   decodeCursor,
   encodeCursor,
   formatHandle,
   isUniqueViolation,
   normalizeUsername,
+  parseFeedKind,
   parseReportReason,
+  parseReportTarget,
   parseVisibility,
   parseWorkoutVisibility,
   rateLimit,
   sanitizeSearchQuery,
+  sanitizeSocialText,
   socialError,
+  TEXT_POST_MAX,
   validateBio,
   validateDisplayName,
   validateUsername,
+  type FeedKind,
   type FollowStatus,
   type ProfileVisibility,
   type ReportTarget,
@@ -41,6 +47,7 @@ function iso(v: unknown) {
 
 async function ready(sql: Sql) {
   await ensurePulseV6(sql);
+  await ensurePulseV7(sql);
 }
 
 function followStatusOf(v: unknown): FollowStatus | null {
@@ -79,6 +86,13 @@ export type PersonCard = {
   incomingStatus: FollowStatus | null;
 };
 
+export type RoutinePeek = {
+  id: string | null;
+  name: string;
+  exerciseCount: number;
+  exercises: { name: string; muscle?: string; sets: number; reps: string }[];
+};
+
 export type FeedPost = {
   id: string;
   authorId: string;
@@ -87,18 +101,41 @@ export type FeedPost = {
   name: string;
   image: string | null;
   createdAt: string;
+  kind: FeedKind;
   title: string;
+  body: string | null;
   durationSeconds: number | null;
   exerciseCount: number | null;
   setCount: number | null;
   muscles: string[];
   volume: number | null;
   prLabel: string | null;
-  visibility: Exclude<WorkoutVisibility, "me">;
+  visibility: WorkoutVisibility;
   liked: boolean;
   likeCount: number;
+  commentCount: number;
   mine: boolean;
+  routine: RoutinePeek | null;
 };
+
+function parseRoutineStructure(raw: unknown): RoutinePeek["exercises"] {
+  if (!raw) return [];
+  try {
+    const v = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(v)) return [];
+    return v.slice(0, 24).map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        name: String(row.name ?? "Ejercicio"),
+        muscle: row.muscle ? String(row.muscle) : undefined,
+        sets: num(row.sets) || 0,
+        reps: String(row.reps ?? ""),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
 
 function mapPerson(r: AnyRow, viewerId: string): PersonCard {
   const username = r.username ? String(r.username) : null;
@@ -117,11 +154,15 @@ function mapPerson(r: AnyRow, viewerId: string): PersonCard {
 
 function mapPost(r: AnyRow, viewerId: string): FeedPost {
   const vis = parseWorkoutVisibility(r.visibility);
+  const kind = parseFeedKind(r.kind);
   const username = r.username ? String(r.username) : null;
   const muscles = String(r.muscles ?? "")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
+  const detail = r.detail == null ? "" : String(r.detail);
+  const body = kind === "text" ? detail || String(r.title || "") : null;
+  const exercises = kind === "routine" ? parseRoutineStructure(detail) : [];
   return {
     id: String(r.id),
     authorId: String(r.user_id),
@@ -130,17 +171,29 @@ function mapPost(r: AnyRow, viewerId: string): FeedPost {
     name: String(r.display_name ?? "Atleta"),
     image: r.image ? String(r.image) : null,
     createdAt: iso(r.created_at),
-    title: String(r.title || "Entrenamiento libre"),
+    kind,
+    title: String(r.title || (kind === "text" ? "Publicación" : kind === "routine" ? "Rutina" : "Entrenamiento libre")),
+    body,
     durationSeconds: r.duration_seconds == null ? null : num(r.duration_seconds),
     exerciseCount: r.exercise_count == null ? null : num(r.exercise_count),
     setCount: r.set_count == null ? null : num(r.set_count),
     muscles,
     volume: bool(r.share_volume) ? num(r.volume) : null,
     prLabel: bool(r.share_prs) && r.pr_label ? String(r.pr_label) : null,
-    visibility: vis === "public" ? "public" : "followers",
+    visibility: vis,
     liked: bool(r.liked),
     likeCount: num(r.like_count),
+    commentCount: num(r.comment_count),
     mine: r.user_id === viewerId,
+    routine:
+      kind === "routine"
+        ? {
+            id: r.routine_id ? String(r.routine_id) : null,
+            name: String(r.title || "Rutina"),
+            exerciseCount: r.exercise_count == null ? exercises.length : num(r.exercise_count),
+            exercises,
+          }
+        : null,
   };
 }
 
@@ -358,15 +411,16 @@ export const getActivityFeed = createServerFn({ method: "GET" })
     await ready(sql);
     const cursor = decodeCursor(data.cursor);
     const rows = await sql<AnyRow>`
-      select a.id, a.user_id, a.title, a.created_at, a.visibility, a.volume, a.duration_seconds,
-        a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label,
+      select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
+        a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
         p.display_name, p.image, p.username,
         exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
-        (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count
+        (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
+        (select count(*)::int from feed_comments c where c.feed_id = a.id and c.deleted_at is null) as comment_count
       from activity_feed a
       join profiles p on p.user_id = a.user_id
       where a.deleted_at is null
-        and a.kind = 'workout'
+        and a.kind in ('workout', 'text', 'routine')
         and a.visibility in ('followers', 'public')
         and a.user_id not like ${"pulse-demo-%"}
         and (
@@ -536,15 +590,15 @@ export const updatePostVisibility = createServerFn({ method: "POST" })
     rateLimit(context.userId, "post", 20);
     const vis = parseWorkoutVisibility(data.visibility);
     const row = (await sql<AnyRow>`
-      select id from activity_feed where id = ${data.postId} and user_id = ${context.userId} and deleted_at is null
+      select id, kind from activity_feed where id = ${data.postId} and user_id = ${context.userId} and deleted_at is null
     `)[0];
     if (!row) throw socialError(404, "No se ha encontrado esta publicación.");
-    if (vis === "me") {
+    if (vis === "me" && parseFeedKind(row.kind) === "workout") {
       await sql`update activity_feed set deleted_at = now() where id = ${data.postId} and user_id = ${context.userId}`;
       return { deleted: true, visibility: "me" as const };
     }
     await sql`
-      update activity_feed set visibility = ${vis}
+      update activity_feed set visibility = ${vis}, deleted_at = null
       where id = ${data.postId} and user_id = ${context.userId}
     `;
     return { deleted: false, visibility: vis };
@@ -634,7 +688,7 @@ export const reportContent = createServerFn({ method: "POST" })
     await ready(sql);
     rateLimit(context.userId, "report", 10);
     const reason = parseReportReason(data.reason);
-    const targetType = data.targetType === "user" ? "user" : "post";
+    const targetType = parseReportTarget(data.targetType);
     const targetId = String(data.targetId ?? "");
     if (!targetId) throw socialError(422, "Falta el contenido a reportar.");
     if (targetType === "user" && targetId === context.userId) throw socialError(422, "No puedes reportarte a ti mismo.");
@@ -642,6 +696,14 @@ export const reportContent = createServerFn({ method: "POST" })
       const post = (await sql<AnyRow>`select user_id from activity_feed where id = ${targetId}`)[0];
       if (!post) throw socialError(404, "No se ha encontrado esta publicación.");
       if (post.user_id === context.userId) throw socialError(422, "No puedes reportar tu propia publicación.");
+    }
+    if (targetType === "comment") {
+      const comment = (await sql<AnyRow>`
+        select id, user_id, feed_id, deleted_at from feed_comments where id = ${targetId}
+      `)[0];
+      if (!comment || comment.deleted_at) throw socialError(404, "No se ha encontrado este comentario.");
+      if (comment.user_id === context.userId) throw socialError(422, "No puedes reportar tu propio comentario.");
+      await assertCanSeePost(sql, context.userId, String(comment.feed_id));
     }
     try {
       await sql`
@@ -745,22 +807,22 @@ export const getSocialProfile = createServerFn({ method: "GET" })
     let posts: FeedPost[] = [];
     if (!locked) {
       const rows = await sql<AnyRow>`
-        select a.id, a.user_id, a.title, a.created_at, a.visibility, a.volume, a.duration_seconds,
-          a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label,
+        select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
+          a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
           p.display_name, p.image, p.username,
           exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
-          (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count
+          (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
+          (select count(*)::int from feed_comments c where c.feed_id = a.id and c.deleted_at is null) as comment_count
         from activity_feed a
         join profiles p on p.user_id = a.user_id
         where a.user_id = ${userId}
           and a.deleted_at is null
-          and a.kind = 'workout'
-          and a.visibility in ('followers', 'public')
+          and a.kind in ('workout', 'text', 'routine')
           and not exists (
             select 1 from hidden_posts h where h.user_id = ${context.userId} and h.post_id = a.id
           )
           and (
-            ${mine}
+            ${mine} and a.visibility in ('me', 'followers', 'public')
             or a.visibility = 'public'
             or (${followStatus === "accepted"} and a.visibility = 'followers')
           )
@@ -823,3 +885,376 @@ export const listFollowers = createServerFn({ method: "GET" })
     `;
     return { people: rows.map((r) => mapPerson(r, context.userId)), mine: userId === context.userId };
   });
+
+export const getDiscoverFeed = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: { cursor?: string | null } | undefined) => d ?? {})
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const cursor = decodeCursor(data.cursor);
+    const rows = await sql<AnyRow>`
+      select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
+        a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
+        p.display_name, p.image, p.username,
+        exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
+        (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
+        (select count(*)::int from feed_comments c where c.feed_id = a.id and c.deleted_at is null) as comment_count
+      from activity_feed a
+      join profiles p on p.user_id = a.user_id
+      where a.deleted_at is null
+        and a.kind in ('workout', 'text', 'routine')
+        and a.visibility = 'public'
+        and a.user_id not like ${"pulse-demo-%"}
+        and (p.profile_visibility = 'public' or p.public_profile = true)
+        and not exists (
+          select 1 from hidden_posts h where h.user_id = ${context.userId} and h.post_id = a.id
+        )
+        and not exists (
+          select 1 from user_blocks b
+          where (b.blocker_id = ${context.userId} and b.blocked_id = a.user_id)
+             or (b.blocker_id = a.user_id and b.blocked_id = ${context.userId})
+        )
+        and (
+          ${cursor?.createdAt ?? null}::timestamptz is null
+          or a.created_at < ${cursor?.createdAt ?? null}::timestamptz
+          or (a.created_at = ${cursor?.createdAt ?? null}::timestamptz and a.id < ${cursor?.id ?? null})
+        )
+      order by a.created_at desc, a.id desc
+      limit 21
+    `;
+    const page = rows.slice(0, 20);
+    const extra = rows[20];
+    const last = page[page.length - 1];
+    return {
+      items: page.map((r) => mapPost(r, context.userId)),
+      nextCursor: extra && last ? encodeCursor(iso(last.created_at), String(last.id)) : null,
+    };
+  });
+
+export const createTextPost = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { body: string; visibility: WorkoutVisibility }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "post", 20);
+    const body = sanitizeSocialText(data.body, TEXT_POST_MAX);
+    const visibility = parseWorkoutVisibility(data.visibility);
+    const title = body.length > 80 ? `${body.slice(0, 77)}…` : body;
+    const id = nid();
+    await sql`
+      insert into activity_feed (id, user_id, kind, title, detail, visibility)
+      values (${id}, ${context.userId}, 'text', ${title}, ${body}, ${visibility})
+    `;
+    return { posted: visibility !== "me", id, visibility };
+  });
+
+export const updateTextPost = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { postId: string; body: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "post", 20);
+    const body = sanitizeSocialText(data.body, TEXT_POST_MAX);
+    const title = body.length > 80 ? `${body.slice(0, 77)}…` : body;
+    const row = (await sql<AnyRow>`
+      select id from activity_feed
+      where id = ${data.postId} and user_id = ${context.userId} and kind = 'text' and deleted_at is null
+    `)[0];
+    if (!row) throw socialError(404, "No se ha encontrado esta publicación.");
+    await sql`
+      update activity_feed set title = ${title}, detail = ${body}
+      where id = ${data.postId} and user_id = ${context.userId}
+    `;
+    return { ok: true, body };
+  });
+
+export type FeedComment = {
+  id: string;
+  postId: string;
+  authorId: string;
+  username: string | null;
+  handle: string;
+  name: string;
+  image: string | null;
+  body: string;
+  createdAt: string;
+  edited: boolean;
+  mine: boolean;
+  canDelete: boolean;
+};
+
+function mapComment(r: AnyRow, viewerId: string, postAuthorId: string): FeedComment {
+  const username = r.username ? String(r.username) : null;
+  return {
+    id: String(r.id),
+    postId: String(r.feed_id),
+    authorId: String(r.user_id),
+    username,
+    handle: formatHandle(username),
+    name: String(r.display_name ?? "Atleta"),
+    image: r.image ? String(r.image) : null,
+    body: String(r.body ?? ""),
+    createdAt: iso(r.created_at),
+    edited: Boolean(r.updated_at),
+    mine: r.user_id === viewerId,
+    canDelete: r.user_id === viewerId || postAuthorId === viewerId,
+  };
+}
+
+export const listPostComments = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: { postId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const post = await assertCanSeePost(sql, context.userId, data.postId);
+    const rows = await sql<AnyRow>`
+      select c.id, c.feed_id, c.user_id, c.body, c.created_at, c.updated_at,
+        p.display_name, p.image, p.username
+      from feed_comments c
+      join profiles p on p.user_id = c.user_id
+      where c.feed_id = ${data.postId}
+        and c.deleted_at is null
+        and not exists (
+          select 1 from user_blocks b
+          where (b.blocker_id = ${context.userId} and b.blocked_id = c.user_id)
+             or (b.blocker_id = c.user_id and b.blocked_id = ${context.userId})
+        )
+      order by c.created_at
+      limit 80
+    `;
+    return { comments: rows.map((r) => mapComment(r, context.userId, String(post.user_id))) };
+  });
+
+export const addPostComment = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { postId: string; body: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "comment", 30);
+    const post = await assertCanSeePost(sql, context.userId, data.postId);
+    const body = sanitizeSocialText(data.body, COMMENT_MAX);
+    const id = nid();
+    await sql`
+      insert into feed_comments (id, feed_id, user_id, body)
+      values (${id}, ${data.postId}, ${context.userId}, ${body})
+    `;
+    const me = (await sql<AnyRow>`select username, display_name, image from profiles where user_id = ${context.userId}`)[0];
+    return {
+      comment: mapComment(
+        {
+          id,
+          feed_id: data.postId,
+          user_id: context.userId,
+          body,
+          created_at: new Date().toISOString(),
+          updated_at: null,
+          username: me?.username,
+          display_name: me?.display_name,
+          image: me?.image,
+        },
+        context.userId,
+        String(post.user_id),
+      ),
+    };
+  });
+
+export const updatePostComment = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { commentId: string; body: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "comment", 30);
+    const body = sanitizeSocialText(data.body, COMMENT_MAX);
+    const row = (await sql<AnyRow>`
+      select id, feed_id from feed_comments
+      where id = ${data.commentId} and user_id = ${context.userId} and deleted_at is null
+    `)[0];
+    if (!row) throw socialError(404, "No se ha encontrado este comentario.");
+    await assertCanSeePost(sql, context.userId, String(row.feed_id));
+    await sql`
+      update feed_comments set body = ${body}, updated_at = now()
+      where id = ${data.commentId} and user_id = ${context.userId}
+    `;
+    return { ok: true, body };
+  });
+
+export const deletePostComment = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { commentId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "comment", 30);
+    const row = (await sql<AnyRow>`
+      select c.id, c.user_id, c.feed_id, a.user_id as post_author
+      from feed_comments c
+      join activity_feed a on a.id = c.feed_id
+      where c.id = ${data.commentId} and c.deleted_at is null
+    `)[0];
+    if (!row) throw socialError(404, "No se ha encontrado este comentario.");
+    const allowed = row.user_id === context.userId || row.post_author === context.userId;
+    if (!allowed) throw socialError(403, "No puedes borrar este comentario.");
+    await sql`
+      update feed_comments set deleted_at = now()
+      where id = ${data.commentId}
+    `;
+    return { ok: true };
+  });
+
+async function routineSnapshot(sql: Sql, userId: string, routineId: string) {
+  const r = (await sql<AnyRow>`
+    select id, user_id, name, description, icon, color, is_archived, visibility, is_public
+    from routines where id = ${routineId}
+  `)[0];
+  if (!r || bool(r.is_archived)) throw socialError(404, "Rutina no encontrada.");
+  if (String(r.user_id) !== userId) throw socialError(403, "Esta rutina no es tuya.");
+  const ex = await sql<AnyRow>`
+    select e.name, e.muscle, re.target_sets, re.target_reps
+    from routine_exercises re
+    join exercises e on e.id = re.exercise_id
+    where re.routine_id = ${routineId}
+    order by re.sort_order
+  `;
+  const exercises = ex.map((e) => ({
+    name: String(e.name),
+    muscle: e.muscle ? String(e.muscle) : undefined,
+    sets: num(e.target_sets) || 0,
+    reps: String(e.target_reps ?? ""),
+  }));
+  return {
+    id: String(r.id),
+    name: String(r.name || "Rutina"),
+    exerciseCount: exercises.length,
+    exercises,
+    detail: JSON.stringify(exercises),
+  };
+}
+
+export const shareRoutineToFeed = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { routineId: string; visibility: WorkoutVisibility }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "post", 20);
+    const visibility = parseWorkoutVisibility(data.visibility);
+    const snap = await routineSnapshot(sql, context.userId, data.routineId);
+    const isPublic = visibility === "public";
+    await sql`
+      update routines set
+        visibility = ${visibility},
+        is_public = ${isPublic},
+        share_slug = case
+          when ${isPublic} then coalesce(share_slug, ${`${data.routineId.slice(0, 8)}${nid().slice(0, 8)}`})
+          else share_slug
+        end,
+        updated_at = now()
+      where id = ${data.routineId} and user_id = ${context.userId}
+    `;
+    const existing = (await sql<AnyRow>`
+      select id from activity_feed
+      where user_id = ${context.userId} and routine_id = ${data.routineId} and kind = 'routine' and deleted_at is null
+      order by created_at desc
+      limit 1
+    `)[0];
+    if (visibility === "me") {
+      if (existing) {
+        await sql`update activity_feed set deleted_at = now(), visibility = 'me' where id = ${existing.id} and user_id = ${context.userId}`;
+      }
+      return { posted: false, id: null as string | null };
+    }
+    if (existing) {
+      await sql`
+        update activity_feed set
+          title = ${snap.name},
+          detail = ${snap.detail},
+          exercise_count = ${snap.exerciseCount},
+          visibility = ${visibility},
+          deleted_at = null
+        where id = ${existing.id} and user_id = ${context.userId}
+      `;
+      return { posted: true, id: String(existing.id) };
+    }
+    const id = nid();
+    await sql`
+      insert into activity_feed (id, user_id, kind, title, detail, visibility, routine_id, exercise_count)
+      values (${id}, ${context.userId}, 'routine', ${snap.name}, ${snap.detail}, ${visibility}, ${data.routineId}, ${snap.exerciseCount})
+    `;
+    return { posted: true, id };
+  });
+
+async function assertCanCopyRoutine(sql: Sql, viewerId: string, routineId: string) {
+  const r = (await sql<AnyRow>`
+    select id, user_id, name, description, icon, color, visibility, is_public, is_archived
+    from routines where id = ${routineId}
+  `)[0];
+  if (!r || bool(r.is_archived)) throw socialError(404, "Rutina no encontrada.");
+  const ownerId = String(r.user_id);
+  if (ownerId === viewerId) return r;
+  if (await isBlockedEitherWay(sql, viewerId, ownerId)) {
+    throw socialError(404, "Rutina no encontrada.");
+  }
+  const vis = parseWorkoutVisibility(r.visibility) === "me" && bool(r.is_public) ? "public" : parseWorkoutVisibility(r.visibility);
+  if (vis === "me") throw socialError(404, "Rutina no encontrada.");
+  const follow = await getFollowRow(sql, viewerId, ownerId);
+  const profile = (await sql<AnyRow>`
+    select profile_visibility, public_profile from profiles where user_id = ${ownerId}
+  `)[0];
+  const profilePublic = parseVisibility(profile?.profile_visibility) === "public" || bool(profile?.public_profile);
+  if (!profilePublic && follow !== "accepted") throw socialError(404, "Rutina no encontrada.");
+  if (vis === "followers" && follow !== "accepted") throw socialError(404, "Rutina no encontrada.");
+  return r;
+}
+
+export const copySharedRoutine = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { postId?: string; routineId?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    rateLimit(context.userId, "copy", 10);
+    let routineId = data.routineId ? String(data.routineId) : "";
+    if (data.postId) {
+      await assertCanSeePost(sql, context.userId, data.postId);
+      const row = (await sql<AnyRow>`
+        select routine_id, kind, detail, title, exercise_count, user_id
+        from activity_feed where id = ${data.postId}
+      `)[0];
+      if (!row || parseFeedKind(row.kind) !== "routine") {
+        throw socialError(422, "Esta publicación no es una rutina.");
+      }
+      routineId = row.routine_id ? String(row.routine_id) : "";
+      if (!routineId) throw socialError(404, "Esta rutina ya no está disponible.");
+    }
+    if (!routineId) throw socialError(422, "Falta la rutina a copiar.");
+    const src = await assertCanCopyRoutine(sql, context.userId, routineId);
+    const ownerId = String(src.user_id);
+    if (ownerId === context.userId) throw socialError(422, "Esta rutina ya está en tus rutinas.");
+    const id = nid();
+    await sql`
+      insert into routines (id, user_id, name, description, icon, color, visibility, is_public, copied_from_id, copied_from_user_id)
+      values (
+        ${id}, ${context.userId}, ${String(src.name)}, ${src.description ?? null},
+        ${src.icon ?? "dumbbell"}, ${src.color ?? "#FF2D55"}, 'me', false,
+        ${routineId}, ${ownerId}
+      )
+    `;
+    const ex = await sql<AnyRow>`
+      select exercise_id, sort_order, target_sets, target_reps, rest_seconds
+      from routine_exercises where routine_id = ${routineId}
+    `;
+    for (const e of ex) {
+      await sql`
+        insert into routine_exercises (id, routine_id, exercise_id, sort_order, target_sets, target_reps, rest_seconds)
+        values (${nid()}, ${id}, ${e.exercise_id}, ${e.sort_order}, ${e.target_sets}, ${e.target_reps}, ${e.rest_seconds})
+      `;
+    }
+    return { id, name: String(src.name), exerciseCount: ex.length };
+  });
+

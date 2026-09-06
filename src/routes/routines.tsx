@@ -24,6 +24,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { archiveRoutine, duplicateRoutine, listRoutines, shareRoutine, startWorkout } from "@/lib/pulse/fns";
+import { shareRoutineToFeed } from "@/lib/pulse/social-fns";
+import { ShareSheet } from "@/components/pulse/social";
+import type { WorkoutVisibility } from "@/lib/pulse/social";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -58,6 +61,8 @@ function RoutinesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [picker, setPicker] = useState(false);
+  const [shareId, setShareId] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
 
   useEffect(() => {
     if (templates) setPicker(true);
@@ -158,12 +163,7 @@ function RoutinesPage() {
                       <Copy className="size-4" /> Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={async () => {
-                        const res = await shareRoutine({ data: { id: r.id } });
-                        const url = `${window.location.origin}/share/${res.slug}`;
-                        await navigator.clipboard.writeText(url);
-                        toast.success("Enlace copiado");
-                      }}
+                      onClick={() => setShareId(r.id)}
                     >
                       <Share2 className="size-4" /> Compartir
                     </DropdownMenuItem>
@@ -198,6 +198,42 @@ function RoutinesPage() {
           <TemplatePicker onCloned={() => setPicker(false)} />
         </SheetContent>
       </Sheet>
+      <ShareSheet
+        open={shareId != null}
+        onOpenChange={(open) => !open && setShareId(null)}
+        defaultVisibility={data?.find((r) => r.id === shareId)?.visibility ?? "me"}
+        title="¿Compartir esta rutina?"
+        description="Tú decides quién puede verla y copiarla. La original no cambia si alguien la copia."
+        confirmMe="Solo yo"
+        confirmShare="Compartir rutina"
+        publicHint="Puede aparecer en tu perfil y en Para ti. Otros pueden copiarla."
+        busy={shareBusy}
+        onShare={async (visibility: WorkoutVisibility) => {
+          if (!shareId) return;
+          setShareBusy(true);
+          try {
+            await shareRoutineToFeed({ data: { routineId: shareId, visibility } });
+            if (visibility === "public") {
+              const res = await shareRoutine({ data: { id: shareId } });
+              const url = `${window.location.origin}/share/${res.slug}`;
+              await navigator.clipboard.writeText(url).catch(() => {});
+              toast.success("Rutina pública. Enlace copiado.");
+            } else if (visibility === "followers") {
+              toast.success("Rutina visible para tus seguidores.");
+            } else {
+              toast.success("Rutina privada.");
+            }
+            void qc.invalidateQueries({ queryKey: ["routines"] });
+            void qc.invalidateQueries({ queryKey: ["activity-feed"] });
+            void qc.invalidateQueries({ queryKey: ["discover-feed"] });
+            setShareId(null);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "No se pudo compartir.");
+          } finally {
+            setShareBusy(false);
+          }
+        }}
+      />
     </AppPage>
   );
 }

@@ -20,6 +20,7 @@ let pulseV3Ready = false;
 let pulseV4Ready = false;
 let pulseV5Ready = false;
 let pulseV6Ready = false;
+let pulseV7Ready = false;
 
 export async function ensurePulseV5(sql: Sql): Promise<void> {
   if (pulseV5Ready) return;
@@ -108,6 +109,35 @@ export async function ensurePulseV6(sql: Sql): Promise<void> {
   pulseV6Ready = true;
 }
 
+export async function ensurePulseV7(sql: Sql): Promise<void> {
+  if (pulseV7Ready) return;
+  await ensurePulseV6(sql);
+  await sql.query(`alter table activity_feed add column if not exists routine_id text`);
+  await sql.query(`alter table feed_comments add column if not exists updated_at timestamptz`);
+  await sql.query(`alter table feed_comments add column if not exists deleted_at timestamptz`);
+  await sql.query(`
+    create index if not exists feed_comments_live_idx
+      on feed_comments (feed_id, created_at)
+      where deleted_at is null
+  `);
+  await sql.query(`
+    create index if not exists activity_feed_public_live_idx
+      on activity_feed (created_at desc, id desc)
+      where deleted_at is null and visibility = 'public'
+  `);
+  await sql.query(`alter table routines add column if not exists visibility text not null default 'me'`);
+  await sql.query(`alter table routines add column if not exists copied_from_id text`);
+  await sql.query(`alter table routines add column if not exists copied_from_user_id text`);
+  await sql.query(`
+    update routines
+    set visibility = 'public'
+    where is_public = true and visibility = 'me'
+  `);
+  await sql.query(`create index if not exists routines_visibility_idx on routines (visibility) where visibility <> 'me'`);
+  await sql.query(`create index if not exists routines_copied_from_idx on routines (copied_from_id)`);
+  pulseV7Ready = true;
+}
+
 export async function ensurePulseV4(sql: Sql): Promise<void> {
   if (pulseV4Ready) return;
   await sql.query(`alter table profiles add column if not exists show_rpe boolean not null default true`);
@@ -184,6 +214,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV4(sql);
   await ensurePulseV5(sql);
   await ensurePulseV6(sql);
+  await ensurePulseV7(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

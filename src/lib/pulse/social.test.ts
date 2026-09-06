@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  canViewDiscoverPost,
   canViewWorkoutPost,
+  COMMENT_MAX,
   decodeCursor,
   encodeCursor,
   formatHandle,
   looksLikeEmail,
   normalizeUsername,
+  parseFeedKind,
   parseWorkoutVisibility,
   sanitizeSearchQuery,
+  sanitizeSocialText,
+  TEXT_POST_MAX,
   validateBio,
   validateDisplayName,
   validateUsername,
@@ -116,6 +121,76 @@ describe("visibility", () => {
       }),
       false,
     );
+  });
+  it("lets the author see a solo-yo post on their profile", () => {
+    assert.equal(
+      canViewWorkoutPost({
+        viewerId: "a",
+        authorId: "a",
+        visibility: "me",
+        profileVisibility: "private",
+        followStatus: null,
+        blocked: false,
+        deleted: false,
+        hidden: false,
+        context: "profile",
+      }),
+      true,
+    );
+    assert.equal(
+      canViewWorkoutPost({
+        viewerId: "a",
+        authorId: "a",
+        visibility: "me",
+        profileVisibility: "private",
+        followStatus: null,
+        blocked: false,
+        deleted: false,
+        hidden: false,
+        context: "following",
+      }),
+      false,
+    );
+  });
+});
+
+describe("discover / para ti", () => {
+  const base = {
+    viewerId: "b",
+    authorId: "a",
+    visibility: "public" as const,
+    profileVisibility: "public" as const,
+    blocked: false,
+    deleted: false,
+    hidden: false,
+  };
+  it("shows recent public posts from public profiles", () => {
+    assert.equal(canViewDiscoverPost(base), true);
+    assert.equal(canViewDiscoverPost({ ...base, viewerId: "a" }), true);
+  });
+  it("excludes private visibility, private profiles, blocks, hidden and deleted", () => {
+    assert.equal(canViewDiscoverPost({ ...base, visibility: "followers" }), false);
+    assert.equal(canViewDiscoverPost({ ...base, visibility: "me" }), false);
+    assert.equal(canViewDiscoverPost({ ...base, profileVisibility: "private" }), false);
+    assert.equal(canViewDiscoverPost({ ...base, blocked: true }), false);
+    assert.equal(canViewDiscoverPost({ ...base, hidden: true }), false);
+    assert.equal(canViewDiscoverPost({ ...base, deleted: true }), false);
+  });
+});
+
+describe("text sanitization", () => {
+  it("strips tags and control chars, keeps short text", () => {
+    assert.equal(sanitizeSocialText("  hola <b>mundo</b>  ", TEXT_POST_MAX), "hola mundo");
+    assert.equal(sanitizeSocialText("un comentario", COMMENT_MAX), "un comentario");
+    assert.equal(sanitizeSocialText("<img src=x onerror=alert(1)>hola", 280), "hola");
+    assert.throws(() => sanitizeSocialText("   ", 280), /Escribe/);
+    assert.throws(() => sanitizeSocialText("x".repeat(281), 280), /280/);
+  });
+  it("parses feed kinds", () => {
+    assert.equal(parseFeedKind("text"), "text");
+    assert.equal(parseFeedKind("routine"), "routine");
+    assert.equal(parseFeedKind("workout"), "workout");
+    assert.equal(parseFeedKind("nope"), "workout");
   });
 });
 

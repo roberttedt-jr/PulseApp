@@ -2,7 +2,11 @@ export type ProfileVisibility = "public" | "private";
 export type WorkoutVisibility = "me" | "followers" | "public";
 export type FollowStatus = "accepted" | "pending";
 export type ReportReason = "spam" | "harassment" | "inappropriate" | "impersonation" | "other";
-export type ReportTarget = "post" | "user";
+export type ReportTarget = "post" | "user" | "comment";
+export type FeedKind = "workout" | "text" | "routine";
+
+export const TEXT_POST_MAX = 280;
+export const COMMENT_MAX = 280;
 
 export const RESERVED_USERNAMES = new Set([
   "pulse",
@@ -80,9 +84,19 @@ export function parseWorkoutVisibility(v: unknown): WorkoutVisibility {
   return "me";
 }
 
+export function parseFeedKind(v: unknown): FeedKind {
+  if (v === "text" || v === "routine") return v;
+  return "workout";
+}
+
 export function parseReportReason(v: unknown): ReportReason {
   if (v === "spam" || v === "harassment" || v === "inappropriate" || v === "impersonation" || v === "other") return v;
   throw new Error("Elige un motivo de reporte.");
+}
+
+export function parseReportTarget(v: unknown): ReportTarget {
+  if (v === "user" || v === "comment" || v === "post") return v;
+  return "post";
 }
 
 export const REPORT_LABELS: Record<ReportReason, string> = {
@@ -103,6 +117,18 @@ export function sanitizeSearchQuery(raw: string): string {
   if (!q) throw socialError(422, "Escribe un nombre o @usuario.");
   if (looksLikeEmail(q)) throw socialError(422, "Busca por nombre o @usuario, no por correo.");
   return q.replace(/^@+/, "").trim();
+}
+
+export function sanitizeSocialText(raw: string, max: number): string {
+  let t = String(raw ?? "");
+  t = t.replace(/<[^>]*>/g, "");
+  t = t.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  t = t.replace(/\r\n/g, "\n").replace(/[ \t]+\n/g, "\n");
+  t = t.replace(/[ \t]{2,}/g, " ");
+  t = t.trim();
+  if (!t) throw socialError(422, "Escribe un texto.");
+  if (t.length > max) throw socialError(422, `El texto no puede superar ${max} caracteres.`);
+  return t;
 }
 
 export function encodeCursor(createdAt: string, id: string): string {
@@ -131,12 +157,27 @@ export function canViewWorkoutPost(args: {
   context: "following" | "profile";
 }): boolean {
   if (args.deleted || args.hidden || args.blocked) return false;
-  if (args.viewerId === args.authorId) return args.visibility !== "me";
+  if (args.viewerId === args.authorId) return args.visibility !== "me" || args.context === "profile";
   if (args.visibility === "me") return false;
   if (args.profileVisibility === "private" && args.followStatus !== "accepted") return false;
   if (args.visibility === "followers") return args.followStatus === "accepted";
   if (args.context === "following") return args.followStatus === "accepted";
   return true;
+}
+
+export function canViewDiscoverPost(args: {
+  viewerId: string;
+  authorId: string;
+  visibility: WorkoutVisibility;
+  profileVisibility: ProfileVisibility;
+  blocked: boolean;
+  deleted: boolean;
+  hidden: boolean;
+}): boolean {
+  if (args.deleted || args.hidden || args.blocked) return false;
+  if (args.visibility !== "public") return false;
+  if (args.viewerId === args.authorId) return true;
+  return args.profileVisibility === "public";
 }
 
 export function isUniqueViolation(err: unknown): boolean {

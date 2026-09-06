@@ -337,7 +337,7 @@ function RowSelect({
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <p className="text-sm font-medium">{label}</p>
-      <select className="h-10 rounded-xl bg-muted px-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="h-10 rounded-xl bg-muted px-2 text-base" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}

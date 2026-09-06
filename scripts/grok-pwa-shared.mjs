@@ -151,41 +151,73 @@ export function stripInstallParams(url) {
   return rest ? `${path}?${rest}` : path;
 }
 
-export function renderInstallPageHtml(template, { host, url } = {}) {
+export function renderInstallPageHtml(template, { host, url, name } = {}) {
+  const appName = String(name ?? "").trim() || appNameFromHost(host);
   return String(template)
-    .replaceAll("{{APP_NAME}}", escapeHtml(appNameFromHost(host)))
+    .replaceAll("{{APP_NAME}}", escapeHtml(appName))
     .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)));
 }
 
-export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
-  return JSON.stringify(
+function pulsePwaIcons() {
+  return [
     {
-      name,
-      short_name: name,
-      id: "/",
-      start_url: "/",
-      scope: "/",
-      display: "standalone",
-      background_color: "#000000",
-      theme_color: "#000000",
-      icons: [
-        {
-          src: "/__grok/icon-180.png",
-          sizes: "180x180",
-          type: "image/png",
-        },
-      ],
+      src: "/icons/pulse-192.png",
+      sizes: "192x192",
+      type: "image/png",
+      purpose: "any maskable",
     },
-    null,
-    2,
-  );
+    {
+      src: "/icons/pulse-512.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "any maskable",
+    },
+  ];
+}
+
+function defaultPwaIcons() {
+  return [
+    {
+      src: "/__grok/icon-180.png",
+      sizes: "180x180",
+      type: "image/png",
+    },
+  ];
+}
+
+/**
+ * Web app manifest served at /__grok/manifest.webmanifest.
+ * Host-derived name is the platform default (tests, untitled apps). When
+ * site.json provides a title (Pulse), that name + Pulse icons win — including
+ * on *.vercel.app, where appNameFromHost() would otherwise return "Grok App".
+ */
+export function renderWebManifest(hostHeader, options = {}) {
+  const site = options.site && typeof options.site === "object" ? options.site : {};
+  const siteTitle = String(site.title ?? "").trim();
+  const name = siteTitle || appNameFromHost(hostHeader);
+  const description = String(site.description ?? "").trim();
+  const isPulse = siteTitle.toLowerCase() === "pulse";
+  const manifest = {
+    name,
+    short_name: name,
+    id: "/",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    display_override: ["window-controls-overlay", "standalone"],
+    orientation: "portrait",
+    background_color: "#000000",
+    theme_color: "#000000",
+    icons: isPulse ? pulsePwaIcons() : defaultPwaIcons(),
+  };
+  if (description) manifest.description = description;
+  return JSON.stringify(manifest, null, 2);
 }
 
 export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
   return [
     // Standalone display comes from the manifest ("display": "standalone");
-    // the legacy *-web-app-capable metas it replaces are deliberately absent.
+    // apple-mobile-web-app-capable is authored in the app head when needed.
     ["manifest", '<link rel="manifest" href="/__grok/manifest.webmanifest">'],
     ["apple-touch-icon", '<link rel="apple-touch-icon" href="/__grok/icon-180.png">'],
     [
@@ -194,7 +226,7 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
     ],
     [
       "apple-mobile-web-app-status-bar-style",
-      '<meta name="apple-mobile-web-app-status-bar-style" content="black">',
+      '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
     ],
     ["theme-color", '<meta name="theme-color" content="#000000">'],
   ];
@@ -437,7 +469,10 @@ export function injectGrokPwaHead(html, ctx = {}) {
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      // Skip if the document already shipped any apple-touch-icon (Pulse uses
+      // /icons/pulse-180.png). Matching only the grok href used to append a
+      // second icon, and iOS prefers the last one — "Grok App" on the home screen.
+      if (key === "apple-touch-icon") return !/rel=["']apple-touch-icon["']/i.test(next);
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);

@@ -19,10 +19,10 @@ function isActive(pathname: string, to: string) {
 }
 
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
-  if (!title) return null;
+  if (!title && !action) return null;
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/50 bg-background/80 px-4 pt-[max(0.7rem,env(safe-area-inset-top))] pb-3 backdrop-blur-2xl md:px-8">
-      <h1 className="text-[17px] font-semibold tracking-tight">{title}</h1>
+    <header className="page-header sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/50 bg-background/80 px-4 pb-3 backdrop-blur-2xl md:px-8">
+      <h1 className="min-w-0 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
       {action}
     </header>
   );
@@ -32,10 +32,10 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
   const active = Math.max(0, tabIndex(pathname) === 4 && pathname.startsWith("/feed") ? 4 : TABS.findIndex((t) => isActive(pathname, t.to)));
   return (
     <nav
-      className="pulse-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-background/78 backdrop-blur-2xl md:hidden"
+      className="pulse-tabbar bottom-navigation fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-background/78 backdrop-blur-2xl md:hidden"
       aria-label="Principal"
     >
-      <ul className="relative mx-auto grid max-w-lg grid-cols-5 px-1.5 pt-1.5 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+      <ul className="relative mx-auto grid max-w-lg grid-cols-5 px-1.5 pt-1.5">
         <span
           aria-hidden
           className="pointer-events-none absolute top-1.5 left-1.5 h-8 w-[calc((100%-0.75rem)/5)] rounded-xl bg-primary/12 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
@@ -46,11 +46,11 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
           const Icon = tab.icon;
           const heavy = "emphasize" in tab && tab.emphasize;
           return (
-            <li key={tab.to}>
+            <li key={tab.to} className="min-w-0">
               <Link
                 to={tab.to}
                 className={cn(
-                  "relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-wide transition-colors duration-200",
+                  "relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-wide transition-colors duration-200",
                   on ? "text-primary" : "text-foreground-tertiary",
                 )}
                 aria-current={on ? "page" : undefined}
@@ -66,7 +66,7 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
                     fillOpacity={on ? 0.18 : 0}
                   />
                 </span>
-                <span className={cn("transition-opacity duration-200", on ? "opacity-100" : "opacity-70")}>
+                <span className={cn("max-w-full truncate px-0.5 transition-opacity duration-200", on ? "opacity-100" : "opacity-70")}>
                   {tab.label}
                 </span>
               </Link>
@@ -92,8 +92,8 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-background text-foreground">
-      <div className="mx-auto flex min-h-dvh w-full max-w-6xl">
+    <div className="app-shell bg-background text-foreground">
+      <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-6xl">
         <aside
           className={cn(
             "pulse-sidebar sticky top-0 hidden h-dvh w-[15.5rem] shrink-0 flex-col border-r border-border px-3 py-6",
@@ -128,7 +128,7 @@ export function AppShell({
 
         <div className="flex min-w-0 max-w-full flex-1 flex-col">
           <PageHeader title={title} action={action} />
-          <main className={cn("min-w-0 max-w-full flex-1 overflow-x-clip px-4 md:px-8", hideNav ? "pb-8" : "pb-28 md:pb-10")}>
+          <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-[calc(5.5rem+var(--safe-bottom))] md:pb-10")}>
             <PageTransition>{children}</PageTransition>
           </main>
         </div>

@@ -106,7 +106,7 @@ function ProgressPage() {
           >
             <NumericField
               kind="decimal"
-              className="h-12 flex-1 rounded-2xl border border-border bg-muted px-4 text-left text-[15px]"
+              className="h-12 flex-1 rounded-2xl border border-border bg-muted px-4 text-left text-base"
               value={weight}
               onValueChange={setWeight}
               placeholder="kg"

@@ -87,6 +87,13 @@
   --shadow-float: 0 12px 40px rgb(0 0 0 / 0.12);
 }
 
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
 @layer base {
   *,
   *::before,
@@ -98,12 +105,16 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     background: var(--color-background);
     color: var(--color-foreground);
     width: 100%;
+    min-width: 0;
     max-width: 100%;
     min-height: 100%;
-    overflow-x: clip;
+    margin: 0;
+    overflow-x: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -113,12 +124,18 @@
     height: 0;
   }
 
-  body {
+  body,
+  #root {
     margin: 0;
     width: 100%;
+    min-width: 0;
     max-width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
     min-height: 100dvh;
-    overflow-x: clip;
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -133,9 +150,14 @@
   }
 
   img,
-  svg,
   video,
   canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  svg {
+    display: block;
     max-width: 100%;
   }
 
@@ -160,8 +182,29 @@
   textarea,
   select {
     font: inherit;
+    font-size: 16px;
     max-width: 100%;
   }
+}
+
+.app-shell {
+  min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.page-header {
+  margin-top: calc(var(--safe-top) * -1);
+  padding-top: max(0.7rem, var(--safe-top));
+}
+
+.bottom-navigation {
+  padding-bottom: max(12px, var(--safe-bottom));
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 @layer utilities {
@@ -188,7 +231,7 @@
   }
 
   .safe-b {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-bottom: max(1rem, var(--safe-bottom));
   }
 
   .no-scrollbar {

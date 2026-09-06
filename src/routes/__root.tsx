@@ -35,16 +35,18 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       { name: "description", content: "Pulse — entrena, registra y progresa. Tu ritmo. Tu progreso." },
       { name: "theme-color", content: "#000000" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Pulse" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
-      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icons/pulse-192.png" },
+      { rel: "apple-touch-icon", href: "/icons/pulse-180.png", sizes: "180x180" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
@@ -56,11 +58,11 @@ export const Route = createRootRoute({
 
 function Root() {
   return (
-    <html lang="es" className="dark antialiased overflow-x-clip" suppressHydrationWarning>
+    <html lang="es" className="dark antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body className="overflow-x-clip">
+      <body>
         <PreviewHostBridge />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>

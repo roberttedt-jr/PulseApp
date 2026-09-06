@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 export function ScreenSkeleton() {
   return (
-    <div className="min-h-dvh bg-background px-4 py-8">
+    <div className="min-h-dvh w-full min-w-0 bg-background px-4 pt-[max(2rem,calc(var(--safe-top)+1rem))] pb-8">
       <div className="mx-auto max-w-lg space-y-4">
         <p className="text-sm font-medium tracking-tight text-muted-foreground">Pulse</p>
         <Skeleton className="h-8 w-40" />

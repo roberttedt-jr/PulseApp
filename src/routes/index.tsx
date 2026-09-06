@@ -40,9 +40,9 @@ function Home() {
 
 function Landing() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-background">
+    <main className="relative min-h-dvh overflow-x-hidden bg-background">
       <div className="pointer-events-none absolute inset-x-0 top-[-20%] h-[55%] bg-[radial-gradient(ellipse_at_top,rgba(255,45,85,0.22),transparent_58%)]" />
-      <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-6 pt-16 pb-10">
+      <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-lg flex-col px-5 pt-[max(4rem,calc(var(--safe-top)+2.5rem))] pb-[max(2.5rem,calc(var(--safe-bottom)+1.5rem))]">
         <FadeIn>
           <div className="flex items-center gap-2">
             <PulseMark />
@@ -51,7 +51,7 @@ function Landing() {
         </FadeIn>
         <FadeIn delay={0.08} className="mt-14">
           <PulseLogo animated size={112} alt="Pulse" className="mb-6" />
-          <h1 className="text-[40px] leading-[1.05] font-semibold tracking-tight">
+          <h1 className="text-[clamp(1.85rem,8vw,2.5rem)] leading-[1.05] font-semibold tracking-tight">
             El ritmo
             <br />
             de tu fuerza.
@@ -169,13 +169,13 @@ function Dashboard() {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-3xl space-y-7 overflow-x-clip pt-3">
+    <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-3">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[13px] font-medium tracking-wide text-foreground-tertiary uppercase">
             {format(new Date(), "EEEE d MMMM", { locale: es })}
           </p>
-          <h1 className="mt-1 text-[32px] leading-[1.05] font-semibold tracking-tight">{greet}</h1>
+          <h1 className="mt-1 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {data.suggestion ?? (fresh ? "Tu progreso empieza hoy." : "Sigue el ritmo de esta semana.")}
           </p>

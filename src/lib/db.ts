@@ -1,20 +1,10 @@
 import process from "node:process";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
-
-/**
- * Read an env var at RUNTIME.
- *
- * Vite statically replaces `process.env.FOO` (dot access) at build time. On
- * Vercel that inlines `undefined` for secrets that are not `VITE_`-prefixed,
- * so production would silently fall back to PGLite while Better Auth (which
- * reads `process.env[key]`) still talks to Neon. Bracket access is not
- * replaced, so signup/login and app data share one database.
- */
-function runtimeEnv(key: string): string | undefined {
-  if (typeof process === "undefined" || !process.env) return undefined;
-  const value = process.env[key]?.trim();
-  return value ? value : undefined;
-}
+import {
+  isVercelProduction,
+  resolveDatabaseUrl,
+  runtimeEnv,
+} from "./runtime-env";
 
 /**
  * Better Auth reads BETTER_AUTH_URL at module init (via `@/lib/auth/server`).
@@ -56,20 +46,29 @@ function applyVercelAuthOrigin(): void {
 applyVercelAuthOrigin();
 
 /** Which database backend is active. */
-export type DbSource = "neon" | "pglite";
+export type DbSource = "neon" | "pglite" | "missing";
 
-// An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
-// "unset" — otherwise production would silently run on the PGLite fallback.
-// MUST use runtimeEnv() (bracket access). Dot-access is replaced at build time.
-const databaseUrl = runtimeEnv("DATABASE_URL");
+const resolvedDatabase = resolveDatabaseUrl();
+const databaseUrl = resolvedDatabase.url;
+
+/** Env-var NAME that supplied the URL (never the value). Null when unset. */
+export const databaseUrlKey: string | null = resolvedDatabase.key;
 
 /**
- * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
- * sandbox), otherwise a local embedded **PGLite** (Postgres compiled to WASM) so
- * the app has a working database even with nothing configured — the live preview
- * included. Swap in Neon later by just setting `DATABASE_URL`; no code changes.
+ * Active backend: real **Neon** when any Neon/Vercel Postgres URL is set
+ * (`DATABASE_URL`, `POSTGRES_URL`, unpooled aliases). Production with none
+ * of those set is `missing` — we refuse the in-memory PGLite fallback so
+ * accounts cannot appear to "vanish" across serverless isolates.
+ * Preview / local still use embedded PGLite.
  */
-export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
+export const dbSource: DbSource = databaseUrl
+  ? "neon"
+  : isVercelProduction()
+    ? "missing"
+    : "pglite";
+
+/** Thrown (and caught by health) when production has no Postgres URL. */
+export const PRODUCTION_DB_MISSING = "PRODUCTION_DB_MISSING";
 
 /**
  * Minimal shared SQL surface, satisfied by both Neon and PGLite. Both the
@@ -86,7 +85,7 @@ export interface Sql {
   ): Promise<T[]>;
   query<T = Record<string, unknown>>(
     text: string,
-    params?: unknown[],
+    params?: unknown[]
   ): Promise<T[]>;
 }
 
@@ -235,12 +234,17 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  if (dbSource === "missing") {
+    throw new Error(PRODUCTION_DB_MISSING);
+  }
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 
 /**
- * Get the shared, **server-only** SQL client. Neon when `DATABASE_URL` is set,
- * otherwise the local PGLite fallback. Memoized — safe to call per request.
+ * Get the shared, **server-only** SQL client. Neon when a Postgres URL is set,
+ * otherwise the local PGLite fallback (preview only). Production without a
+ * URL throws instead of silently using memory. Memoized — safe to call per
+ * request.
  *
  * Schema comes from `migrations/*.sql`, auto-applied before the first query on
  * both backends — define tables there, never inline in server functions.
@@ -256,11 +260,11 @@ export function getSql(): Promise<Sql> {
 /**
  * The shared PGLite instance (preview only), with `migrations/*.sql` applied.
  * Lets Better Auth persist to the SAME embedded DB as app data in preview (via a
- * Kysely dialect). Throws when `DATABASE_URL` is set (that path uses Neon).
+ * Kysely dialect). Throws when a Postgres URL is set (that path uses Neon).
  */
 export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
   if (dbSource !== "pglite") {
-    throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
+    throw new Error("getPglite() is only available on the PGLite fallback (no Postgres URL)");
   }
   await getSql();
   const pg = await globalRef.__pgliteInstance__;
@@ -271,9 +275,10 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
 /**
  * Finish DB bootstrap before the server handles traffic.
  *
- * - **PGLite** (preview / no `DATABASE_URL`): open the in-memory DB and apply
+ * - **PGLite** (preview / no Postgres URL): open the in-memory DB and apply
  *   `migrations/*.sql`. Idempotent — concurrent callers share one promise.
  * - **Neon**: no-op (pool is created lazily on first query).
+ * - **Production missing URL**: no-op (queries fail closed).
  *
  * Vite `configureServer` awaits this at dev startup; production imports of this
  * module kick it off immediately (see bottom of file).

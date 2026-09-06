@@ -1,4 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
+import { resolveDatabaseUrl } from "../runtime-env";
 import { gateIdentityEnabled } from "./gate-identity.server";
 import { auth, authConfigured } from "./server";
 
@@ -13,7 +14,7 @@ import { auth, authConfigured } from "./server";
  */
 
 /** True when a real database is configured server-side. */
-const databaseConfigured = Boolean(process.env["DATABASE_URL"]?.trim());
+const databaseConfigured = Boolean(resolveDatabaseUrl().url);
 
 /** Re-export so callers can branch on it without importing `server.ts`. */
 export { authConfigured };

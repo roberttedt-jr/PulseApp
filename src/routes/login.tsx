@@ -71,7 +71,10 @@ function mapAuthError(error: AuthErr, kind: Mode): string {
   if (code === "PASSWORD_TOO_SHORT" || raw.includes("too short")) {
     return "La contraseña debe tener al menos 8 caracteres.";
   }
-  if (code === "INVALID_EMAIL" || raw.includes("invalid email")) {
+  if (raw.includes("invalid email or password") || raw.includes("invalid password") || code === "INVALID_EMAIL_OR_PASSWORD") {
+    return "El correo o la contraseña no son correctos.";
+  }
+  if (code === "INVALID_EMAIL" || (raw.includes("invalid email") && !raw.includes("password"))) {
     return "El email no es válido.";
   }
   if (kind === "up") return "No se ha podido conectar. Inténtalo de nuevo.";
@@ -174,9 +177,11 @@ function Login() {
     e.preventDefault();
     if (busy || submittingRef.current) return;
     submittingRef.current = true;
-    const trimmed = email.trim().toLowerCase();
-    const pwd = password;
-    const displayName = name.trim() || trimmed.split("@")[0] || "Atleta";
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    const trimmed = String(fd.get("email") || email).trim().toLowerCase();
+    const pwd = String(fd.get("password") || password);
+    const displayName = String(fd.get("name") || name).trim() || trimmed.split("@")[0] || "Atleta";
     setFormError(null);
     setBusy(true);
     armSlowNotice();
@@ -349,6 +354,7 @@ function Login() {
                   <Label htmlFor="name">Nombre</Label>
                   <Input
                     id="name"
+                    name="name"
                     value={name}
                     onChange={(ev) => setName(ev.target.value)}
                     placeholder="Alex"
@@ -361,6 +367,7 @@ function Login() {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   value={email}
@@ -378,6 +385,7 @@ function Login() {
                 <Label htmlFor="password">{mode === "forgot" ? "Nueva contraseña" : "Contraseña"}</Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   required
                   minLength={8}

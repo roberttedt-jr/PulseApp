@@ -20,7 +20,8 @@ const RATE_LIMIT_MSG =
   "Has hecho demasiados intentos. Espera unos segundos antes de volver a intentarlo.";
 const SLOW_MSG = "Estamos tardando más de lo normal. No cierres la pantalla.";
 const CONNECT_MSG = "No se ha podido conectar. Inténtalo de nuevo.";
-const HARD_WAIT_MS = 20_000;
+const SLOW_NOTICE_MS = 8_000;
+const HANG_ABORT_MS = 45_000;
 
 function alreadyRegistered(error: AuthErr): boolean {
   const code = error?.code ?? "";
@@ -138,12 +139,12 @@ function Login() {
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const slowTimerRef = useRef<number | null>(null);
-  const hardTimerRef = useRef<number | null>(null);
+  const hangTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
-      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
+      if (hangTimerRef.current) window.clearTimeout(hangTimerRef.current);
     };
   }, []);
 
@@ -155,14 +156,15 @@ function Login() {
 
   function armSlowNotice() {
     if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
-    if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
+    if (hangTimerRef.current) window.clearTimeout(hangTimerRef.current);
     setSlowNotice(false);
     slowTimerRef.current = window.setTimeout(() => {
       setSlowNotice(true);
-    }, 8000);
-    hardTimerRef.current = window.setTimeout(() => {
+    }, SLOW_NOTICE_MS);
+    // Last-resort only. An 8s notice must NOT abort — a late success still enters.
+    hangTimerRef.current = window.setTimeout(() => {
       abortRef.current?.abort();
-    }, HARD_WAIT_MS);
+    }, HANG_ABORT_MS);
   }
 
   function disarmSlowNotice() {
@@ -170,9 +172,9 @@ function Login() {
       window.clearTimeout(slowTimerRef.current);
       slowTimerRef.current = null;
     }
-    if (hardTimerRef.current) {
-      window.clearTimeout(hardTimerRef.current);
-      hardTimerRef.current = null;
+    if (hangTimerRef.current) {
+      window.clearTimeout(hangTimerRef.current);
+      hangTimerRef.current = null;
     }
     setSlowNotice(false);
   }
@@ -193,8 +195,15 @@ function Login() {
     if (!ok && !token) {
       throw new Error(CONNECT_MSG);
     }
+    try {
+      await authClient.getSession();
+    } catch {
+      /* hard redirect below re-reads cookies + tab bearer */
+    }
     window.setTimeout(() => void issueAndStoreRecovery(recoveryEmail), 1500);
-    await navigate({ to: "/" });
+    // Full navigation so a stale signed-out session cache cannot paint the
+    // marketing landing after a successful sign-in.
+    window.location.assign("/");
   }
 
   async function onEmail(e: React.FormEvent) {
@@ -313,11 +322,8 @@ function Login() {
         toast.error(RATE_LIMIT_MSG);
         return;
       }
-      const message = isNetworkFailure(err)
-        ? CONNECT_MSG
-        : err instanceof Error
-          ? err.message
-          : mapAuthError(null, mode);
+      const message =
+        isAbortLike(err) || isNetworkFailure(err) ? CONNECT_MSG : mapAuthError(rateErr, mode);
       setFormError(message);
       toast.error(message);
     } finally {

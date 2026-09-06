@@ -20,6 +20,7 @@ import { GROK_PROVIDERS } from "./providers";
 export const authClient = createAuthClient({
   plugins: [genericOAuthClient()],
   fetchOptions: {
+    credentials: "include",
     onRequest(ctx) {
       const token = getBearerToken();
       if (token) ctx.headers.set("Authorization", `Bearer ${token}`);

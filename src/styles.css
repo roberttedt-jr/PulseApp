@@ -107,6 +107,7 @@
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    touch-action: pan-x pan-y;
     background: var(--color-background);
     color: var(--color-foreground);
     width: 100%;
@@ -132,6 +133,7 @@
     max-width: 100%;
     min-height: 100%;
     overflow-x: hidden;
+    touch-action: pan-x pan-y;
   }
 
   body {
@@ -140,6 +142,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     line-height: 1.5;
+    touch-action: pan-x pan-y;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -182,7 +185,7 @@
   textarea,
   select {
     font: inherit;
-    font-size: 16px;
+    font-size: 16px !important;
     max-width: 100%;
   }
 }

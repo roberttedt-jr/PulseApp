@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { NoMobileZoom } from "@/components/no-mobile-zoom";
 import { restoreSessionToken } from "@/lib/session-token";
 import { MotionConfig } from "framer-motion";
 import { Toaster } from "sonner";
@@ -31,7 +32,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: APP_NAME },
       { name: "description", content: "Pulse — entrena, registra y progresa. Tu ritmo. Tu progreso." },
       { name: "theme-color", content: "#000000" },
@@ -64,6 +65,7 @@ function Root() {
       </head>
       <body>
         <PreviewHostBridge />
+        <NoMobileZoom />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <MotionConfig reducedMotion="user">

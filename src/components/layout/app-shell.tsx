@@ -16,7 +16,7 @@ const TABS = [
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
-  if (to === "/feed") return pathname.startsWith("/feed") || pathname.startsWith("/u/");
+  if (to === "/feed") return pathname.startsWith("/feed") || pathname.startsWith("/u/") || pathname.startsWith("/compare");
   return pathname.startsWith(to);
 }
 

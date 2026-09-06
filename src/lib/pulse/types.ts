@@ -90,6 +90,14 @@ export type Profile = {
   defaultWorkoutVisibility: "me" | "followers" | "public";
   shareVolume: boolean;
   sharePrs: boolean;
+  compareEnabled: boolean;
+  compareWorkouts: boolean;
+  compareDays: boolean;
+  compareStreak: boolean;
+  compareSets: boolean;
+  compareVolume: boolean;
+  compareExercises: boolean;
+  comparePrs: boolean;
   onboardingDone: boolean;
   weeklyGoal: number;
   reminderHour: number | null;

@@ -21,6 +21,7 @@ let pulseV4Ready = false;
 let pulseV5Ready = false;
 let pulseV6Ready = false;
 let pulseV7Ready = false;
+let pulseV8Ready = false;
 
 export async function ensurePulseV5(sql: Sql): Promise<void> {
   if (pulseV5Ready) return;
@@ -138,6 +139,20 @@ export async function ensurePulseV7(sql: Sql): Promise<void> {
   pulseV7Ready = true;
 }
 
+export async function ensurePulseV8(sql: Sql): Promise<void> {
+  if (pulseV8Ready) return;
+  await ensurePulseV7(sql);
+  await sql.query(`alter table profiles add column if not exists compare_enabled boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_workouts boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_days boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_streak boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_sets boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_volume boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_exercises boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists compare_prs boolean not null default false`);
+  pulseV8Ready = true;
+}
+
 export async function ensurePulseV4(sql: Sql): Promise<void> {
   if (pulseV4Ready) return;
   await sql.query(`alter table profiles add column if not exists show_rpe boolean not null default true`);
@@ -215,6 +230,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV5(sql);
   await ensurePulseV6(sql);
   await ensurePulseV7(sql);
+  await ensurePulseV8(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

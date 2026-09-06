@@ -4,6 +4,7 @@ import { Bell, PenLine, Search, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { EmptyState } from "@/components/pulse/empty-state";
+import { CompareCtaCard } from "@/components/pulse/compare";
 import { PostCard, TextComposerSheet } from "@/components/pulse/social";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -89,6 +90,8 @@ function ActivityPage() {
           </span>
           <span className="text-sm text-muted-foreground">¿Qué quieres compartir?</span>
         </button>
+
+        <CompareCtaCard />
 
         {meta && !meta.username && (
           <Link to="/settings" hash="perfil-social" className="block rounded-[22px] bg-card p-4 text-sm hairline">

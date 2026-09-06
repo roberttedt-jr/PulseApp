@@ -845,6 +845,7 @@ export const getSocialProfile = createServerFn({ method: "GET" })
       incomingStatus,
       followerCount: locked ? null : num(followers[0]?.n),
       followingCount: locked ? null : num(following[0]?.n),
+      compareAvailable: !mine && followStatus === "accepted" && incomingStatus === "accepted",
       posts,
     };
   });

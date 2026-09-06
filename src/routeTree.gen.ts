@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ExercisesRouteImport } from './routes/exercises'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -25,6 +26,7 @@ import { Route as TrainRouteImport } from './routes/train'
 import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiAuthHealthRouteImport } from './routes/api/auth-health'
+import { Route as CompareUsernameRouteImport } from './routes/compare/$username'
 import { Route as ExercisesExerciseIdRouteImport } from './routes/exercises/$exerciseId'
 import { Route as FeedRequestsRouteImport } from './routes/feed/requests'
 import { Route as FeedSearchRouteImport } from './routes/feed/search'
@@ -37,6 +39,11 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExercisesRoute = ExercisesRouteImport.update({
@@ -114,6 +121,11 @@ const ApiAuthHealthRoute = ApiAuthHealthRouteImport.update({
   path: '/api/auth-health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompareUsernameRoute = CompareUsernameRouteImport.update({
+  id: '/$username',
+  path: '/$username',
+  getParentRoute: () => CompareRoute,
+} as any)
 const ExercisesExerciseIdRoute = ExercisesExerciseIdRouteImport.update({
   id: '/$exerciseId',
   path: '/$exerciseId',
@@ -157,6 +169,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
@@ -172,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/tutorial': typeof TutorialRoute
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
+  '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
@@ -183,6 +197,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
@@ -198,6 +213,7 @@ export interface FileRoutesByTo {
   '/tutorial': typeof TutorialRoute
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
+  '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
@@ -210,6 +226,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
@@ -225,6 +242,7 @@ export interface FileRoutesById {
   '/tutorial': typeof TutorialRoute
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
+  '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
@@ -238,6 +256,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/compare'
     | '/exercises'
     | '/feed'
     | '/history'
@@ -253,6 +272,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/welcome'
     | '/api/auth-health'
+    | '/compare/$username'
     | '/exercises/$exerciseId'
     | '/feed/requests'
     | '/feed/search'
@@ -264,6 +284,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/compare'
     | '/exercises'
     | '/feed'
     | '/history'
@@ -279,6 +300,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/welcome'
     | '/api/auth-health'
+    | '/compare/$username'
     | '/exercises/$exerciseId'
     | '/feed/requests'
     | '/feed/search'
@@ -290,6 +312,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/compare'
     | '/exercises'
     | '/feed'
     | '/history'
@@ -305,6 +328,7 @@ export interface FileRouteTypes {
     | '/tutorial'
     | '/welcome'
     | '/api/auth-health'
+    | '/compare/$username'
     | '/exercises/$exerciseId'
     | '/feed/requests'
     | '/feed/search'
@@ -317,6 +341,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompareRoute: typeof CompareRouteWithChildren
   ExercisesRoute: typeof ExercisesRouteWithChildren
   FeedRoute: typeof FeedRouteWithChildren
   HistoryRoute: typeof HistoryRouteWithChildren
@@ -344,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exercises': {
@@ -451,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compare/$username': {
+      id: '/compare/$username'
+      path: '/$username'
+      fullPath: '/compare/$username'
+      preLoaderRoute: typeof CompareUsernameRouteImport
+      parentRoute: typeof CompareRoute
+    }
     '/exercises/$exerciseId': {
       id: '/exercises/$exerciseId'
       path: '/$exerciseId'
@@ -510,6 +549,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CompareRouteChildren {
+  CompareUsernameRoute: typeof CompareUsernameRoute
+}
+
+const CompareRouteChildren: CompareRouteChildren = {
+  CompareUsernameRoute: CompareUsernameRoute,
+}
+
+const CompareRouteWithChildren =
+  CompareRoute._addFileChildren(CompareRouteChildren)
+
 interface ExercisesRouteChildren {
   ExercisesExerciseIdRoute: typeof ExercisesExerciseIdRoute
 }
@@ -559,6 +609,7 @@ const RoutinesRouteWithChildren = RoutinesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompareRoute: CompareRouteWithChildren,
   ExercisesRoute: ExercisesRouteWithChildren,
   FeedRoute: FeedRouteWithChildren,
   HistoryRoute: HistoryRouteWithChildren,

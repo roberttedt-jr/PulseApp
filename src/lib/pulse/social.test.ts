@@ -30,6 +30,7 @@ describe("username", () => {
     assert.throws(() => validateUsername("ro berto"), /espacios/);
     assert.throws(() => validateUsername("ada@email.com"), /email/);
     assert.throws(() => validateUsername("admin"), /no está disponible/);
+    assert.throws(() => validateUsername("compare"), /no está disponible/);
   });
   it("accepts a safe handle", () => {
     assert.equal(validateUsername("@roberto_1"), "roberto_1");

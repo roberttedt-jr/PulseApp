@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Trophy, UserRound } from "lucide-react";
+import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { AppleHealthRow } from "@/components/pulse/apple-health";
@@ -22,6 +22,8 @@ import { fromKg, toKg } from "@/lib/utils";
 import { DEFAULT_REST_OPTIONS, EXPERIENCE_LEVELS, GOALS, TRAINING_LOCATIONS, WEEKLY_TRAINING_OPTIONS, type Profile } from "@/lib/pulse/types";
 import { formatHandle, validateUsername, type ProfileVisibility, type WorkoutVisibility } from "@/lib/pulse/social";
 import { listBlockedUsers, saveSocialProfile, unblockUser } from "@/lib/pulse/social-fns";
+import { COMPARE_COPY, COMPARE_METRICS, type CompareMetricId, type ComparePrefs } from "@/lib/pulse/compare";
+import { saveComparePrefs } from "@/lib/pulse/compare-fns";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -270,6 +272,8 @@ function SettingsPage() {
 
         {p && <SocialSection profile={p} />}
 
+        {p && <CompareSection profile={p} />}
+
         <section className="overflow-hidden rounded-3xl bg-card hairline">
           <p className="flex items-center gap-2 px-4 pt-4 pb-2 text-sm font-medium">
             <HeartPulse className="size-4 text-primary" /> Integraciones
@@ -361,19 +365,21 @@ function Toggle({
   hint,
   checked,
   onChange,
+  toggleId,
 }: {
   label: string;
   hint: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  toggleId?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 px-4 py-3" data-compare-toggle={toggleId}>
       <div>
         <p className="text-sm font-medium">{label}</p>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </div>
   );
 }
@@ -528,6 +534,67 @@ function SocialSection({ profile }: { profile: Profile }) {
         checked={profile.sharePrs}
         onChange={(v) => save.mutate({ sharePrs: v })}
       />
+    </section>
+  );
+}
+
+function prefsFromProfile(profile: Profile): ComparePrefs {
+  return {
+    enabled: profile.compareEnabled,
+    workouts: profile.compareWorkouts,
+    days: profile.compareDays,
+    streak: profile.compareStreak,
+    sets: profile.compareSets,
+    volume: profile.compareVolume,
+    exercises: profile.compareExercises,
+    prs: profile.comparePrs,
+  };
+}
+
+function CompareSection({ profile }: { profile: Profile }) {
+  const qc = useQueryClient();
+  const prefs = prefsFromProfile(profile);
+  const save = useMutation({
+    mutationFn: (patch: Partial<ComparePrefs>) => saveComparePrefs({ data: patch }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      void qc.invalidateQueries({ queryKey: ["compare"] });
+      void qc.invalidateQueries({ queryKey: ["compare-friends"] });
+      toast.success("Guardado");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  function toggle(id: "enabled" | CompareMetricId, value: boolean) {
+    save.mutate({ [id]: value });
+  }
+  return (
+    <section id="comparativas" className="overflow-hidden rounded-3xl bg-card hairline scroll-mt-20">
+      <div className="px-4 pt-4 pb-2">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <Shield className="size-4 text-primary" /> Comparativas
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{COMPARE_COPY.subtitle}</p>
+      </div>
+      <div className="divide-y divide-border">
+        <Toggle
+          toggleId="enabled"
+          label={COMPARE_COPY.enableMaster}
+          hint={COMPARE_COPY.enableHint}
+          checked={prefs.enabled}
+          onChange={(v) => toggle("enabled", v)}
+        />
+        {COMPARE_METRICS.map((m) => (
+          <Toggle
+            key={m.id}
+            toggleId={m.id}
+            label={m.label}
+            hint={m.hint}
+            checked={prefs[m.id]}
+            onChange={(v) => toggle(m.id, v)}
+          />
+        ))}
+      </div>
+      <p className="px-4 pt-2 pb-4 text-xs text-muted-foreground">{COMPARE_COPY.privacyNote}</p>
     </section>
   );
 }

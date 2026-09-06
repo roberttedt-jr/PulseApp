@@ -118,6 +118,13 @@ function SocialProfilePage() {
                       size="default"
                       onChange={() => void refetch()}
                     />
+                    {data.compareAvailable && data.username && (
+                      <Button asChild variant="secondary">
+                        <Link to="/compare/$username" params={{ username: data.username }} data-compare-cta="1">
+                          Comparar
+                        </Link>
+                      </Button>
+                    )}
                     {data.incomingStatus === "pending" && (
                       <div className="flex gap-2">
                         <Button className="flex-1" onClick={() => accept.mutate(data.userId)}>

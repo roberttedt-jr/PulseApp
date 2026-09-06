@@ -6,6 +6,7 @@ import { VolumeBars, WeightLine } from "@/components/charts";
 import { ChartCard, LoadingBlock } from "@/components/pulse/cards";
 import { ConsistencyHeatmap } from "@/components/pulse/consistency";
 import { EmptyState } from "@/components/pulse/empty-state";
+import { CompareCtaCard } from "@/components/pulse/compare";
 import { MuscleBalance } from "@/components/pulse/muscle-map";
 import { NumericField } from "@/components/pulse/numeric-field";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ function ProgressPage() {
       <div className="mx-auto max-w-3xl space-y-4 pt-4">
         {isPending && <LoadingBlock />}
 
+        <CompareCtaCard />
         {data && (data.week.workouts > 0 || data.prevWeek.workouts > 0) && (
           <ChartCard title="Resumen semanal">
             <div className="grid grid-cols-3 gap-2">

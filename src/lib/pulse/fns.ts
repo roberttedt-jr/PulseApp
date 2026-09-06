@@ -7,7 +7,7 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensurePulseV7, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensurePulseV7, ensurePulseV8, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
 import { parseVisibility, parseWorkoutVisibility } from "./social";
 import type { ExperienceLevel, GoalId, Profile, TrainingLocation } from "./types";
@@ -64,6 +64,14 @@ function mapProfile(r: AnyRow): Profile {
     defaultWorkoutVisibility: parseWorkoutVisibility(r.default_workout_visibility),
     shareVolume: bool(r.share_volume),
     sharePrs: bool(r.share_prs),
+    compareEnabled: bool(r.compare_enabled),
+    compareWorkouts: bool(r.compare_workouts),
+    compareDays: bool(r.compare_days),
+    compareStreak: bool(r.compare_streak),
+    compareSets: bool(r.compare_sets),
+    compareVolume: bool(r.compare_volume),
+    compareExercises: bool(r.compare_exercises),
+    comparePrs: bool(r.compare_prs),
     onboardingDone: bool(r.onboarding_done),
     weeklyGoal: r.weekly_goal == null ? 4 : num(r.weekly_goal),
     reminderHour: numNull(r.reminder_hour),
@@ -85,6 +93,7 @@ async function ensureProfile(sql: Sql, userId: string) {
   await ensurePulseV5(sql);
   await ensurePulseV6(sql);
   await ensurePulseV7(sql);
+  await ensurePulseV8(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`

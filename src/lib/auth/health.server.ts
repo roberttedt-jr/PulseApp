@@ -1,10 +1,17 @@
+import process from "node:process";
 import { dbSource, getSql } from "../db";
 
 export type AuthHealth = {
   ok: true;
+  revision: number;
   dbSource: typeof dbSource;
   hasDatabaseUrl: boolean;
   betterAuthHost: string | null;
+  envFlags: {
+    DATABASE_URL: boolean;
+    POSTGRES_URL: boolean;
+    VERCEL: boolean;
+  };
   schema: {
     hasUserTable: boolean;
     hasAccountTable: boolean;
@@ -27,6 +34,25 @@ export type AuthHealth = {
 function runtimeEnv(key: string): string | undefined {
   const value = process.env[key]?.trim();
   return value ? value : undefined;
+}
+
+function identity(): Pick<
+  AuthHealth,
+  "ok" | "revision" | "dbSource" | "hasDatabaseUrl" | "betterAuthHost" | "envFlags"
+> {
+  const hasUrl = Boolean(runtimeEnv("DATABASE_URL"));
+  return {
+    ok: true,
+    revision: 3,
+    dbSource,
+    hasDatabaseUrl: hasUrl,
+    betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
+    envFlags: {
+      DATABASE_URL: hasUrl,
+      POSTGRES_URL: Boolean(runtimeEnv("POSTGRES_URL")),
+      VERCEL: Boolean(runtimeEnv("VERCEL")),
+    },
+  };
 }
 
 function hostOnly(url: string | undefined): string | null {
@@ -75,10 +101,7 @@ export async function getAuthHealth(): Promise<AuthHealth> {
 
   if (!names.has("user") || !names.has("account")) {
     return {
-      ok: true,
-      dbSource,
-      hasDatabaseUrl: Boolean(runtimeEnv("DATABASE_URL")),
-      betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
+      ...identity(),
       schema: {
         hasUserTable: names.has("user"),
         hasAccountTable: names.has("account"),
@@ -154,10 +177,7 @@ export async function getAuthHealth(): Promise<AuthHealth> {
   `);
 
   return {
-    ok: true,
-    dbSource,
-    hasDatabaseUrl: Boolean(runtimeEnv("DATABASE_URL")),
-    betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
+    ...identity(),
     schema: {
       hasUserTable: true,
       hasAccountTable: true,

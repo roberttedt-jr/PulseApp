@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../node_modules/vaul/style.css";
+@import "./styles/vaul-drawer.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

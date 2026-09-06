@@ -84,6 +84,12 @@ export type Profile = {
   restSound: boolean;
   autoRest: boolean;
   publicProfile: boolean;
+  username: string | null;
+  bio: string | null;
+  profileVisibility: "public" | "private";
+  defaultWorkoutVisibility: "me" | "followers" | "public";
+  shareVolume: boolean;
+  sharePrs: boolean;
   onboardingDone: boolean;
   weeklyGoal: number;
   reminderHour: number | null;

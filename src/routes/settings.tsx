@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Trophy, Users } from "lucide-react";
+import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Trophy, UserRound } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { AppleHealthRow } from "@/components/pulse/apple-health";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { deleteAccountData, devToolsAvailable, exportData, getBootstrap, purgeMySeededData, updateProfile } from "@/lib/pulse/fns";
@@ -18,6 +20,8 @@ import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } f
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { fromKg, toKg } from "@/lib/utils";
 import { DEFAULT_REST_OPTIONS, EXPERIENCE_LEVELS, GOALS, TRAINING_LOCATIONS, WEEKLY_TRAINING_OPTIONS, type Profile } from "@/lib/pulse/types";
+import { formatHandle, validateUsername, type ProfileVisibility, type WorkoutVisibility } from "@/lib/pulse/social";
+import { listBlockedUsers, saveSocialProfile, unblockUser } from "@/lib/pulse/social-fns";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -33,6 +37,7 @@ function SettingsPage() {
   const [recovery, setRecovery] = useState(() => (email ? readRecoveryCode(email) : null));
   const [minting, setMinting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const display = p?.displayName ?? user?.displayName ?? "Atleta";
 
   const save = useMutation({
@@ -102,8 +107,9 @@ function SettingsPage() {
 
         <section className="space-y-3 rounded-3xl bg-card p-4 hairline">
           <div className="space-y-1.5">
-            <Label>Nombre</Label>
+            <Label htmlFor="display-name">Nombre</Label>
             <Input
+              id="display-name"
               defaultValue={p?.displayName ?? ""}
               onBlur={(e) => save.mutate({ displayName: e.target.value })}
             />
@@ -230,12 +236,6 @@ function SettingsPage() {
             checked={p?.showRpe ?? true}
             onChange={(v) => save.mutate({ showRpe: v })}
           />
-          <Toggle
-            label="Perfil público"
-            hint="Apareces en el feed"
-            checked={p?.publicProfile ?? false}
-            onChange={(v) => save.mutate({ publicProfile: v })}
-          />
           <RowSelect
             label="Objetivo"
             value={p?.goal ?? ""}
@@ -268,6 +268,8 @@ function SettingsPage() {
           />
         </section>
 
+        {p && <SocialSection profile={p} />}
+
         <section className="overflow-hidden rounded-3xl bg-card hairline">
           <p className="flex items-center gap-2 px-4 pt-4 pb-2 text-sm font-medium">
             <HeartPulse className="size-4 text-primary" /> Integraciones
@@ -278,7 +280,15 @@ function SettingsPage() {
         <nav className="overflow-hidden rounded-3xl bg-card hairline">
           <Go to="/plan" icon={Calendar} label="Plan semanal" />
           <Go to="/stats" icon={Trophy} label="Estadísticas y logros" />
-          <Go to="/feed" icon={Users} label="Actividad social" />
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 border-b border-border px-4 py-3 last:border-0 pressable"
+            onClick={() => setBlockedOpen(true)}
+          >
+            <UserRound className="size-4 text-primary" />
+            <span className="flex-1 text-left text-sm">Usuarios bloqueados</span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </button>
         </nav>
 
         <div className="flex flex-col gap-2">
@@ -338,9 +348,10 @@ function SettingsPage() {
           <p className="flex items-center gap-2 font-medium text-foreground">
             <Info className="size-4" /> About Pulse
           </p>
-          <p className="mt-2">Versión 1.1 · Tracker de entrenamientos con el pulso de iOS.</p>
+          <p className="mt-2">Versión 1.2 · Tracker de entrenamientos con el pulso de iOS.</p>
         </div>
       </div>
+      <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />
     </AppPage>
   );
 }
@@ -392,7 +403,7 @@ function RowSelect({
   );
 }
 
-function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats" | "/feed"; icon: typeof Trophy; label: string }) {
+function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats"; icon: typeof Trophy; label: string }) {
   return (
     <Link to={to} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0 pressable">
       <Icon className="size-4 text-primary" />
@@ -401,3 +412,165 @@ function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats" | "/feed"; icon:
     </Link>
   );
 }
+
+function SocialSection({ profile }: { profile: Profile }) {
+  const qc = useQueryClient();
+  const [username, setUsername] = useState(profile.username ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const [usernameError, setUsernameError] = useState("");
+  const save = useMutation({
+    mutationFn: (patch: Parameters<typeof saveSocialProfile>[0]["data"]) => saveSocialProfile({ data: patch }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      toast.success("Perfil social guardado");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  function commitUsername() {
+    const raw = username.trim();
+    if (!raw) {
+      setUsernameError("");
+      return;
+    }
+    try {
+      const next = validateUsername(raw);
+      setUsernameError("");
+      setUsername(next);
+      if (next !== profile.username) save.mutate({ username: next });
+    } catch (e) {
+      setUsernameError(e instanceof Error ? e.message : "Usuario no válido.");
+    }
+  }
+
+  return (
+    <section id="perfil-social" className="space-y-3 rounded-3xl bg-card p-4 hairline scroll-mt-20">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">Perfil social</p>
+        {profile.username && (
+          <Link to="/u/$username" params={{ username: profile.username }} className="text-xs font-medium text-primary">
+            Ver perfil
+          </Link>
+        )}
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="social-username">@usuario</Label>
+        <Input
+          id="social-username"
+          value={username}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setUsernameError("");
+          }}
+          onBlur={commitUsername}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="roberto"
+          maxLength={20}
+          aria-invalid={Boolean(usernameError)}
+        />
+        <p className={`text-xs ${usernameError ? "text-destructive" : "text-muted-foreground"}`}>
+          {usernameError || (profile.username ? formatHandle(profile.username) : "3–20 caracteres. Letras, números y _.")}
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="social-bio">Bio</Label>
+        <Textarea
+          id="social-bio"
+          value={bio}
+          maxLength={160}
+          className="min-h-20"
+          placeholder="Cómo entrenas, a qué te dedicas…"
+          onChange={(e) => setBio(e.target.value)}
+          onBlur={() => {
+            if ((profile.bio ?? "") !== bio.trim()) save.mutate({ bio });
+          }}
+        />
+        <p className="text-right text-[11px] text-muted-foreground">{bio.length}/160</p>
+      </div>
+      <div className="space-y-2">
+        <Label>Visibilidad del perfil</Label>
+        <Segmented
+          ariaLabel="Visibilidad del perfil"
+          className="flex w-full"
+          value={profile.profileVisibility}
+          options={[
+            { value: "private", label: "Privado" },
+            { value: "public", label: "Público" },
+          ]}
+          onChange={(v) => save.mutate({ profileVisibility: v as ProfileVisibility })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Entrenamientos por defecto</Label>
+        <Segmented
+          ariaLabel="Visibilidad predeterminada de entrenamientos"
+          className="flex w-full"
+          value={profile.defaultWorkoutVisibility}
+          options={[
+            { value: "me", label: "Solo yo" },
+            { value: "followers", label: "Seguidores" },
+            { value: "public", label: "Público" },
+          ]}
+          onChange={(v) => save.mutate({ defaultWorkoutVisibility: v as WorkoutVisibility })}
+        />
+      </div>
+      <Toggle
+        label="Compartir volumen"
+        hint="El volumen total puede verse en tus publicaciones"
+        checked={profile.shareVolume}
+        onChange={(v) => save.mutate({ shareVolume: v })}
+      />
+      <Toggle
+        label="Compartir récords"
+        hint="Los PR de esa sesión pueden verse si los hay"
+        checked={profile.sharePrs}
+        onChange={(v) => save.mutate({ sharePrs: v })}
+      />
+    </section>
+  );
+}
+
+function BlockedSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const qc = useQueryClient();
+  const { data, isPending } = useQuery({
+    queryKey: ["blocked-users"],
+    queryFn: () => listBlockedUsers(),
+    enabled: open,
+  });
+  const unblock = useMutation({
+    mutationFn: (userId: string) => unblockUser({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Usuario desbloqueado");
+      void qc.invalidateQueries({ queryKey: ["blocked-users"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="px-5 pt-3 pb-4">
+        <SheetTitle>Usuarios bloqueados</SheetTitle>
+        <SheetDescription>No verás su actividad y ellos no verán la tuya.</SheetDescription>
+        {isPending && <p className="mt-4 text-sm text-muted-foreground">Cargando…</p>}
+        {!isPending && (data?.people.length ?? 0) === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">No tienes a nadie bloqueado.</p>
+        )}
+        <ul className="mt-4 space-y-3">
+          {(data?.people ?? []).map((p) => (
+            <li key={p.userId} className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{p.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{p.handle}</p>
+              </div>
+              <Button size="sm" variant="secondary" disabled={unblock.isPending} onClick={() => unblock.mutate(p.userId)}>
+                Desbloquear
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </SheetContent>
+    </Sheet>
+  );
+}
+

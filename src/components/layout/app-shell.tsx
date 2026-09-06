@@ -1,21 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, CalendarDays, Dumbbell, House, UserRound } from "lucide-react";
+import { Activity, CalendarDays, Dumbbell, House, UserRound, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
-import { tabIndex } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { to: "/", label: "Inicio", icon: House },
   { to: "/routines", label: "Entrenar", icon: Dumbbell, emphasize: true },
+  { to: "/feed", label: "Actividad", icon: Users },
   { to: "/progress", label: "Progreso", icon: Activity },
   { to: "/history", label: "Historial", icon: CalendarDays },
   { to: "/settings", label: "Perfil", icon: UserRound },
 ] as const;
 
 function isActive(pathname: string, to: string) {
-  return to === "/" ? pathname === "/" : pathname.startsWith(to);
+  if (to === "/") return pathname === "/";
+  if (to === "/feed") return pathname.startsWith("/feed") || pathname.startsWith("/u/");
+  return pathname.startsWith(to);
 }
 
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
@@ -29,16 +31,16 @@ export function PageHeader({ title, action }: { title?: string; action?: ReactNo
 }
 
 export function BottomNavigation({ pathname }: { pathname: string }) {
-  const active = Math.max(0, tabIndex(pathname) === 4 && pathname.startsWith("/feed") ? 4 : TABS.findIndex((t) => isActive(pathname, t.to)));
+  const active = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
   return (
     <nav
       className="pulse-tabbar bottom-navigation fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-background/78 backdrop-blur-2xl md:hidden"
       aria-label="Principal"
     >
-      <ul className="relative mx-auto grid max-w-lg grid-cols-5 px-1.5 pt-1.5">
+      <ul className="relative mx-auto grid max-w-lg grid-cols-6 px-1 pt-1.5">
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1.5 left-1.5 h-8 w-[calc((100%-0.75rem)/5)] rounded-xl bg-primary/12 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          className="pointer-events-none absolute top-1.5 left-1 h-8 w-[calc((100%-0.5rem)/6)] rounded-xl bg-primary/12 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           style={{ transform: `translateX(${active * 100}%)` }}
         />
         {TABS.map((tab) => {
@@ -50,7 +52,7 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
               <Link
                 to={tab.to}
                 className={cn(
-                  "relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-wide transition-colors duration-200",
+                  "relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl text-[9px] font-semibold tracking-wide transition-colors duration-200",
                   on ? "text-primary" : "text-foreground-tertiary",
                 )}
                 aria-current={on ? "page" : undefined}

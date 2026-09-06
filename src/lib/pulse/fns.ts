@@ -7,8 +7,9 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
+import { parseVisibility, parseWorkoutVisibility } from "./social";
 import type { ExperienceLevel, GoalId, Profile, TrainingLocation } from "./types";
 
 type AnyRow = Record<string, any>;
@@ -56,7 +57,13 @@ function mapProfile(r: AnyRow): Profile {
     theme: r.theme === "light" || r.theme === "system" ? r.theme : "dark",
     restSound: bool(r.rest_sound),
     autoRest: r.auto_rest == null ? true : bool(r.auto_rest),
-    publicProfile: bool(r.public_profile),
+    publicProfile: bool(r.public_profile) || parseVisibility(r.profile_visibility) === "public",
+    username: r.username ? String(r.username) : null,
+    bio: r.bio ? String(r.bio) : null,
+    profileVisibility: parseVisibility(r.profile_visibility) === "public" || bool(r.public_profile) ? "public" : "private",
+    defaultWorkoutVisibility: parseWorkoutVisibility(r.default_workout_visibility),
+    shareVolume: bool(r.share_volume),
+    sharePrs: bool(r.share_prs),
     onboardingDone: bool(r.onboarding_done),
     weeklyGoal: r.weekly_goal == null ? 4 : num(r.weekly_goal),
     reminderHour: numNull(r.reminder_hour),
@@ -76,6 +83,7 @@ async function ensureProfile(sql: Sql, userId: string) {
   await ensurePulseV3(sql);
   await ensurePulseV4(sql);
   await ensurePulseV5(sql);
+  await ensurePulseV6(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
@@ -368,6 +376,8 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
 export const updateProfile = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: Partial<Profile> & { displayName?: string | null }) => d).handler(async ({ context, data }) => {
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
+  const vis = data.profileVisibility ?? (data.publicProfile == null ? null : data.publicProfile ? "public" : "private");
+  const publicProfile = vis == null ? null : vis === "public";
   await sql<AnyRow>`
       update profiles set
         display_name = coalesce(${data.displayName ?? null}, display_name),
@@ -380,7 +390,8 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
         theme = coalesce(${data.theme ?? null}, theme),
         rest_sound = coalesce(${data.restSound ?? null}, rest_sound),
         auto_rest = coalesce(${data.autoRest ?? null}, auto_rest),
-        public_profile = coalesce(${data.publicProfile ?? null}, public_profile),
+        public_profile = coalesce(${publicProfile}, public_profile),
+        profile_visibility = coalesce(${vis}, profile_visibility),
         weekly_goal = coalesce(${data.weeklyGoal ?? null}, weekly_goal),
         reminder_hour = coalesce(${data.reminderHour ?? null}, reminder_hour),
         healthkit_notify = coalesce(${data.healthkitNotify ?? null}, healthkit_notify),
@@ -1099,17 +1110,6 @@ export const setWorkoutStatus = createServerFn({ method: "POST" }).middleware([a
     if (exId === KEY_EXERCISES.squat) prKeys.push("pr_squat");
     if (exId === KEY_EXERCISES.bench) prKeys.push("pr_bench");
   }
-  const sets = await sql<AnyRow>`
-      select exercise_id, weight, reps, completed from workout_sets where workout_id = ${data.id}
-    `;
-  const titleRow = await sql<AnyRow>`select title from workouts where id = ${data.id}`;
-  if (bool((await sql<AnyRow>`select public_profile from profiles where user_id = ${context.userId}`)[0]?.public_profile)) {
-    const vol = sets.reduce((s, x) => s + (bool(x.completed) ? num(x.weight) * x.reps : 0), 0);
-    await sql<AnyRow>`
-        insert into activity_feed (id, user_id, kind, title, detail, workout_id, volume, duration_seconds)
-        values (${nid()}, ${context.userId}, 'workout', ${"Completó " + (titleRow[0]?.title ?? "entrenamiento")}, ${newPrs[0] ? "PR: " + newPrs.join(", ") : null}, ${data.id}, ${vol}, ${data.durationSeconds ?? null})
-      `;
-  }
   const hour = (new Date()).getHours();
   await evaluateAchievements(sql, context.userId, {
     night: hour >= 22,
@@ -1742,6 +1742,10 @@ export const exportData = createServerFn({ method: "GET" }).middleware([authMidd
 export const deleteAccountData = createServerFn({ method: "POST" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();
   const uid = context.userId;
+  await ensurePulseV6(sql);
+  await sql<AnyRow>`delete from hidden_posts where user_id = ${uid} or post_id in (select id from activity_feed where user_id = ${uid})`;
+  await sql<AnyRow>`delete from reports where reporter_id = ${uid} or (target_type = 'user' and target_id = ${uid})`;
+  await sql<AnyRow>`delete from user_blocks where blocker_id = ${uid} or blocked_id = ${uid}`;
   await sql<AnyRow>`delete from feed_comments where user_id = ${uid} or feed_id in (select id from activity_feed where user_id = ${uid})`;
   await sql<AnyRow>`delete from feed_likes where user_id = ${uid} or feed_id in (select id from activity_feed where user_id = ${uid})`;
   await sql<AnyRow>`delete from workout_comments where user_id = ${uid}`;
@@ -1865,33 +1869,15 @@ export const listFeedComments = createServerFn({ method: "GET" }).middleware([au
     mine: r.user_id === context.userId
   }));
 });
-export const addFeedComment = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
-  const body = data.body.trim().slice(0, 280);
-  if (!body) throw new Error("El comentario no puede estar vacío");
-  const sql = await getSql();
-  await ensurePulseV2(sql);
-  const id = nid();
-  await sql<AnyRow>`
-      insert into feed_comments (id, feed_id, user_id, body)
-      values (${id}, ${data.feedId}, ${context.userId}, ${body})
-    `;
-  return { id };
+export const addFeedComment = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async () => {
+  throw new Error("Los comentarios llegarán en una próxima versión.");
 });
 export const deleteFeedComment = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   await (await getSql())`delete from feed_comments where id = ${data.id} and user_id = ${context.userId}`;
   return { ok: true };
 });
-export const createFeedPost = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
-  const title = data.title.trim().slice(0, 280);
-  if (!title) throw new Error("Escribe algo para publicar");
-  const sql = await getSql();
-  await ensurePulseV2(sql);
-  const id = nid();
-  await sql<AnyRow>`
-      insert into activity_feed (id, user_id, kind, title)
-      values (${id}, ${context.userId}, 'post', ${title})
-    `;
-  return { id };
+export const createFeedPost = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async () => {
+  throw new Error("En esta versión solo puedes compartir entrenamientos terminados.");
 });
 export const deleteFeedPost = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   await (await getSql())`delete from activity_feed where id = ${data.id} and user_id = ${context.userId}`;

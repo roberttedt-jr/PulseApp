@@ -19,6 +19,7 @@ let catalogReady = false;
 let pulseV3Ready = false;
 let pulseV4Ready = false;
 let pulseV5Ready = false;
+let pulseV6Ready = false;
 
 export async function ensurePulseV5(sql: Sql): Promise<void> {
   if (pulseV5Ready) return;
@@ -38,6 +39,73 @@ export async function ensurePulseV5(sql: Sql): Promise<void> {
       and setup_completed_at is null
   `);
   pulseV5Ready = true;
+}
+
+export async function ensurePulseV6(sql: Sql): Promise<void> {
+  if (pulseV6Ready) return;
+  await sql.query(`alter table profiles add column if not exists username text`);
+  await sql.query(`alter table profiles add column if not exists bio text`);
+  await sql.query(`alter table profiles add column if not exists profile_visibility text not null default 'private'`);
+  await sql.query(`alter table profiles add column if not exists default_workout_visibility text not null default 'me'`);
+  await sql.query(`alter table profiles add column if not exists share_volume boolean not null default false`);
+  await sql.query(`alter table profiles add column if not exists share_prs boolean not null default false`);
+  await sql.query(`create unique index if not exists profiles_username_lower_idx on profiles (lower(username))`);
+  await sql.query(`
+    update profiles
+    set profile_visibility = 'public'
+    where public_profile = true and username is null
+  `);
+  await sql.query(`alter table follows add column if not exists status text not null default 'accepted'`);
+  await sql.query(`create index if not exists follows_following_status_idx on follows (following_id, status)`);
+  await sql.query(`create index if not exists follows_follower_status_idx on follows (follower_id, status)`);
+  await sql.query(`alter table activity_feed add column if not exists visibility text not null default 'followers'`);
+  await sql.query(`alter table activity_feed add column if not exists deleted_at timestamptz`);
+  await sql.query(`alter table activity_feed add column if not exists share_volume boolean not null default false`);
+  await sql.query(`alter table activity_feed add column if not exists share_prs boolean not null default false`);
+  await sql.query(`alter table activity_feed add column if not exists exercise_count integer`);
+  await sql.query(`alter table activity_feed add column if not exists set_count integer`);
+  await sql.query(`alter table activity_feed add column if not exists muscles text`);
+  await sql.query(`alter table activity_feed add column if not exists pr_label text`);
+  await sql.query(`
+    create index if not exists activity_feed_live_idx on activity_feed (created_at desc, id desc) where deleted_at is null
+  `);
+  await sql.query(`
+    create index if not exists activity_feed_author_live_idx on activity_feed (user_id, created_at desc) where deleted_at is null
+  `);
+  await sql.query(`
+    create table if not exists user_blocks (
+      blocker_id text not null,
+      blocked_id text not null,
+      created_at timestamptz not null default now(),
+      primary key (blocker_id, blocked_id),
+      check (blocker_id <> blocked_id)
+    )
+  `);
+  await sql.query(`
+    create table if not exists reports (
+      id text primary key,
+      reporter_id text not null,
+      target_type text not null,
+      target_id text not null,
+      reason text not null,
+      status text not null default 'pending',
+      created_at timestamptz not null default now(),
+      unique (reporter_id, target_type, target_id)
+    )
+  `);
+  await sql.query(`
+    create table if not exists hidden_posts (
+      user_id text not null,
+      post_id text not null references activity_feed(id) on delete cascade,
+      created_at timestamptz not null default now(),
+      primary key (user_id, post_id)
+    )
+  `);
+  await sql.query(`create index if not exists reports_status_idx on reports (status, created_at desc)`);
+  await sql.query(`create index if not exists reports_reporter_idx on reports (reporter_id)`);
+  await sql.query(`create index if not exists user_blocks_blocked_idx on user_blocks (blocked_id)`);
+  await sql.query(`create index if not exists hidden_posts_post_idx on hidden_posts (post_id)`);
+  pulseV6Ready = true;
 }
 
 export async function ensurePulseV4(sql: Sql): Promise<void> {
@@ -115,6 +183,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV3(sql);
   await ensurePulseV4(sql);
   await ensurePulseV5(sql);
+  await ensurePulseV6(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

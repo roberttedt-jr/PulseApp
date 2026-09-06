@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, CalendarDays, Dumbbell, House, Plus, UserRound } from "lucide-react";
+import { Activity, CalendarDays, Dumbbell, House, Plus, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScreenSkeleton, PublicEntryRedirect } from "@/components/auth-gate";
 import { FlowActions, FlowShell } from "@/components/pulse/flow-shell";
@@ -151,22 +151,23 @@ function TabPreview({ highlight }: { highlight: "Entrenar" | "Historial" }) {
   const tabs = [
     { label: "Inicio", icon: House },
     { label: "Entrenar", icon: Dumbbell },
+    { label: "Actividad", icon: Users },
     { label: "Progreso", icon: Activity },
     { label: "Historial", icon: CalendarDays },
     { label: "Perfil", icon: UserRound },
   ];
   return (
     <div className="rounded-3xl bg-card px-2 py-3 hairline">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-6">
         {tabs.map((tab) => {
           const on = tab.label === highlight;
           const Icon = tab.icon;
           return (
-            <div key={tab.label} className={cn("flex flex-col items-center gap-1 py-1", on ? "text-primary" : "text-foreground-tertiary")}>
-              <span className={cn("grid size-9 place-items-center rounded-xl", on && "bg-primary/12")}>
-                <Icon className="size-5" strokeWidth={on ? 2.4 : 1.85} />
+            <div key={tab.label} className={cn("flex min-w-0 flex-col items-center gap-1 py-1", on ? "text-primary" : "text-foreground-tertiary")}>
+              <span className={cn("grid size-8 place-items-center rounded-xl", on && "bg-primary/12")}>
+                <Icon className="size-4" strokeWidth={on ? 2.4 : 1.85} />
               </span>
-              <span className="text-[10px] font-semibold">{tab.label}</span>
+              <span className="max-w-full truncate px-0.5 text-[8px] font-semibold">{tab.label}</span>
             </div>
           );
         })}

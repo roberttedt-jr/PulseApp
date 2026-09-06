@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { ShareSheet } from "@/components/pulse/social";
 import {
   addExerciseToWorkout,
   getBootstrap,
@@ -33,6 +34,8 @@ import {
   setWorkoutStatus,
   upsertSet,
 } from "@/lib/pulse/fns";
+import { shareWorkout } from "@/lib/pulse/social-fns";
+import type { WorkoutVisibility } from "@/lib/pulse/social";
 import { epley1rm } from "@/lib/pulse/formulas";
 import { displayMuscle } from "@/lib/pulse/exercise-meta";
 import { cn, daysAgoEs, formatDuration, formatKg, fromKg, toKg } from "@/lib/utils";
@@ -73,6 +76,7 @@ function Live({ id }: { id: string }) {
   const [plates, setPlates] = useState(false);
   const [plateKg, setPlateKg] = useState("100");
   const [confirm, setConfirm] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [summary, setSummary] = useState<{ volume: number; sets: number; prs: string[] } | null>(null);
   const [prFlash, setPrFlash] = useState<string | null>(null);
 
@@ -106,6 +110,7 @@ function Live({ id }: { id: string }) {
     onSuccess: (res) => {
       setConfirm(false);
       setDone(true);
+      setShareOpen(true);
       setSummary({ volume: data?.volume ?? 0, sets: data?.setCount ?? 0, prs: res.newPrs });
       if (res.newPrs.length > 0) {
         toast.success(`PR · ${res.newPrs.join(", ")}`);
@@ -113,6 +118,18 @@ function Live({ id }: { id: string }) {
       void qc.invalidateQueries();
     },
     onError: (e) => toast.error(e.message),
+  });
+
+  const share = useMutation({
+    mutationFn: (visibility: WorkoutVisibility) => shareWorkout({ data: { workoutId: id, visibility } }),
+    onSuccess: (res) => {
+      setShareOpen(false);
+      toast.success(res.posted ? "Entrenamiento compartido" : "Guardado solo para ti");
+    },
+    onError: (e) => {
+      setShareOpen(false);
+      toast.error(e instanceof Error ? e.message : "El entrenamiento se guardó, pero no se pudo compartir.");
+    },
   });
 
   if (!data) return <p className="pt-8 text-sm text-muted-foreground">Cargando sesión…</p>;
@@ -174,6 +191,19 @@ function Live({ id }: { id: string }) {
         <Button className="mt-8 w-full" onClick={() => navigate({ to: "/" })}>
           Volver al inicio
         </Button>
+        <ShareSheet
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          defaultVisibility={profile.data?.profile.defaultWorkoutVisibility ?? "me"}
+          busy={share.isPending}
+          onShare={async (visibility) => {
+            if (visibility === "me") {
+              setShareOpen(false);
+              return;
+            }
+            await share.mutateAsync(visibility);
+          }}
+        />
       </div>
     );
   }

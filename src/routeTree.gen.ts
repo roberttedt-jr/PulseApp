@@ -26,9 +26,12 @@ import { Route as TutorialRouteImport } from './routes/tutorial'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiAuthHealthRouteImport } from './routes/api/auth-health'
 import { Route as ExercisesExerciseIdRouteImport } from './routes/exercises/$exerciseId'
+import { Route as FeedRequestsRouteImport } from './routes/feed/requests'
+import { Route as FeedSearchRouteImport } from './routes/feed/search'
 import { Route as HistoryWorkoutIdRouteImport } from './routes/history/$workoutId'
 import { Route as RoutinesRoutineIdRouteImport } from './routes/routines/$routineId'
 import { Route as ShareSlugRouteImport } from './routes/share/$slug'
+import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -116,6 +119,16 @@ const ExercisesExerciseIdRoute = ExercisesExerciseIdRouteImport.update({
   path: '/$exerciseId',
   getParentRoute: () => ExercisesRoute,
 } as any)
+const FeedRequestsRoute = FeedRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => FeedRoute,
+} as any)
+const FeedSearchRoute = FeedSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => FeedRoute,
+} as any)
 const HistoryWorkoutIdRoute = HistoryWorkoutIdRouteImport.update({
   id: '/$workoutId',
   path: '/$workoutId',
@@ -131,6 +144,11 @@ const ShareSlugRoute = ShareSlugRouteImport.update({
   path: '/share/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -140,7 +158,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/exercises': typeof ExercisesRouteWithChildren
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -155,15 +173,18 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/requests': typeof FeedRequestsRoute
+  '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
+  '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/exercises': typeof ExercisesRouteWithChildren
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -178,16 +199,19 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/requests': typeof FeedRequestsRoute
+  '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
+  '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/exercises': typeof ExercisesRouteWithChildren
-  '/feed': typeof FeedRoute
+  '/feed': typeof FeedRouteWithChildren
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -202,9 +226,12 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/requests': typeof FeedRequestsRoute
+  '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
+  '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -227,9 +254,12 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
+    | '/feed/requests'
+    | '/feed/search'
     | '/history/$workoutId'
     | '/routines/$routineId'
     | '/share/$slug'
+    | '/u/$username'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -250,9 +280,12 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
+    | '/feed/requests'
+    | '/feed/search'
     | '/history/$workoutId'
     | '/routines/$routineId'
     | '/share/$slug'
+    | '/u/$username'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -273,16 +306,19 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
+    | '/feed/requests'
+    | '/feed/search'
     | '/history/$workoutId'
     | '/routines/$routineId'
     | '/share/$slug'
+    | '/u/$username'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExercisesRoute: typeof ExercisesRouteWithChildren
-  FeedRoute: typeof FeedRoute
+  FeedRoute: typeof FeedRouteWithChildren
   HistoryRoute: typeof HistoryRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -297,6 +333,7 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   ApiAuthHealthRoute: typeof ApiAuthHealthRoute
   ShareSlugRoute: typeof ShareSlugRoute
+  UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -421,6 +458,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExercisesExerciseIdRouteImport
       parentRoute: typeof ExercisesRoute
     }
+    '/feed/requests': {
+      id: '/feed/requests'
+      path: '/requests'
+      fullPath: '/feed/requests'
+      preLoaderRoute: typeof FeedRequestsRouteImport
+      parentRoute: typeof FeedRoute
+    }
+    '/feed/search': {
+      id: '/feed/search'
+      path: '/search'
+      fullPath: '/feed/search'
+      preLoaderRoute: typeof FeedSearchRouteImport
+      parentRoute: typeof FeedRoute
+    }
     '/history/$workoutId': {
       id: '/history/$workoutId'
       path: '/$workoutId'
@@ -440,6 +491,13 @@ declare module '@tanstack/react-router' {
       path: '/share/$slug'
       fullPath: '/share/$slug'
       preLoaderRoute: typeof ShareSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -463,6 +521,18 @@ const ExercisesRouteChildren: ExercisesRouteChildren = {
 const ExercisesRouteWithChildren = ExercisesRoute._addFileChildren(
   ExercisesRouteChildren,
 )
+
+interface FeedRouteChildren {
+  FeedRequestsRoute: typeof FeedRequestsRoute
+  FeedSearchRoute: typeof FeedSearchRoute
+}
+
+const FeedRouteChildren: FeedRouteChildren = {
+  FeedRequestsRoute: FeedRequestsRoute,
+  FeedSearchRoute: FeedSearchRoute,
+}
+
+const FeedRouteWithChildren = FeedRoute._addFileChildren(FeedRouteChildren)
 
 interface HistoryRouteChildren {
   HistoryWorkoutIdRoute: typeof HistoryWorkoutIdRoute
@@ -490,7 +560,7 @@ const RoutinesRouteWithChildren = RoutinesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExercisesRoute: ExercisesRouteWithChildren,
-  FeedRoute: FeedRoute,
+  FeedRoute: FeedRouteWithChildren,
   HistoryRoute: HistoryRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
@@ -505,6 +575,7 @@ const rootRouteChildren: RootRouteChildren = {
   WelcomeRoute: WelcomeRoute,
   ApiAuthHealthRoute: ApiAuthHealthRoute,
   ShareSlugRoute: ShareSlugRoute,
+  UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

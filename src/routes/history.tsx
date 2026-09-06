@@ -72,11 +72,11 @@ function HistoryPage() {
         {!isPending && items.length === 0 && (
           <EmptyState
             icon={CalendarDays}
-            title="Todavía no hay sesiones"
-            hint="Termina un entrenamiento para verlo aquí, con volumen y duración."
+            title="Tu historial aparecerá aquí."
+            hint="Termina un entrenamiento para ver volumen, duración y cada sesión."
             action={
               <Button asChild>
-                <Link to="/routines">Entrenar</Link>
+                <Link to="/routines">Registrar entrenamiento</Link>
               </Button>
             }
           />

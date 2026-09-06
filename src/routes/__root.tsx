@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { restoreSessionToken } from "@/lib/session-token";
+import { MotionConfig } from "framer-motion";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
@@ -63,14 +64,16 @@ function Root() {
         <PreviewHostBridge />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <Outlet />
-            <Toaster
-              theme="dark"
-              position="top-center"
-              toastOptions={{
-                className: "glass !bg-card !text-foreground !border-border !rounded-2xl",
-              }}
-            />
+            <MotionConfig reducedMotion="user">
+              <Outlet />
+              <Toaster
+                theme="dark"
+                position="top-center"
+                toastOptions={{
+                  className: "glass !bg-card !text-foreground !border-border !rounded-2xl",
+                }}
+              />
+            </MotionConfig>
           </QueryClientProvider>
         </AuthProvider>
         <Scripts />

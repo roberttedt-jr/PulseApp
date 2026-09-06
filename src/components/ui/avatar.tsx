@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { avatarInitials } from "@/lib/pulse/image";
 
 export function Avatar({
   src,
@@ -11,24 +13,41 @@ export function Avatar({
   fallback: string;
   className?: string;
 }) {
-  const letter = fallback.trim().charAt(0).toUpperCase() || "P";
-  if (src) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const letters = avatarInitials(fallback);
+
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [src]);
+
+  if (src && !failed) {
     return (
-      <img
-        src={src}
-        alt={alt ?? ""}
-        className={cn("size-10 rounded-full object-cover", className)}
-      />
+      <span className={cn("relative inline-grid size-10 place-items-center overflow-hidden rounded-full bg-primary/20", className)}>
+        {!loaded && (
+          <span className="absolute inset-0 animate-pulse bg-primary/15" aria-hidden />
+        )}
+        <img
+          src={src}
+          alt={alt ?? ""}
+          className={cn("size-full object-cover transition-opacity duration-200", loaded ? "opacity-100" : "opacity-0")}
+          onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+        />
+      </span>
     );
   }
+
   return (
     <span
       className={cn(
-        "grid size-10 place-items-center rounded-full bg-primary/20 text-sm font-semibold text-primary",
+        "grid size-10 place-items-center rounded-full bg-primary/20 text-sm font-semibold tracking-wide text-primary",
         className,
       )}
+      aria-hidden={alt ? undefined : true}
     >
-      {letter}
+      {letters}
     </span>
   );
 }

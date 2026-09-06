@@ -7,7 +7,7 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensureSetKind, seedSocialWorld, seedTemplates, seedWeeklyPlan } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import type { Profile } from "./types";
 
 type AnyRow = Record<string, any>;
@@ -37,7 +37,7 @@ function mapProfile(r: AnyRow): Profile {
     weightKg: numNull(r.weight_kg),
     heightCm: numNull(r.height_cm),
     birthDate: r.birth_date,
-    goal: r.goal === "gain" || r.goal === "lose" || r.goal === "maintain" ? r.goal : null,
+    goal: r.goal === "gain" || r.goal === "lose" || r.goal === "maintain" || r.goal === "strength" ? r.goal : null,
     units: r.units === "imperial" ? "imperial" : "metric",
     theme: r.theme === "light" || r.theme === "system" ? r.theme : "dark",
     restSound: bool(r.rest_sound),
@@ -45,23 +45,21 @@ function mapProfile(r: AnyRow): Profile {
     publicProfile: bool(r.public_profile),
     onboardingDone: bool(r.onboarding_done),
     weeklyGoal: num(r.weekly_goal) || 4,
-    reminderHour: numNull(r.reminder_hour)
+    reminderHour: numNull(r.reminder_hour),
+    healthkitNotify: bool(r.healthkit_notify),
   };
 }
 async function ensureProfile(sql: Sql, userId: string) {
   await ensureCatalog(sql);
   await ensurePulseV2(sql);
+  await ensurePulseV3(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
-  if (rows[0]) {
-    await seedWeeklyPlan(sql, userId);
-    return mapProfile(rows[0]);
-  }
+  if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
     insert into profiles (user_id) values (${userId})
     on conflict (user_id) do nothing
   `;
-  await seedTemplates(sql, userId);
-  await seedWeeklyPlan(sql, userId);
+  await seedDevDemoData(sql, userId);
   return mapProfile((await sql<AnyRow>`select * from profiles where user_id = ${userId}`)[0]);
 }
 function startOfWeek(d: Date = new Date()) {
@@ -188,7 +186,9 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       group by e.muscle
       order by last asc
     `;
-  const suggestion = lastMuscles[0] ? `Hace días que ${lastMuscles[0].muscle.toLowerCase()} espera su turno.` : "Hoy es un buen día para un Full Body.";
+  const suggestion = lastMuscles[0]
+    ? `Hace días que ${lastMuscles[0].muscle.toLowerCase()} espera su turno.`
+    : null;
   const heatmap = await sql<AnyRow>`
       select started_at::date as d, count(*)::int as n
       from workouts
@@ -255,8 +255,13 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       volume: cur.volume
     });
   }
+  const lifetime = await sql<AnyRow>`
+      select count(*)::int as n from workouts
+      where user_id = ${context.userId} and status = 'completed'
+    `;
   return {
     profile,
+    lifetimeWorkouts: lifetime[0]?.n ?? 0,
     week: {
       workouts: ws?.workouts ?? 0,
       volume: num(ws?.volume),
@@ -323,7 +328,6 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
   await sql<AnyRow>`
       update profiles set
         display_name = coalesce(${data.displayName ?? null}, display_name),
-        image = coalesce(${data.image ?? null}, image),
         sex = coalesce(${data.sex ?? null}, sex),
         weight_kg = coalesce(${data.weightKg ?? null}, weight_kg),
         height_cm = coalesce(${data.heightCm ?? null}, height_cm),
@@ -336,6 +340,7 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
         public_profile = coalesce(${data.publicProfile ?? null}, public_profile),
         weekly_goal = coalesce(${data.weeklyGoal ?? null}, weekly_goal),
         reminder_hour = coalesce(${data.reminderHour ?? null}, reminder_hour),
+        healthkit_notify = coalesce(${data.healthkitNotify ?? null}, healthkit_notify),
         updated_at = now()
       where user_id = ${context.userId}
     `;
@@ -344,15 +349,16 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
 export const completeOnboarding = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
+  const name = String(data.displayName ?? "").trim() || "Atleta";
+  const goal = data.goal === "gain" || data.goal === "lose" || data.goal === "maintain" || data.goal === "strength" ? data.goal : null;
+  const units = data.units === "imperial" ? "imperial" : "metric";
+  const weekly = Math.min(7, Math.max(1, Number(data.weeklyGoal) || 4));
   await sql<AnyRow>`
       update profiles set
-        display_name = ${data.displayName},
-        sex = ${data.sex},
-        weight_kg = ${data.weightKg},
-        height_cm = ${data.heightCm},
-        birth_date = ${data.birthDate},
-        goal = ${data.goal},
-        weekly_goal = ${data.weeklyGoal},
+        display_name = ${name},
+        goal = ${goal},
+        units = ${units},
+        weekly_goal = ${weekly},
         onboarding_done = true,
         updated_at = now()
       where user_id = ${context.userId}
@@ -655,8 +661,8 @@ export const startWorkout = createServerFn({ method: "POST" }).middleware([authM
   }));
   const id = nid();
   await sql<AnyRow>`
-      insert into workouts (id, user_id, routine_id, title, status)
-      values (${id}, ${context.userId}, ${data.routineId ?? null}, ${title}, 'in_progress')
+      insert into workouts (id, user_id, routine_id, title, status, source)
+      values (${id}, ${context.userId}, ${data.routineId ?? null}, ${title}, 'in_progress', ${"manual"})
     `;
   let order = 0;
   for (const item of items) {
@@ -1057,9 +1063,10 @@ export const getProgress = createServerFn({ method: "GET" }).middleware([authMid
 });
 export const addBodyLog = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   const sql = await getSql();
+  await ensurePulseV3(sql);
   await sql<AnyRow>`
-      insert into body_logs (id, user_id, logged_at, weight_kg, chest_cm, waist_cm, arm_cm, thigh_cm)
-      values (${nid()}, ${context.userId}, ${(new Date()).toISOString().slice(0, 10)}, ${data.weightKg ?? null}, ${data.chestCm ?? null}, ${data.waistCm ?? null}, ${data.armCm ?? null}, ${data.thighCm ?? null})
+      insert into body_logs (id, user_id, logged_at, weight_kg, chest_cm, waist_cm, arm_cm, thigh_cm, source)
+      values (${nid()}, ${context.userId}, ${(new Date()).toISOString().slice(0, 10)}, ${data.weightKg ?? null}, ${data.chestCm ?? null}, ${data.waistCm ?? null}, ${data.armCm ?? null}, ${data.thighCm ?? null}, ${"manual"})
     `;
   if (data.weightKg) await sql<AnyRow>`update profiles set weight_kg = ${data.weightKg} where user_id = ${context.userId}`;
   return { ok: true };
@@ -1174,8 +1181,8 @@ export const setPlanDay = createServerFn({ method: "POST" }).middleware([authMid
 export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
-  await seedSocialWorld(sql, context.userId);
   await ensurePulseV2(sql);
+  const demo = "pulse-demo-%";
   const items = await sql<AnyRow>`
       select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, p.display_name, p.image,
         a.volume, a.duration_seconds,
@@ -1184,16 +1191,20 @@ export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddlew
         exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked
       from activity_feed a
       join profiles p on p.user_id = a.user_id
-      where a.user_id = ${context.userId}
-         or (p.public_profile = true and a.user_id in (select following_id from follows where follower_id = ${context.userId}))
+      where a.user_id not like ${demo}
+        and (
+          a.user_id = ${context.userId}
+          or (p.public_profile = true and a.user_id in (select following_id from follows where follower_id = ${context.userId}))
+        )
       order by a.created_at desc
       limit 40
     `;
   const people = await sql<AnyRow>`
-      select p.user_id, p.display_name, p.goal,
+      select p.user_id, p.display_name, p.image, p.goal,
         exists(select 1 from follows f where f.follower_id = ${context.userId} and f.following_id = p.user_id) as following
       from profiles p
-      where p.public_profile = true and p.user_id <> ${context.userId}
+      where p.public_profile = true and p.user_id <> ${context.userId} and p.user_id not like ${demo}
+        and p.onboarding_done = true
     `;
   return {
     items: items.map((i) => ({
@@ -1215,6 +1226,7 @@ export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddlew
     people: people.map((p) => ({
       userId: String(p.user_id),
       name: String(p.display_name ?? "Atleta"),
+      image: p.image ? String(p.image) : null,
       goal: p.goal ? String(p.goal) : null,
       following: bool(p.following)
     }))
@@ -1222,6 +1234,7 @@ export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddlew
 });
 export const toggleFollow = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   if (data.userId === context.userId) return { following: false };
+  if (isDemoUserId(String(data.userId ?? ""))) return { following: false };
   const sql = await getSql();
   if (((await sql<AnyRow>`
       select count(*)::int as n from follows where follower_id = ${context.userId} and following_id = ${data.userId}
@@ -1457,3 +1470,56 @@ export const deleteFeedPost = createServerFn({ method: "POST" }).middleware([aut
   await (await getSql())`delete from activity_feed where id = ${data.id} and user_id = ${context.userId}`;
   return { ok: true };
 });
+
+export const uploadAvatar = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { dataUrl: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { deleteStoredAvatar, storeAvatar } = await import("./avatar-store");
+    const sql = await getSql();
+    await ensureProfile(sql, context.userId);
+    const url = await storeAvatar(context.userId, data.dataUrl);
+    const prev = await sql<AnyRow>`select image from profiles where user_id = ${context.userId}`;
+    await sql`update profiles set image = ${url}, updated_at = now() where user_id = ${context.userId}`;
+    const old = prev[0]?.image ? String(prev[0].image) : null;
+    if (old && old !== url) await deleteStoredAvatar(old, context.userId);
+    return { image: url };
+  });
+
+export const deleteAvatar = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { deleteStoredAvatar } = await import("./avatar-store");
+    const sql = await getSql();
+    const prev = await sql<AnyRow>`select image from profiles where user_id = ${context.userId}`;
+    await sql`update profiles set image = null, updated_at = now() where user_id = ${context.userId}`;
+    await deleteStoredAvatar(prev[0]?.image ? String(prev[0].image) : null, context.userId);
+    return { image: null };
+  });
+
+export const listLibraryTemplates = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async () => libraryTemplates());
+
+export const cloneLibraryTemplate = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { key: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ensureCatalog(sql);
+    return insertLibraryTemplate(sql, context.userId, String(data.key));
+  });
+
+export const devToolsAvailable = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async () => ({ enabled: isDevToolsEnabled() }));
+
+export const purgeMySeededData = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    if (!isDevToolsEnabled()) throw new Error("No disponible en producción.");
+    const sql = await getSql();
+    await purgeUserSeededTraining(sql, context.userId);
+    return { ok: true };
+  });
+

@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Activity, CalendarDays, Dumbbell, House, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
+import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
+import { tabIndex } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -27,14 +29,20 @@ export function PageHeader({ title, action }: { title?: string; action?: ReactNo
 }
 
 export function BottomNavigation({ pathname }: { pathname: string }) {
+  const active = Math.max(0, tabIndex(pathname) === 4 && pathname.startsWith("/feed") ? 4 : TABS.findIndex((t) => isActive(pathname, t.to)));
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-background/78 backdrop-blur-2xl md:hidden"
+      className="pulse-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-white/6 bg-background/78 backdrop-blur-2xl md:hidden"
       aria-label="Principal"
     >
-      <ul className="mx-auto grid max-w-lg grid-cols-5 px-1.5 pt-1.5 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+      <ul className="relative mx-auto grid max-w-lg grid-cols-5 px-1.5 pt-1.5 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1.5 left-1.5 h-8 w-[calc((100%-0.75rem)/5)] rounded-xl bg-primary/12 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          style={{ transform: `translateX(${active * 100}%)` }}
+        />
         {TABS.map((tab) => {
-          const active = isActive(pathname, tab.to);
+          const on = isActive(pathname, tab.to);
           const Icon = tab.icon;
           const heavy = "emphasize" in tab && tab.emphasize;
           return (
@@ -42,25 +50,25 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
               <Link
                 to={tab.to}
                 className={cn(
-                  "relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-wide",
-                  active ? "text-primary" : "text-foreground-tertiary",
+                  "relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-2xl text-[10px] font-semibold tracking-wide transition-colors duration-200",
+                  on ? "text-primary" : "text-foreground-tertiary",
                 )}
-                aria-current={active ? "page" : undefined}
+                aria-current={on ? "page" : undefined}
               >
-                <span
-                  className={cn(
-                    "grid size-8 place-items-center rounded-xl transition-colors",
-                    active && "bg-primary/12",
-                  )}
-                >
+                <span className="grid size-8 place-items-center">
                   <Icon
-                    className="size-5"
-                    strokeWidth={heavy || active ? 2.4 : 1.85}
-                    fill={active ? "currentColor" : "none"}
-                    fillOpacity={active ? 0.18 : 0}
+                    className={cn(
+                      "size-5 transition-[transform,color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      on && "scale-[1.06]",
+                    )}
+                    strokeWidth={heavy || on ? 2.4 : 1.85}
+                    fill={on ? "currentColor" : "none"}
+                    fillOpacity={on ? 0.18 : 0}
                   />
                 </span>
-                {tab.label}
+                <span className={cn("transition-opacity duration-200", on ? "opacity-100" : "opacity-70")}>
+                  {tab.label}
+                </span>
               </Link>
             </li>
           );
@@ -88,7 +96,7 @@ export function AppShell({
       <div className="mx-auto flex min-h-dvh w-full max-w-6xl">
         <aside
           className={cn(
-            "sticky top-0 hidden h-dvh w-[15.5rem] shrink-0 flex-col border-r border-border px-3 py-6",
+            "pulse-sidebar sticky top-0 hidden h-dvh w-[15.5rem] shrink-0 flex-col border-r border-border px-3 py-6",
             hideNav ? "md:hidden" : "md:flex",
           )}
         >
@@ -98,15 +106,15 @@ export function AppShell({
           </Link>
           <nav className="flex flex-1 flex-col gap-1">
             {TABS.map((tab) => {
-              const active = isActive(pathname, tab.to);
+              const on = isActive(pathname, tab.to);
               const Icon = tab.icon;
               return (
                 <Link
                   key={tab.to}
                   to={tab.to}
                   className={cn(
-                    "flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-medium transition-colors",
-                    active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    "flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-medium transition-[background-color,color,transform] duration-200",
+                    on ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <Icon className="size-5" strokeWidth={"emphasize" in tab && tab.emphasize ? 2.25 : 2} />
@@ -120,8 +128,8 @@ export function AppShell({
 
         <div className="flex min-w-0 max-w-full flex-1 flex-col">
           <PageHeader title={title} action={action} />
-          <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-28 md:pb-10")}>
-            {children}
+          <main className={cn("min-w-0 max-w-full flex-1 overflow-x-clip px-4 md:px-8", hideNav ? "pb-8" : "pb-28 md:pb-10")}>
+            <PageTransition>{children}</PageTransition>
           </main>
         </div>
       </div>

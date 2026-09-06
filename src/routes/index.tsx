@@ -11,6 +11,7 @@ import { ChartCard } from "@/components/pulse/cards";
 import { ActivityRings, WeekDots } from "@/components/pulse/activity-rings";
 import { ConsistencyCard } from "@/components/pulse/consistency";
 import { HScroll } from "@/components/pulse/h-scroll";
+import { EmptyState } from "@/components/pulse/empty-state";
 import { SectionHeader } from "@/components/pulse/metric-card";
 import { MuscleMap } from "@/components/pulse/muscle-map";
 import { PulseLogo, PulseMark } from "@/components/pulse-logo";
@@ -26,7 +27,6 @@ export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const { user, isPending } = useCurrentUserState();
-  const { sessionUser } = Route.useRouteContext();
   if (user) {
     return (
       <AppPage>
@@ -34,7 +34,7 @@ function Home() {
       </AppPage>
     );
   }
-  if (isPending && sessionUser) return <ScreenSkeleton />;
+  if (isPending) return <ScreenSkeleton />;
   return <Landing />;
 }
 
@@ -79,7 +79,7 @@ function Landing() {
           <Button asChild className="w-full" size="lg">
             <Link to="/login">Empezar</Link>
           </Button>
-          <p className="mt-3 text-center text-xs text-muted-foreground">Google, X o email. Tus datos, tu racha.</p>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Crea tu cuenta con email. Tus datos, tu racha.</p>
         </FadeIn>
       </div>
     </main>
@@ -124,8 +124,9 @@ function Dashboard() {
 
   const hour = new Date().getHours();
   const greet = greetingForHour(hour, data.profile.displayName);
-  const bmiValue =
-    data.profile.weightKg && data.profile.heightCm ? bmi(data.profile.weightKg, data.profile.heightCm) : 0;
+  const fresh = (data.lifetimeWorkouts ?? 0) === 0;
+  const hasBody = Boolean(data.profile.weightKg && data.profile.heightCm);
+  const bmiValue = hasBody ? bmi(data.profile.weightKg!, data.profile.heightCm!) : 0;
   const age = data.profile.birthDate ? ageFromBirthDate(data.profile.birthDate) : 0;
   const kcal =
     data.profile.weightKg && data.profile.heightCm && age && data.profile.sex
@@ -140,7 +141,7 @@ function Dashboard() {
         )
       : 0;
 
-  const volumeGoal = Math.max(8000, data.profile.weeklyGoal * 2500);
+  const volumeGoal = Math.max(data.profile.weeklyGoal * 2500, 1);
   const volumePct = data.week.volume / volumeGoal;
   const streakPct = data.streak / 7;
   const weekdayLabels = ["L", "M", "X", "J", "V", "S", "D"];
@@ -154,11 +155,13 @@ function Dashboard() {
     return { key, hit, today, label: weekdayLabels[(d.getDay() + 6) % 7]! };
   });
   const scoreHint =
-    data.week.workouts < data.profile.weeklyGoal
-      ? `Te faltan ${data.profile.weeklyGoal - data.week.workouts} sesiones para el objetivo.`
-      : data.score >= 80
-        ? "Semana excelente. El volumen y la racha están alineados."
-        : "Ritmo bueno. Un poco más de volumen sube la cifra.";
+    fresh
+      ? "Completa tu primer entrenamiento para ver el Pulse Score."
+      : data.week.workouts < data.profile.weeklyGoal
+        ? `Te faltan ${data.profile.weeklyGoal - data.week.workouts} sesiones para el objetivo.`
+        : data.score >= 80
+          ? "Semana excelente. El volumen y la racha están alineados."
+          : "Ritmo bueno. Un poco más de volumen sube la cifra.";
 
   async function startToday() {
     const res = await startWorkout({ data: { routineId: data?.today?.routineId ?? undefined } });
@@ -173,7 +176,9 @@ function Dashboard() {
             {format(new Date(), "EEEE d MMMM", { locale: es })}
           </p>
           <h1 className="mt-1 text-[32px] leading-[1.05] font-semibold tracking-tight">{greet}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{data.suggestion}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {data.suggestion ?? (fresh ? "Tu progreso empieza hoy." : "Sigue el ritmo de esta semana.")}
+          </p>
         </div>
         <Link to="/settings" className="shrink-0" aria-label="Perfil">
           <Avatar src={data.profile.image} fallback={data.profile.displayName ?? "P"} className="size-12" />
@@ -208,11 +213,24 @@ function Dashboard() {
           )}
           <Button className="mt-5 w-full" size="lg" onClick={() => void startToday()}>
             <Play className="fill-current" />
-            {data.activeWorkoutId ? "Reanudar entrenamiento" : "Iniciar entrenamiento"}
+            {data.activeWorkoutId ? "Reanudar entrenamiento" : fresh ? "Iniciar primer entrenamiento" : "Iniciar entrenamiento"}
           </Button>
         </div>
       </section>
 
+      {fresh ? (
+        <EmptyState
+          icon={Play}
+          title="Tu progreso empieza hoy."
+          hint="Las estadísticas, PRs y el balance muscular aparecerán cuando registres tu primera sesión real."
+          action={
+            <Button size="lg" onClick={() => void startToday()}>
+              Iniciar primer entrenamiento
+            </Button>
+          }
+        />
+      ) : (
+        <>
       <section className="min-w-0 overflow-x-clip rounded-[28px] bg-card px-4 py-5 hairline sm:px-5">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
           <ActivityRings
@@ -296,9 +314,12 @@ function Dashboard() {
           }
         />
         {data.prs.length === 0 ? (
-          <p className="rounded-3xl bg-card px-4 py-6 text-center text-sm text-muted-foreground hairline">
-            Aún no hay récords. El primero está cerca.
-          </p>
+          <EmptyState
+            icon={Trophy}
+            title="Tus récords personales aparecerán aquí."
+            hint="Completa series reales. El 1RM estimado se guarda cuando superas tu mejor marca."
+            className="py-8"
+          />
         ) : (
           <HScroll className="-mx-1 px-1">
             {data.prs.map((pr) => (
@@ -316,14 +337,16 @@ function Dashboard() {
       </section>
 
       <ConsistencyCard />
+        </>
+      )}
 
       <ChartCard title="Cuerpo">
           <div className="space-y-3">
-            <Row k="IMC" v={bmiValue ? `${bmiValue.toFixed(1)} · ${bmiLabel(bmiValue)}` : "—"} />
-            <Row k="kcal / día" v={kcal ? String(kcal) : "—"} />
-            <Row k="Peso" v={data.profile.weightKg ? formatKg(data.profile.weightKg, data.profile.units) : "—"} />
-            <Link to="/progress" className="inline-flex items-center gap-1 text-sm text-accent">
-              Ver progreso <Zap className="size-3.5" />
+            <Row k="IMC" v={bmiValue ? `${bmiValue.toFixed(1)} · ${bmiLabel(bmiValue)}` : "Añadir peso"} />
+            <Row k="kcal / día" v={kcal ? String(kcal) : "Completar perfil"} />
+            <Row k="Peso" v={data.profile.weightKg ? formatKg(data.profile.weightKg, data.profile.units) : "Añadir peso"} />
+            <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-accent">
+              {hasBody ? "Ver perfil" : "Completar perfil"} <Zap className="size-3.5" />
             </Link>
           </div>
         </ChartCard>

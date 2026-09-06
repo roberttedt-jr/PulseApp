@@ -47,7 +47,10 @@ export function WeekVolumeChart({ data }: { data: { day: number; volume: number 
 }
 
 export function MusclePie({ data }: { data: { muscle: string; volume: number }[] }) {
-  const series = data.length ? data : [{ muscle: "—", volume: 1 }];
+  if (!data.length) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Aún no hay datos de músculos.</p>;
+  }
+  const series = data;
   return (
     <div className="flex items-center gap-3">
       <div className="h-36 w-36 shrink-0">

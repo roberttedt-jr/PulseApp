@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Pause, Play, RotateCcw, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/utils";
@@ -101,7 +102,11 @@ export function RestTimer({
   }
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
       className="pointer-events-none fixed inset-x-0 z-40 px-3"
       style={{ bottom: kb + 8, paddingBottom: kb ? 0 : "max(0.75rem, env(safe-area-inset-bottom))" }}
       role="timer"
@@ -174,6 +179,6 @@ export function RestTimer({
           </Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

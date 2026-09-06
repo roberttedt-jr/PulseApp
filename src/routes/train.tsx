@@ -10,9 +10,9 @@ import {
   StickyNote,
   Weight,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
-import { Confetti } from "@/components/confetti";
 import { ExerciseDemo } from "@/components/pulse/exercise-demo";
 import { HScroll } from "@/components/pulse/h-scroll";
 import { NumericField } from "@/components/pulse/numeric-field";
@@ -70,7 +70,6 @@ function Live({ id }: { id: string }) {
   const [picker, setPicker] = useState(false);
   const [plates, setPlates] = useState(false);
   const [plateKg, setPlateKg] = useState("100");
-  const [celebrate, setCelebrate] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [summary, setSummary] = useState<{ volume: number; sets: number; prs: string[] } | null>(null);
   const [prFlash, setPrFlash] = useState<string | null>(null);
@@ -104,8 +103,10 @@ function Live({ id }: { id: string }) {
     onSuccess: (res) => {
       setConfirm(false);
       setDone(true);
-      setCelebrate(true);
       setSummary({ volume: data?.volume ?? 0, sets: data?.setCount ?? 0, prs: res.newPrs });
+      if (res.newPrs.length > 0) {
+        toast.success(`PR · ${res.newPrs.join(", ")}`);
+      }
       void qc.invalidateQueries();
     },
     onError: (e) => toast.error(e.message),
@@ -126,16 +127,46 @@ function Live({ id }: { id: string }) {
   if (done && summary) {
     return (
       <div className="mx-auto max-w-md pt-8 text-center">
-        <Confetti show={celebrate} />
-        <p className="text-sm font-medium tracking-wide text-primary uppercase">Sesión completada</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight">{data.title}</h2>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-sm font-medium tracking-wide text-primary uppercase"
+        >
+          Sesión completada
+        </motion.p>
+        <motion.h2
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="mt-2 text-3xl font-semibold tracking-tight"
+        >
+          {data.title}
+        </motion.h2>
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <Mini k="Volumen" v={formatKg(summary.volume, units)} />
-          <Mini k="Series" v={String(summary.sets)} />
-          <Mini k="Tiempo" v={formatDuration(elapsed)} />
+          {[
+            { k: "Volumen", v: formatKg(summary.volume, units) },
+            { k: "Series", v: String(summary.sets) },
+            { k: "Tiempo", v: formatDuration(elapsed) },
+          ].map((item, i) => (
+            <motion.div
+              key={item.k}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.07, duration: 0.22 }}
+            >
+              <Mini k={item.k} v={item.v} />
+            </motion.div>
+          ))}
         </div>
         {summary.prs.length > 0 && (
-          <p className="mt-5 text-sm text-warning">Nuevos PRs: {summary.prs.join(", ")}</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.32 }}
+            className="mt-5 text-sm text-warning"
+          >
+            Nuevos PRs: {summary.prs.join(", ")}
+          </motion.p>
         )}
         <Button className="mt-8 w-full" onClick={() => navigate({ to: "/" })}>
           Volver al inicio
@@ -148,7 +179,11 @@ function Live({ id }: { id: string }) {
 
   return (
     <div className={cn("mx-auto max-w-lg min-w-0 space-y-4 pt-2", rest != null && "pb-40")}>
-      {rest != null && <RestTimer seconds={rest} sound={sound} onClose={() => setRest(null)} />}
+      {rest != null && (
+        <AnimatePresence>
+          <RestTimer seconds={rest} sound={sound} onClose={() => setRest(null)} />
+        </AnimatePresence>
+      )}
 
       <header className="sticky top-0 z-20 -mx-4 border-b border-border/60 bg-background/86 px-4 py-3 backdrop-blur-2xl md:mx-0 md:rounded-3xl md:border">
         <div className="flex items-center justify-between gap-3">
@@ -206,6 +241,7 @@ function Live({ id }: { id: string }) {
           }}
           onPr={(name, orm) => {
             setPrFlash(`PR · ${name} · ${Math.round(orm)} kg`);
+            toast.success(`PR · ${name}`);
             window.setTimeout(() => setPrFlash(null), 2800);
           }}
         />
@@ -268,8 +304,8 @@ function Live({ id }: { id: string }) {
             <Button variant="secondary" className="flex-1" onClick={() => setConfirm(false)}>
               Seguir
             </Button>
-            <Button className="flex-1" onClick={() => finish.mutate()} disabled={finish.isPending}>
-              {finish.isPending ? "Guardando…" : "Terminar"}
+            <Button className="flex-1" onClick={() => finish.mutate()} loading={finish.isPending} loadingText="Guardando…">
+              Terminar
             </Button>
           </div>
         </DialogContent>
@@ -387,14 +423,20 @@ function ExerciseBlock({
       </div>
 
       <div className="space-y-1">
+        <AnimatePresence initial={false}>
         {block.sets.map((s, i) => {
           if (s.kind === "work") workN += 1;
           const last = block.lastSets[i];
           const label =
             s.kind === "warmup" ? "W" : s.kind === "drop" ? "D" : s.kind === "fail" ? "F" : String(workN);
           return (
-            <SetRow
+            <motion.div
               key={s.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            >
+            <SetRow
               set={s}
               last={last}
               label={label}
@@ -424,8 +466,10 @@ function ExerciseBlock({
                 }
               }}
             />
+            </motion.div>
           );
         })}
+        </AnimatePresence>
       </div>
 
       <div className="mt-3 flex min-w-0 items-center justify-between gap-2 px-0.5">

@@ -425,7 +425,7 @@ function Login() {
                   Estamos tardando más de lo normal. No cierres la pantalla.
                 </p>
               ) : null}
-              <Button type="submit" className="w-full" disabled={busy}>
+              <Button type="submit" className="w-full" disabled={busy} loading={busy} loadingText={submitLabel}>
                 {submitLabel}
               </Button>
             </form>

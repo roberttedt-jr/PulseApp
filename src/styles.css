@@ -176,10 +176,11 @@
   }
 
   .pressable {
-    transition: transform 150ms var(--ease-out-ios), opacity 150ms var(--ease-out-ios);
+    transition: transform 120ms var(--ease-out-ios), opacity 120ms var(--ease-out-ios);
   }
   .pressable:active:not(:disabled) {
-    transform: scale(0.96);
+    transform: scale(0.98);
+    opacity: 0.92;
   }
 
   .tabular {
@@ -248,12 +249,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  html {
+    scroll-behavior: auto;
+  }
+  .pressable:active:not(:disabled) {
+    transform: none;
   }
 }
 
@@ -536,3 +536,120 @@
     animation: none !important;
   }
 }
+
+.pulse-tabbar {
+  view-transition-name: pulse-tabbar;
+}
+.pulse-sidebar {
+  view-transition-name: pulse-sidebar;
+}
+.pulse-page {
+  view-transition-name: pulse-page;
+}
+
+@keyframes pulse-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--pulse-tab-dir, 1) * -8px));
+  }
+}
+@keyframes pulse-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--pulse-tab-dir, 1) * 12px));
+  }
+}
+@keyframes pulse-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes pulse-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+@keyframes pulse-sheet-right-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes pulse-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: pulse-fade 180ms var(--ease-out-ios) both;
+}
+::view-transition-old(pulse-tabbar),
+::view-transition-new(pulse-tabbar),
+::view-transition-old(pulse-sidebar),
+::view-transition-new(pulse-sidebar) {
+  animation: none;
+  mix-blend-mode: normal;
+  height: 100%;
+}
+::view-transition-old(pulse-page) {
+  animation: pulse-page-out 180ms var(--ease-out-ios) both;
+}
+::view-transition-new(pulse-page) {
+  animation: pulse-page-in 220ms var(--ease-out-ios) both;
+}
+
+html:active-view-transition-type(pulse-tab-forward) {
+  --pulse-tab-dir: 1;
+}
+html:active-view-transition-type(pulse-tab-back) {
+  --pulse-tab-dir: -1;
+}
+html:active-view-transition-type(pulse-fade) {
+  --pulse-tab-dir: 0;
+}
+
+.pulse-overlay[data-state="open"] {
+  animation: pulse-overlay-in 200ms var(--ease-out-ios) both;
+}
+.pulse-overlay[data-state="closed"] {
+  animation: pulse-overlay-in 140ms ease-in reverse both;
+}
+.pulse-sheet[data-state="open"] {
+  animation: pulse-sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.pulse-sheet[data-state="closed"] {
+  animation: pulse-sheet-out 180ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+.pulse-sheet-right[data-state="open"] {
+  animation: pulse-sheet-right-in 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.pulse-dialog[data-state="open"] {
+  animation: pulse-dialog-in 220ms var(--ease-out-ios) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(pulse-page),
+  ::view-transition-new(pulse-page),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: pulse-fade 120ms ease both;
+  }
+  .pulse-sheet[data-state="open"],
+  .pulse-sheet[data-state="closed"],
+  .pulse-sheet-right[data-state="open"],
+  .pulse-dialog[data-state="open"] {
+    animation: pulse-fade 120ms ease both;
+  }
+}
+

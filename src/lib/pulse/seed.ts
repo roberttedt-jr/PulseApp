@@ -3,6 +3,9 @@ import { nid } from "@/lib/utils";
 import { CATALOG, KEY_EXERCISES, TEMPLATE_ROUTINES } from "./catalog";
 import { exerciseMeta } from "./exercise-meta";
 import { epley1rm } from "./formulas";
+import { DEMO_USER_PREFIX, isDemoUserId, isDevSeedEnabled, isDevToolsEnabled, slugKey } from "./seed-flags";
+
+export { DEMO_USER_PREFIX, isDemoUserId, isDevSeedEnabled, isDevToolsEnabled, slugKey };
 
 function chunks<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -13,6 +16,19 @@ function chunks<T>(arr: T[], size: number): T[][] {
 let setKindReady = false;
 let pulseV2Ready = false;
 let catalogReady = false;
+let pulseV3Ready = false;
+
+export async function ensurePulseV3(sql: Sql): Promise<void> {
+  if (pulseV3Ready) return;
+  await sql.query(`alter table profiles add column if not exists healthkit_notify boolean not null default false`);
+  await sql.query(`alter table workouts add column if not exists source text not null default 'manual'`);
+  await sql.query(`alter table workouts add column if not exists external_id text`);
+  await sql.query(`alter table workouts add column if not exists imported_at timestamptz`);
+  await sql.query(`alter table body_logs add column if not exists source text not null default 'manual'`);
+  await sql.query(`alter table body_logs add column if not exists external_id text`);
+  await sql.query(`alter table body_logs add column if not exists imported_at timestamptz`);
+  pulseV3Ready = true;
+}
 
 export async function ensureSetKind(sql: Sql): Promise<void> {
   if (setKindReady) return;
@@ -56,6 +72,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   if (catalogReady) return;
   await ensureSetKind(sql);
   await ensurePulseV2(sql);
+  await ensurePulseV3(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {
@@ -88,6 +105,10 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   if (pending.length === 0 && (rows[0]?.n ?? 0) > 0) catalogReady = true;
 }
 
+/**
+ * Insert library templates as THIS user's routines.
+ * Production never calls this on signup. Local-only via PULSE_SEED_DEMO=1.
+ */
 export async function seedTemplates(sql: Sql, userId: string): Promise<void> {
   const existing = await sql<{ n: number }>`select count(*)::int as n from routines where user_id = ${userId}`;
   if ((existing[0]?.n ?? 0) > 0) return;
@@ -144,6 +165,77 @@ export async function seedWeeklyPlan(sql: Sql, userId: string): Promise<void> {
       on conflict (user_id, weekday) do nothing
     `;
   }
+}
+
+export async function cloneLibraryTemplate(
+  sql: Sql,
+  userId: string,
+  key: string,
+): Promise<{ id: string; name: string }> {
+  const tpl = TEMPLATE_ROUTINES.find((t) => slugKey(t.name) === key);
+  if (!tpl) throw new Error("Plantilla no encontrada");
+  const id = nid();
+  await sql`
+    insert into routines (id, user_id, name, description, icon, color, is_template)
+    values (${id}, ${userId}, ${tpl.name}, ${tpl.description}, ${tpl.icon}, ${tpl.color}, false)
+  `;
+  if (tpl.exercises.length > 0) {
+    const placeholders = tpl.exercises
+      .map((_, i) => {
+        const o = i * 7;
+        return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},$${o + 6},$${o + 7})`;
+      })
+      .join(",");
+    const params = tpl.exercises.flatMap((ex, order) => [
+      nid(),
+      id,
+      ex.id,
+      order,
+      ex.sets,
+      ex.reps,
+      ex.rest,
+    ]);
+    await sql.query(
+      `insert into routine_exercises (id, routine_id, exercise_id, sort_order, target_sets, target_reps, rest_seconds) values ${placeholders}`,
+      params,
+    );
+  }
+  return { id, name: tpl.name };
+}
+
+export function listLibraryTemplates() {
+  return TEMPLATE_ROUTINES.map((t) => ({
+    key: slugKey(t.name),
+    name: t.name,
+    description: t.description,
+    icon: t.icon,
+    color: t.color,
+    exerciseCount: t.exercises.length,
+  }));
+}
+
+export async function seedDevDemoData(sql: Sql, userId: string): Promise<void> {
+  if (!isDevSeedEnabled()) return;
+  await seedTemplates(sql, userId);
+  await seedWeeklyPlan(sql, userId);
+  await seedDemoHistory(sql, userId);
+  await seedSocialWorld(sql, userId);
+}
+
+/** Deletes THIS user's training history. Never runs unless the caller gated it. */
+export async function purgeUserSeededTraining(sql: Sql, userId: string): Promise<void> {
+  await sql`delete from feed_likes where user_id = ${userId} or feed_id in (select id from activity_feed where user_id = ${userId})`;
+  await sql`delete from feed_comments where user_id = ${userId} or feed_id in (select id from activity_feed where user_id = ${userId})`;
+  await sql`delete from activity_feed where user_id = ${userId}`;
+  await sql`delete from follows where follower_id = ${userId} and following_id like ${DEMO_USER_PREFIX + "%"}`;
+  await sql`delete from personal_records where user_id = ${userId}`;
+  await sql`delete from achievements where user_id = ${userId}`;
+  await sql`delete from body_logs where user_id = ${userId}`;
+  await sql`delete from workout_sets where workout_id in (select id from workouts where user_id = ${userId})`;
+  await sql`delete from workouts where user_id = ${userId}`;
+  await sql`delete from weekly_plan where user_id = ${userId}`;
+  await sql`delete from routine_exercises where routine_id in (select id from routines where user_id = ${userId} and is_template = true)`;
+  await sql`delete from routines where user_id = ${userId} and is_template = true`;
 }
 
 const DEMO_DAYS = [1, 2, 4, 5, 7, 8, 10, 11, 13, 15, 16, 18];

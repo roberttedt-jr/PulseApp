@@ -1,16 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Download, Info, KeyRound, Trophy, Users } from "lucide-react";
+import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Trophy, Users } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
-import { Avatar } from "@/components/ui/avatar";
+import { AppleHealthRow } from "@/components/pulse/apple-health";
+import { ProfileAvatar } from "@/components/pulse/avatar-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { deleteAccountData, exportData, getBootstrap, updateProfile } from "@/lib/pulse/fns";
+import { deleteAccountData, devToolsAvailable, exportData, getBootstrap, purgeMySeededData, updateProfile } from "@/lib/pulse/fns";
 import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
@@ -22,11 +23,13 @@ function SettingsPage() {
   const user = useCurrentUser();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
+  const tools = useQuery({ queryKey: ["dev-tools"], queryFn: () => devToolsAvailable() });
   const p = data?.profile;
   const email = user?.primaryEmail ?? "";
   const [recovery, setRecovery] = useState(() => (email ? readRecoveryCode(email) : null));
   const [minting, setMinting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const display = p?.displayName ?? user?.displayName ?? "Atleta";
 
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data: patch }),
@@ -37,26 +40,28 @@ function SettingsPage() {
     },
   });
 
-  const bmiValue = p?.weightKg && p.heightCm ? bmi(p.weightKg, p.heightCm) : 0;
+  const hasBody = Boolean(p?.weightKg && p.heightCm);
+  const bmiValue = hasBody ? bmi(p!.weightKg!, p!.heightCm!) : 0;
   const age = p?.birthDate ? ageFromBirthDate(p.birthDate) : 0;
   const kcal =
-    p?.weightKg && p.heightCm && age && p.sex
-      ? recommendedCalories(mifflinStJeor({ weightKg: p.weightKg, heightCm: p.heightCm, ageYears: age, sex: p.sex }), p.goal)
+    hasBody && age && p?.sex
+      ? recommendedCalories(mifflinStJeor({ weightKg: p.weightKg!, heightCm: p.heightCm!, ageYears: age, sex: p.sex }), p.goal)
       : 0;
 
   return (
     <AppPage title="Perfil">
       <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
-        <div className="flex items-center gap-3 rounded-3xl bg-card p-4 hairline">
-          <Avatar src={p?.image ?? user?.profileImageUrl} fallback={p?.displayName ?? user?.displayName ?? "P"} className="size-14" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{p?.displayName ?? user?.displayName ?? "Atleta"}</p>
-            <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
-          </div>
-          <button
+        <div className="rounded-3xl bg-card p-5 text-center hairline">
+          <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
+          <p className="mt-3 font-semibold">{display}</p>
+          <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
+          <Button
             type="button"
-            className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium disabled:opacity-60"
-            disabled={signingOut}
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            loading={signingOut}
+            loadingText="Cerrando…"
             onClick={() => {
               setSigningOut(true);
               void signOut("/").catch(() => {
@@ -65,19 +70,29 @@ function SettingsPage() {
               });
             }}
           >
-            {signingOut ? "Cerrando…" : "Cerrar sesión"}
-          </button>
+            Cerrar sesión
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-3xl bg-card p-4 hairline">
             <p className="text-xs text-muted-foreground">IMC</p>
-            <p className="text-xl font-semibold tabular">{bmiValue ? bmiValue.toFixed(1) : "—"}</p>
-            <p className="text-xs text-muted-foreground">{bmiValue ? bmiLabel(bmiValue) : ""}</p>
+            {hasBody ? (
+              <>
+                <p className="text-xl font-semibold tabular">{bmiValue.toFixed(1)}</p>
+                <p className="text-xs text-muted-foreground">{bmiLabel(bmiValue)}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">Añade peso y altura para calcularlo.</p>
+            )}
           </div>
           <div className="rounded-3xl bg-card p-4 hairline">
             <p className="text-xs text-muted-foreground">kcal / día</p>
-            <p className="text-xl font-semibold tabular">{kcal || "—"}</p>
+            {kcal ? (
+              <p className="text-xl font-semibold tabular">{kcal}</p>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">Completa el perfil para estimarlo.</p>
+            )}
           </div>
         </div>
 
@@ -91,15 +106,19 @@ function SettingsPage() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label>Peso kg</Label>
+              <Label>Peso {p?.units === "imperial" ? "lb" : "kg"}</Label>
               <Input
                 defaultValue={p?.weightKg ?? ""}
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*[.,]?[0-9]*"
                 autoComplete="off"
+                placeholder="Añadir peso"
                 className="text-base"
-                onBlur={(e) => save.mutate({ weightKg: Number(e.target.value.replace(",", ".")) })}
+                onBlur={(e) => {
+                  const n = Number(e.target.value.replace(",", "."));
+                  if (n > 0) save.mutate({ weightKg: n });
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -110,8 +129,12 @@ function SettingsPage() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="off"
+                placeholder="Completar perfil"
                 className="text-base"
-                onBlur={(e) => save.mutate({ heightCm: Number(e.target.value) })}
+                onBlur={(e) => {
+                  const n = Number(e.target.value);
+                  if (n > 0) save.mutate({ heightCm: n });
+                }}
               />
             </div>
           </div>
@@ -133,6 +156,8 @@ function SettingsPage() {
             type="button"
             variant="secondary"
             disabled={minting || !email}
+            loading={minting}
+            loadingText="Generando…"
             onClick={() => {
               setMinting(true);
               void issueRecoveryCode()
@@ -147,7 +172,7 @@ function SettingsPage() {
                 .finally(() => setMinting(false));
             }}
           >
-            {minting ? "Generando…" : recovery ? "Generar otro código" : "Generar código"}
+            {recovery ? "Generar otro código" : "Generar código"}
           </Button>
         </section>
 
@@ -202,6 +227,13 @@ function SettingsPage() {
           />
         </section>
 
+        <section className="overflow-hidden rounded-3xl bg-card hairline">
+          <p className="flex items-center gap-2 px-4 pt-4 pb-2 text-sm font-medium">
+            <HeartPulse className="size-4 text-primary" /> Integraciones
+          </p>
+          <AppleHealthRow notify={p?.healthkitNotify ?? false} />
+        </section>
+
         <nav className="overflow-hidden rounded-3xl bg-card hairline">
           <Go to="/plan" icon={Calendar} label="Plan semanal" />
           <Go to="/stats" icon={Trophy} label="Estadísticas y logros" />
@@ -232,6 +264,19 @@ function SettingsPage() {
           >
             <Download /> Exportar JSON + CSV
           </Button>
+          {tools.data?.enabled && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!confirm("Esto borra el historial, PRs, peso y plantillas automáticas de ESTA cuenta. No toca a otros usuarios. ¿Continuar?")) return;
+                await purgeMySeededData();
+                await qc.invalidateQueries();
+                toast.success("Datos de prueba eliminados");
+              }}
+            >
+              Limpiar datos de prueba
+            </Button>
+          )}
           <Button
             variant="destructive"
             onClick={async () => {
@@ -249,7 +294,7 @@ function SettingsPage() {
           <p className="flex items-center gap-2 font-medium text-foreground">
             <Info className="size-4" /> About Pulse
           </p>
-          <p className="mt-2">Versión 1.0 · Tracker de entrenamientos con el pulso de iOS.</p>
+          <p className="mt-2">Versión 1.1 · Tracker de entrenamientos con el pulso de iOS.</p>
         </div>
       </div>
     </AppPage>
@@ -305,11 +350,10 @@ function RowSelect({
 
 function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats" | "/feed"; icon: typeof Trophy; label: string }) {
   return (
-    <Link to={to} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0">
+    <Link to={to} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0 pressable">
       <Icon className="size-4 text-primary" />
       <span className="flex-1 text-sm">{label}</span>
       <ChevronRight className="size-4 text-muted-foreground" />
     </Link>
   );
 }
-

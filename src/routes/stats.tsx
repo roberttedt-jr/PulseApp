@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Award, Calendar, Clock, Dumbbell, Flame, Trophy } from "lucide-react";
 import { AppPage } from "@/components/auth-gate";
+import { EmptyState } from "@/components/pulse/empty-state";
 import { getStats } from "@/lib/pulse/fns";
 import { formatDuration, formatKg } from "@/lib/utils";
 
@@ -15,14 +16,22 @@ function StatsPage() {
         <div className="grid grid-cols-2 gap-3">
           <Tile icon={Calendar} k="Entrenamientos" v={String(data?.workouts ?? 0)} />
           <Tile icon={Dumbbell} k="Volumen total" v={formatKg(data?.volume ?? 0)} />
-          <Tile icon={Clock} k="Tiempo medio" v={formatDuration(data?.avgDuration ?? 0)} />
+          <Tile icon={Clock} k="Tiempo medio" v={(data?.workouts ?? 0) > 0 ? formatDuration(data?.avgDuration ?? 0) : "0 min"} />
           <Tile icon={Flame} k="Racha actual" v={String(data?.streak ?? 0)} />
         </div>
+        {(data?.workouts ?? 0) === 0 && (
+          <EmptyState
+            icon={Trophy}
+            title="Completa algunos entrenamientos para desbloquear tus estadísticas."
+            hint="Volumen, racha y logros se calculan solo con sesiones guardadas."
+            className="py-6"
+          />
+        )}
         <div className="rounded-3xl bg-card p-4 text-sm hairline">
-          <Row k="Ejercicio más trabajado" v={data?.topExercise ?? "—"} />
-          <Row k="Grupo muscular" v={data?.topMuscle ?? "—"} />
-          <Row k="Día favorito" v={data?.favoriteDay ?? "—"} />
-          <Row k="Hora favorita" v={data?.favoriteHour ?? "—"} />
+          <Row k="Ejercicio más trabajado" v={(data?.workouts ?? 0) > 0 ? (data?.topExercise ?? "—") : "Aún no hay datos"} />
+          <Row k="Grupo muscular" v={(data?.workouts ?? 0) > 0 ? (data?.topMuscle ?? "—") : "Aún no hay datos"} />
+          <Row k="Día favorito" v={(data?.workouts ?? 0) > 0 ? (data?.favoriteDay ?? "—") : "Aún no hay datos"} />
+          <Row k="Hora favorita" v={(data?.workouts ?? 0) > 0 ? (data?.favoriteHour ?? "—") : "Aún no hay datos"} />
           <Row k="Series totales" v={String(data?.sets ?? 0)} />
         </div>
         <h2 className="pt-2 text-lg font-semibold">Logros</h2>

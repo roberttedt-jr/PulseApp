@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -71,11 +71,13 @@ function FeedPage() {
         </form>
 
         <section>
+          {(data?.people ?? []).length > 0 && (
+            <>
           <h2 className="mb-2 text-sm font-medium text-muted-foreground">Atletas</h2>
           <HScroll gap="gap-2">
             {(data?.people ?? []).map((p) => (
               <div key={p.userId} className="w-36 rounded-3xl bg-card p-3 hairline">
-                <Avatar fallback={p.name} />
+                <Avatar src={p.image} fallback={p.name} />
                 <p className="mt-2 truncate text-sm font-medium">{p.name}</p>
                 <Button
                   size="sm"
@@ -88,13 +90,20 @@ function FeedPage() {
               </div>
             ))}
           </HScroll>
+            </>
+          )}
         </section>
         <section className="space-y-2">
           {(data?.items ?? []).length === 0 && (
             <EmptyState
               icon={Users}
-              title="Sin actividad todavía"
-              hint="Sigue a alguien o comparte un entrenamiento con el perfil público."
+              title="Sigue a atletas o comparte tu primer entrenamiento."
+              hint="El feed solo muestra actividad real tuya o de gente a la que sigues. No hay atletas de demostración."
+              action={
+                <Button asChild>
+                  <Link to="/routines">Registrar entrenamiento</Link>
+                </Button>
+              }
             />
           )}
           {(data?.items ?? []).map((i) => (

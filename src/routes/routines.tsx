@@ -14,18 +14,28 @@ import {
   Target,
   Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { LoadingBlock, RoutineCard } from "@/components/pulse/cards";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { HScroll } from "@/components/pulse/h-scroll";
+import { TemplatePicker } from "@/components/pulse/template-picker";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { archiveRoutine, duplicateRoutine, listRoutines, shareRoutine, startWorkout } from "@/lib/pulse/fns";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-export const Route = createFileRoute("/routines")({ component: RoutinesPage });
+type Search = { templates?: boolean };
+
+export const Route = createFileRoute("/routines")({
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    templates: s.templates === true || s.templates === "1" || s.templates === "true",
+  }),
+  component: RoutinesPage,
+});
 
 const ICONS: Record<string, typeof Dumbbell> = {
   dumbbell: Dumbbell,
@@ -39,9 +49,15 @@ const ICONS: Record<string, typeof Dumbbell> = {
 };
 
 function RoutinesPage() {
+  const { templates } = Route.useSearch();
   const { data, isPending } = useQuery({ queryKey: ["routines"], queryFn: () => listRoutines({ data: {} }) });
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [picker, setPicker] = useState(false);
+
+  useEffect(() => {
+    if (templates) setPicker(true);
+  }, [templates]);
 
   async function start(id?: string) {
     const res = await startWorkout({ data: { routineId: id } });
@@ -86,12 +102,17 @@ function RoutinesPage() {
         {!isPending && (data ?? []).length === 0 && (
           <EmptyState
             icon={Dumbbell}
-            title="Crea tu primera rutina"
-            hint="Push, Pull, Legs o un Full Body. Tú eliges el ritmo."
+            title="Aún no tienes rutinas."
+            hint="Crea la tuya o duplica una plantilla PPL, Upper/Lower o Full Body. No se guardan hasta que las elijas."
             action={
-              <Button onClick={() => navigate({ to: "/routines/$routineId", params: { routineId: "new" } })}>
-                Nueva rutina
-              </Button>
+              <>
+                <Button onClick={() => navigate({ to: "/routines/$routineId", params: { routineId: "new" } })}>
+                  Crear rutina
+                </Button>
+                <Button variant="secondary" onClick={() => setPicker(true)}>
+                  Ver plantillas
+                </Button>
+              </>
             }
           />
         )}
@@ -120,25 +141,22 @@ function RoutinesPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem asChild>
-                      <Link to="/routines/$routineId" params={{ routineId: r.id }}>
-                        Editar
-                      </Link>
+                    <DropdownMenuItem onClick={() => navigate({ to: "/routines/$routineId", params: { routineId: r.id } })}>
+                      Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={async () => {
-                        const { id } = await duplicateRoutine({ data: { id: r.id } });
-                        await qc.invalidateQueries({ queryKey: ["routines"] });
+                        await duplicateRoutine({ data: { id: r.id } });
+                        void qc.invalidateQueries({ queryKey: ["routines"] });
                         toast.success("Rutina duplicada");
-                        void navigate({ to: "/routines/$routineId", params: { routineId: id } });
                       }}
                     >
                       <Copy className="size-4" /> Duplicar
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={async () => {
-                        const { slug } = await shareRoutine({ data: { id: r.id } });
-                        const url = `${window.location.origin}/share/${slug}`;
+                        const res = await shareRoutine({ data: { id: r.id } });
+                        const url = `${window.location.origin}/share/${res.slug}`;
                         await navigator.clipboard.writeText(url);
                         toast.success("Enlace copiado");
                       }}
@@ -148,7 +166,7 @@ function RoutinesPage() {
                     <DropdownMenuItem
                       onClick={async () => {
                         await archiveRoutine({ data: { id: r.id, archived: true } });
-                        await qc.invalidateQueries({ queryKey: ["routines"] });
+                        void qc.invalidateQueries({ queryKey: ["routines"] });
                       }}
                     >
                       Archivar
@@ -159,10 +177,23 @@ function RoutinesPage() {
             />
           );
         })}
-        <Link to="/exercises" className="block pt-2 text-center text-sm text-accent">
-          Biblioteca de ejercicios
-        </Link>
+
+        {(data ?? []).length > 0 && (
+          <Button variant="secondary" className="w-full" onClick={() => setPicker(true)}>
+            Ver plantillas
+          </Button>
+        )}
       </div>
+
+      <Sheet open={picker} onOpenChange={setPicker}>
+        <SheetContent className="px-4 pt-4 pb-8">
+          <SheetTitle className="text-lg font-semibold">Plantillas</SheetTitle>
+          <SheetDescription className="mb-4 text-sm text-muted-foreground">
+            Se copian a tus rutinas solo cuando las eliges.
+          </SheetDescription>
+          <TemplatePicker onCloned={() => setPicker(false)} />
+        </SheetContent>
+      </Sheet>
     </AppPage>
   );
 }

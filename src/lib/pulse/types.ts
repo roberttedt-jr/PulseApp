@@ -33,9 +33,10 @@ export const EQUIPMENT = [
 export type Equipment = (typeof EQUIPMENT)[number];
 
 export const GOALS = [
-  { id: "gain", label: "Ganar músculo", hint: "Hipertrofia y fuerza" },
+  { id: "gain", label: "Ganar músculo", hint: "Hipertrofia y volumen" },
   { id: "lose", label: "Perder grasa", hint: "Déficit y consistencia" },
   { id: "maintain", label: "Mantener", hint: "Salud y rendimiento" },
+  { id: "strength", label: "Mejorar fuerza", hint: "Cargas y progresión" },
 ] as const;
 
 export type GoalId = (typeof GOALS)[number]["id"];
@@ -60,6 +61,7 @@ export type Profile = {
   onboardingDone: boolean;
   weeklyGoal: number;
   reminderHour: number | null;
+  healthkitNotify: boolean;
 };
 
 export type Exercise = {

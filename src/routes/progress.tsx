@@ -119,6 +119,15 @@ function ProgressPage() {
         </ChartCard>
 
         <ChartCard title="Balance muscular" className="overflow-visible">
+          {(loads.length === 0 && !load.isPending) ? (
+            <EmptyState
+              icon={Activity}
+              title="Completa tu primer entrenamiento para ver tu balance."
+              hint="El mapa muscular se llena con series reales, no con estimaciones."
+              className="py-8"
+            />
+          ) : (
+          <>
           <div className="mb-4 flex gap-1 rounded-full bg-muted p-1">
             {(
               [
@@ -158,6 +167,8 @@ function ProgressPage() {
               void navigate({ to: "/exercises", search: { muscle: m } });
             }}
           />
+          </>
+          )}
         </ChartCard>
 
         <ChartCard
@@ -171,8 +182,19 @@ function ProgressPage() {
             ) : null
           }
         >
-          {cmpText && <p className="mb-3 text-sm text-muted-foreground">{cmpText}</p>}
-          <VolumeBars data={data?.volumeMonth ?? []} />
+          {(data?.volumeMonth?.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="Completa algunos entrenamientos para desbloquear tus estadísticas."
+              hint="El gráfico de volumen aparece con sesiones reales."
+              className="py-8"
+            />
+          ) : (
+            <>
+              {cmpText && <p className="mb-3 text-sm text-muted-foreground">{cmpText}</p>}
+              <VolumeBars data={data?.volumeMonth ?? []} />
+            </>
+          )}
         </ChartCard>
 
         <ConsistencyHeatmap />

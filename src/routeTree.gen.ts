@@ -21,6 +21,7 @@ import { Route as RoutinesRouteImport } from './routes/routines'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TrainRouteImport } from './routes/train'
+import { Route as ApiAuthHealthRouteImport } from './routes/api/auth-health'
 import { Route as ExercisesExerciseIdRouteImport } from './routes/exercises/$exerciseId'
 import { Route as HistoryWorkoutIdRouteImport } from './routes/history/$workoutId'
 import { Route as RoutinesRoutineIdRouteImport } from './routes/routines/$routineId'
@@ -87,6 +88,11 @@ const TrainRoute = TrainRouteImport.update({
   path: '/train',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthHealthRoute = ApiAuthHealthRouteImport.update({
+  id: '/api/auth-health',
+  path: '/api/auth-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExercisesExerciseIdRoute = ExercisesExerciseIdRouteImport.update({
   id: '/$exerciseId',
   path: '/$exerciseId',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stats'
     | '/train'
+    | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
     | '/routines/$routineId'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stats'
     | '/train'
+    | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
     | '/routines/$routineId'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stats'
     | '/train'
+    | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
     | '/routines/$routineId'
@@ -244,6 +256,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   StatsRoute: typeof StatsRoute
   TrainRoute: typeof TrainRoute
+  ApiAuthHealthRoute: typeof ApiAuthHealthRoute
   ShareSlugRoute: typeof ShareSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrainRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth-health': {
+      id: '/api/auth-health'
+      path: '/api/auth-health'
+      fullPath: '/api/auth-health'
+      preLoaderRoute: typeof ApiAuthHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exercises/$exerciseId': {
       id: '/exercises/$exerciseId'
       path: '/$exerciseId'
@@ -420,6 +440,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   StatsRoute: StatsRoute,
   TrainRoute: TrainRoute,
+  ApiAuthHealthRoute: ApiAuthHealthRoute,
   ShareSlugRoute: ShareSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

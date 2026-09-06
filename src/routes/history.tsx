@@ -1,13 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays, Trophy } from "lucide-react";
+import { CalendarDays, Search, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { LoadingBlock } from "@/components/pulse/cards";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { Button } from "@/components/ui/button";
-import { listWorkouts } from "@/lib/pulse/fns";
+import { Input } from "@/components/ui/input";
+import { getBootstrap, listWorkouts } from "@/lib/pulse/fns";
+import { displayMuscle } from "@/lib/pulse/exercise-meta";
 import { cn, formatDuration, formatKg } from "@/lib/utils";
 
 type Search = { muscle?: string };
@@ -18,6 +21,9 @@ export const Route = createFileRoute("/history")({
   }),
   component: HistoryPage,
 });
+
+type Range = "all" | "week" | "month";
+type Kind = "all" | "routine" | "free";
 
 function weekDays(items: { startedAt: string }[]) {
   return Array.from({ length: 7 }, (_, i) => {
@@ -31,14 +37,32 @@ function weekDays(items: { startedAt: string }[]) {
 }
 
 function HistoryPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname.startsWith("/history/") && pathname !== "/history/") {
+    return <Outlet />;
+  }
+  return <HistoryList />;
+}
+
+function HistoryList() {
   const { muscle } = Route.useSearch();
+  const [range, setRange] = useState<Range>("all");
+  const [kind, setKind] = useState<Kind>("all");
+  const [q, setQ] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setQDebounced(q), 250);
+    return () => window.clearTimeout(t);
+  }, [q]);
+  const profile = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
+  const units = profile.data?.profile.units ?? "metric";
   const { data, isPending } = useQuery({
-    queryKey: ["workouts", muscle],
-    queryFn: () => listWorkouts({ data: { muscle } }),
+    queryKey: ["workouts", muscle, range, kind, qDebounced],
+    queryFn: () => listWorkouts({ data: { muscle, range, kind, q: qDebounced.trim() || undefined } }),
   });
   const items = data ?? [];
+  const week = useMemo(() => weekDays(items), [items]);
   let lastMonth = "";
-  const week = weekDays(items);
 
   return (
     <AppPage title="Historial">
@@ -60,9 +84,68 @@ function HistoryPage() {
             </div>
           ))}
         </div>
+
+        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1" role="tablist" aria-label="Filtro de fecha">
+          {(
+            [
+              ["all", "Todos"],
+              ["week", "Esta semana"],
+              ["month", "Este mes"],
+            ] as const
+          ).map(([k, lab]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={range === k}
+              onClick={() => setRange(k)}
+              className={cn(
+                "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
+                range === k ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hairline",
+              )}
+            >
+              {lab}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1" role="tablist" aria-label="Tipo">
+          {(
+            [
+              ["all", "Todos"],
+              ["routine", "Rutina"],
+              ["free", "Entrenamiento libre"],
+            ] as const
+          ).map(([k, lab]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={kind === k}
+              onClick={() => setKind(k)}
+              className={cn(
+                "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
+                kind === k ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hairline",
+              )}
+            >
+              {lab}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar rutina o ejercicio"
+            className="h-11 rounded-2xl pl-9"
+            aria-label="Buscar en el historial"
+          />
+        </div>
+
         {muscle && (
           <p className="text-sm text-muted-foreground">
-            Filtrado: {muscle}{" "}
+            Filtrado: {displayMuscle(muscle)}{" "}
             <Link to="/history" className="text-accent">
               Quitar
             </Link>
@@ -105,15 +188,20 @@ function HistoryPage() {
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 truncate font-medium">
                     {w.title}
-                    {w.hasPr ? <Trophy className="size-3.5 shrink-0 text-warning" aria-label="PR" /> : null}
+                    {w.hasPr ? <Trophy className="size-3.5 shrink-0 text-warning" aria-label="Récord personal" /> : null}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {formatDuration(w.durationSeconds ?? 0)}
-                    {w.lifts ? ` · ${w.lifts}` : ""}
+                    {format(d, "HH:mm")} · {formatDuration(w.durationSeconds ?? 0)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {w.exerciseCount} {w.exerciseCount === 1 ? "ejercicio" : "ejercicios"} · {w.setCount} series
+                    {w.muscles.length > 0 ? ` · ${w.muscles.slice(0, 3).map(displayMuscle).join(" · ")}` : ""}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="tabular text-[15px] font-semibold">{formatKg(w.volume)}</p>
+                  <p className="tabular text-[15px] font-semibold">
+                    {w.volume > 0 ? formatKg(w.volume, units) : "—"}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">{w.setCount} series</p>
                 </div>
               </Link>

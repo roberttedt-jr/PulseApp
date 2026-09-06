@@ -85,3 +85,28 @@ export function normalizeMuscle(muscle: string): MuscleGroup | string {
   if (muscle === "Abdomen") return "Core";
   return muscle;
 }
+
+/** Names shown in the UI. Storage keeps catalog keys (Femorales, Pantorrillas). */
+export const MUSCLE_DISPLAY: Record<string, string> = {
+  Femorales: "Isquiotibiales",
+  Pantorrillas: "Gemelos",
+  Abdomen: "Core",
+};
+
+export const MUSCLE_CARD_ORDER = [
+  "Pecho",
+  "Espalda",
+  "Hombros",
+  "Bíceps",
+  "Tríceps",
+  "Cuádriceps",
+  "Femorales",
+  "Glúteos",
+  "Pantorrillas",
+  "Core",
+] as const;
+
+export function displayMuscle(muscle: string): string {
+  const key = String(normalizeMuscle(muscle));
+  return MUSCLE_DISPLAY[key] ?? key;
+}

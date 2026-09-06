@@ -17,6 +17,25 @@ let setKindReady = false;
 let pulseV2Ready = false;
 let catalogReady = false;
 let pulseV3Ready = false;
+let pulseV4Ready = false;
+
+export async function ensurePulseV4(sql: Sql): Promise<void> {
+  if (pulseV4Ready) return;
+  await sql.query(`alter table profiles add column if not exists show_rpe boolean not null default true`);
+  await sql.query(`alter table personal_records add column if not exists kind text not null default 'one_rm'`);
+  await sql.query(`alter table personal_records add column if not exists volume double precision`);
+  await sql.query(`
+    create table if not exists workout_block_notes (
+      workout_id text not null references workouts(id) on delete cascade,
+      exercise_id text not null references exercises(id) on delete cascade,
+      notes text,
+      primary key (workout_id, exercise_id)
+    )`);
+  await sql.query(
+    `create index if not exists personal_records_user_ex_kind_idx on personal_records (user_id, exercise_id, kind)`,
+  );
+  pulseV4Ready = true;
+}
 
 export async function ensurePulseV3(sql: Sql): Promise<void> {
   if (pulseV3Ready) return;
@@ -73,6 +92,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensureSetKind(sql);
   await ensurePulseV2(sql);
   await ensurePulseV3(sql);
+  await ensurePulseV4(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

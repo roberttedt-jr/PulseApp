@@ -7,7 +7,8 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
 import type { Profile } from "./types";
 
 type AnyRow = Record<string, any>;
@@ -47,12 +48,14 @@ function mapProfile(r: AnyRow): Profile {
     weeklyGoal: num(r.weekly_goal) || 4,
     reminderHour: numNull(r.reminder_hour),
     healthkitNotify: bool(r.healthkit_notify),
+    showRpe: r.show_rpe == null ? true : bool(r.show_rpe),
   };
 }
 async function ensureProfile(sql: Sql, userId: string) {
   await ensureCatalog(sql);
   await ensurePulseV2(sql);
   await ensurePulseV3(sql);
+  await ensurePulseV4(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
@@ -341,6 +344,7 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
         weekly_goal = coalesce(${data.weeklyGoal ?? null}, weekly_goal),
         reminder_hour = coalesce(${data.reminderHour ?? null}, reminder_hour),
         healthkit_notify = coalesce(${data.healthkitNotify ?? null}, healthkit_notify),
+        show_rpe = coalesce(${data.showRpe ?? null}, show_rpe),
         updated_at = now()
       where user_id = ${context.userId}
     `;
@@ -436,7 +440,7 @@ export const getExerciseDetail = createServerFn({ method: "GET" }).middleware([a
       limit 10
     `;
   const prs = await sql<AnyRow>`
-      select one_rep_max, weight, reps, recorded_at from personal_records
+      select one_rep_max, weight, reps, recorded_at, kind, volume from personal_records
       where user_id = ${context.userId} and exercise_id = ${data.id}
       order by recorded_at desc
     `;
@@ -464,9 +468,11 @@ export const getExerciseDetail = createServerFn({ method: "GET" }).middleware([a
       volume: num(h.volume)
     })),
     prs: prs.map((p) => ({
+      kind: String(p.kind ?? "one_rm"),
       oneRepMax: num(p.one_rep_max),
       weight: num(p.weight),
       reps: num(p.reps),
+      volume: num(p.volume),
       recordedAt: reqIso(p.recorded_at)
     }))
   };
@@ -615,19 +621,75 @@ function mapKind(v: unknown): "work" | "warmup" | "drop" | "fail" {
   if (v === "warmup" || v === "drop" || v === "fail") return v;
   return "work";
 }
-async function lastSetsFor(sql: Sql, userId: string, exerciseId: string) {
+async function lastSessionFor(sql: Sql, userId: string, exerciseId: string, excludeWorkoutId?: string | null) {
   const last = await sql<AnyRow>`
-    select w.id as workout_id from workouts w
+    select w.id as workout_id, w.started_at from workouts w
     join workout_sets s on s.workout_id = w.id
     where w.user_id = ${userId} and w.status = 'completed' and s.exercise_id = ${exerciseId}
+      and (${excludeWorkoutId ?? null}::text is null or w.id <> ${excludeWorkoutId ?? null})
     order by w.started_at desc limit 1
   `;
-  if (!last[0]) return [];
-  return sql<AnyRow>`
+  if (!last[0]) {
+    return { sets: [] as AnyRow[], startedAt: null as string | null, volume: 0, setCount: 0, bestWeight: 0, bestReps: 0 };
+  }
+  const sets = await sql<AnyRow>`
     select id, exercise_id, set_order, reps, weight, rpe, completed, notes, set_kind
     from workout_sets where workout_id = ${last[0].workout_id} and exercise_id = ${exerciseId}
     order by set_order
   `;
+  const work = sets.filter((s) => mapKind(s.set_kind) !== "warmup" && bool(s.completed));
+  const volume = work.reduce((sum, s) => sum + num(s.weight) * num(s.reps), 0);
+  let bestWeight = 0;
+  let bestReps = 0;
+  for (const s of work) {
+    const w = num(s.weight);
+    const r = num(s.reps);
+    if (w > bestWeight + 1e-9 || (Math.abs(w - bestWeight) < 1e-9 && r > bestReps)) {
+      bestWeight = w;
+      bestReps = r;
+    }
+  }
+  if (bestWeight === 0 && bestReps === 0 && work[0]) {
+    bestReps = num(work[0].reps);
+  }
+  return {
+    sets,
+    startedAt: toIso(last[0].started_at),
+    volume,
+    setCount: work.length,
+    bestWeight,
+    bestReps,
+  };
+}
+async function lastSetsFor(sql: Sql, userId: string, exerciseId: string, excludeWorkoutId?: string | null) {
+  return (await lastSessionFor(sql, userId, exerciseId, excludeWorkoutId)).sets;
+}
+async function recomputePrs(sql: Sql, userId: string) {
+  await ensurePulseV4(sql);
+  const rows = await sql<AnyRow>`
+    select s.exercise_id, s.weight, s.reps, s.set_kind, s.workout_id, w.started_at
+    from workout_sets s
+    join workouts w on w.id = s.workout_id
+    where w.user_id = ${userId} and w.status = 'completed' and s.completed = true
+  `;
+  const prs = computeCurrentPrs(
+    rows.map((r) => ({
+      exerciseId: String(r.exercise_id),
+      weight: num(r.weight),
+      reps: num(r.reps),
+      kind: r.set_kind ? String(r.set_kind) : "work",
+      workoutId: String(r.workout_id),
+      startedAt: reqIso(r.started_at),
+    })),
+  );
+  await sql<AnyRow>`delete from personal_records where user_id = ${userId}`;
+  for (const p of prs) {
+    await sql<AnyRow>`
+      insert into personal_records (id, user_id, exercise_id, one_rep_max, weight, reps, kind, volume, recorded_at)
+      values (${nid()}, ${userId}, ${p.exerciseId}, ${p.oneRepMax}, ${p.weight}, ${p.reps}, ${p.kind}, ${p.volume}, ${p.recordedAt})
+    `;
+  }
+  return prs;
 }
 export const startWorkout = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
   const sql = await getSql();
@@ -686,6 +748,7 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
   const sql = await getSql();
   await ensureSetKind(sql);
   await ensurePulseV2(sql);
+  await ensurePulseV4(sql);
   const w = await sql<AnyRow>`select * from workouts where id = ${data.id} and user_id = ${context.userId}`;
   if (!w[0]) return null;
   const sets = await sql<AnyRow>`
@@ -700,20 +763,75 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
     arr.push(s);
     grouped.set(String(s.exercise_id), arr);
   }
-  const restRows = data ? await sql<AnyRow>`
+  const restRows = w[0].routine_id ? await sql<AnyRow>`
           select re.exercise_id, re.rest_seconds from routine_exercises re
           where re.routine_id = ${w[0].routine_id}
         ` : [];
   const restMap = new Map(restRows.map((r) => [String(r.exercise_id), num(r.rest_seconds)]));
+  const noteRows = await sql<AnyRow>`
+      select exercise_id, notes from workout_block_notes where workout_id = ${data.id}
+    `;
+  const noteMap = new Map(noteRows.map((r) => [String(r.exercise_id), r.notes ? String(r.notes) : ""]));
+  const prRows = await sql<AnyRow>`
+      select exercise_id, kind, one_rep_max, weight, reps, volume, recorded_at
+      from personal_records where user_id = ${context.userId}
+    `;
+  const prByEx = new Map<string, AnyRow[]>();
+  for (const p of prRows) {
+    const k = String(p.exercise_id);
+    const arr = prByEx.get(k) ?? [];
+    arr.push(p);
+    prByEx.set(k, arr);
+  }
+  const workoutDay = reqIso(w[0].started_at).slice(0, 10);
   const blocks = [];
+  const muscles: string[] = [];
   for (const [exerciseId, arr] of grouped) {
     const head = arr[0];
-    const best = arr.filter((s: AnyRow) => bool(s.completed)).reduce((m: number, s: AnyRow) => Math.max(m, epley1rm(num(s.weight), num(s.reps))), 0);
-    const pr = await sql<AnyRow>`
-        select one_rep_max from personal_records
-        where user_id = ${context.userId} and exercise_id = ${exerciseId}
-        order by one_rep_max desc limit 1
-      `;
+    const done = arr.filter((s: AnyRow) => bool(s.completed) && mapKind(s.set_kind) !== "warmup");
+    const best = done.reduce((m: number, s: AnyRow) => Math.max(m, epley1rm(num(s.weight), num(s.reps))), 0);
+    const exVol = done.reduce((m: number, s: AnyRow) => m + num(s.weight) * num(s.reps), 0);
+    let bestW = 0;
+    let bestR = 0;
+    for (const s of done) {
+      if (num(s.weight) > bestW || (num(s.weight) === bestW && num(s.reps) > bestR)) {
+        bestW = num(s.weight);
+        bestR = num(s.reps);
+      }
+    }
+    const prs = prByEx.get(exerciseId) ?? [];
+    const oneRm = prs.find((p) => p.kind === "one_rm") ?? prs[0];
+    const last = await lastSessionFor(sql, context.userId, exerciseId, String(w[0].id));
+    const lastBest = { weight: last.bestWeight, reps: last.bestReps, volume: last.volume };
+    const cmp = compareToLast({ weight: bestW, reps: bestR, volume: exVol }, last.setCount > 0 ? lastBest : null);
+    const muscle = String(normalizeMuscle(head.muscle));
+    if (!muscles.includes(muscle)) muscles.push(muscle);
+    const mapSet = (s: AnyRow) => {
+      const kind = mapKind(s.set_kind);
+      const isPr =
+        kind !== "warmup" &&
+        bool(s.completed) &&
+        prs.some((p) => {
+          const day = reqIso(p.recorded_at).slice(0, 10);
+          if (day !== workoutDay) return false;
+          if (p.kind === "max_weight" && Math.abs(num(s.weight) - num(p.weight)) < 0.06 && num(s.reps) === num(p.reps)) return true;
+          if (p.kind === "max_reps" && num(s.reps) === num(p.reps) && Math.abs(num(s.weight) - num(p.weight)) < 0.06) return true;
+          if (p.kind === "one_rm" && Math.abs(epley1rm(num(s.weight), num(s.reps)) - num(p.one_rep_max)) < 0.51) return true;
+          return false;
+        });
+      return {
+        id: String(s.id),
+        exerciseId: String(s.exercise_id),
+        setOrder: num(s.set_order),
+        reps: num(s.reps),
+        weight: num(s.weight),
+        rpe: numNull(s.rpe),
+        completed: bool(s.completed),
+        notes: s.notes ?? null,
+        kind,
+        isPr,
+      };
+    };
     blocks.push({
       exerciseId,
       name: head.name,
@@ -722,33 +840,34 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
       gifUrl: head.gif_url,
       type: head.type,
       instructions: head.instructions,
+      notes: noteMap.get(exerciseId) || null,
       restSeconds: restMap.get(exerciseId) ?? 90,
       targetSets: arr.length,
       targetReps: "8-12",
       estimated1rm: best || null,
-      pr: pr[0] ? num(pr[0].one_rep_max) : null,
-      lastSets: (await lastSetsFor(sql, context.userId, exerciseId)).map((s: AnyRow) => ({
-        id: String(s.id),
-        exerciseId: String(s.exercise_id),
-        setOrder: num(s.set_order),
-        reps: num(s.reps),
-        weight: num(s.weight),
-        rpe: numNull(s.rpe),
-        completed: bool(s.completed),
-        notes: s.notes ?? null,
-        kind: mapKind(s.set_kind)
+      pr: oneRm ? num(oneRm.one_rep_max) : null,
+      prs: prs.map((p) => ({
+        kind: String(p.kind ?? "one_rm"),
+        weight: num(p.weight),
+        reps: num(p.reps),
+        oneRepMax: num(p.one_rep_max),
+        volume: num(p.volume),
+        recordedAt: reqIso(p.recorded_at),
       })),
-      sets: arr.map((s: AnyRow) => ({
-        id: String(s.id),
-        exerciseId: String(s.exercise_id),
-        setOrder: num(s.set_order),
-        reps: num(s.reps),
-        weight: num(s.weight),
-        rpe: numNull(s.rpe),
-        completed: bool(s.completed),
-        notes: s.notes ?? null,
-        kind: mapKind(s.set_kind)
-      }))
+      volume: exVol,
+      lastSession: last.startedAt
+        ? {
+            startedAt: last.startedAt,
+            setCount: last.setCount,
+            volume: last.volume,
+            bestWeight: last.bestWeight,
+            bestReps: last.bestReps,
+          }
+        : null,
+      compare: cmp,
+      compareLabel: cmp ? COMPARE_LABEL[cmp] : null,
+      lastSets: last.sets.map(mapSet),
+      sets: arr.map(mapSet),
     });
   }
   const volume = sets.reduce((sum, s) => sum + (bool(s.completed) ? num(s.weight) * num(s.reps) : 0), 0);
@@ -765,6 +884,8 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
     volume,
     setCount: sets.filter((s) => bool(s.completed)).length,
     exerciseCount: grouped.size,
+    muscles,
+    hasPr: blocks.some((b) => b.sets.some((s: { isPr?: boolean }) => s.isPr)),
     blocks
   };
 });
@@ -837,39 +958,40 @@ export const setWorkoutStatus = createServerFn({ method: "POST" }).middleware([a
     ok: true,
     newPrs: []
   };
+  await ensurePulseV4(sql);
+  const before = await sql<AnyRow>`
+      select exercise_id, kind, one_rep_max, weight, reps, coalesce(volume,0) as volume
+      from personal_records where user_id = ${context.userId}
+    `;
+  await recomputePrs(sql, context.userId);
+  const after = await sql<AnyRow>`
+      select exercise_id, kind, one_rep_max, weight, reps, coalesce(volume,0) as volume
+      from personal_records where user_id = ${context.userId}
+    `;
+  const beforeMap = new Map(before.map((r) => [`${r.exercise_id}:${r.kind ?? "one_rm"}`, r]));
+  const improvedIds = new Set<string>();
+  for (const a of after) {
+    const prev = beforeMap.get(`${a.exercise_id}:${a.kind ?? "one_rm"}`);
+    const kind = String(a.kind ?? "one_rm");
+    let hit = false;
+    if (!prev) hit = true;
+    else if (kind === "max_weight" && num(a.weight) > num(prev.weight) + 0.05) hit = true;
+    else if (kind === "max_reps" && num(a.reps) > num(prev.reps)) hit = true;
+    else if (kind === "max_volume" && num(a.volume) > num(prev.volume) + 0.5) hit = true;
+    else if (kind === "one_rm" && num(a.one_rep_max) > num(prev.one_rep_max) + 0.4) hit = true;
+    if (hit) improvedIds.add(String(a.exercise_id));
+  }
+  const newPrs: string[] = [];
+  const prKeys: string[] = [];
+  for (const exId of improvedIds) {
+    const name = await sql<AnyRow>`select name from exercises where id = ${exId}`;
+    newPrs.push(name[0]?.name ?? exId);
+    if (exId === KEY_EXERCISES.squat) prKeys.push("pr_squat");
+    if (exId === KEY_EXERCISES.bench) prKeys.push("pr_bench");
+  }
   const sets = await sql<AnyRow>`
       select exercise_id, weight, reps, completed from workout_sets where workout_id = ${data.id}
     `;
-  const newPrs = [];
-  const bestByEx = new Map();
-  for (const s of sets) {
-    if (!bool(s.completed)) continue;
-    const orm = epley1rm(num(s.weight), s.reps);
-    const cur = bestByEx.get(s.exercise_id);
-    if (!cur || orm > cur.orm) bestByEx.set(s.exercise_id, {
-      w: num(s.weight),
-      r: s.reps,
-      orm
-    });
-  }
-  const prKeys = [];
-  for (const [exId, best] of bestByEx) {
-    const prev = await sql<AnyRow>`
-        select one_rep_max from personal_records where user_id = ${context.userId} and exercise_id = ${exId}
-        order by one_rep_max desc limit 1
-      `;
-    const prevOrm = prev[0] ? num(prev[0].one_rep_max) : 0;
-    if (best.orm > prevOrm + .4) {
-      await sql<AnyRow>`
-          insert into personal_records (id, user_id, exercise_id, one_rep_max, weight, reps)
-          values (${nid()}, ${context.userId}, ${exId}, ${best.orm}, ${best.w}, ${best.r})
-        `;
-      const name = await sql<AnyRow>`select name from exercises where id = ${exId}`;
-      newPrs.push(name[0]?.name ?? exId);
-      if (exId === KEY_EXERCISES.squat) prKeys.push("pr_squat");
-      if (exId === KEY_EXERCISES.bench) prKeys.push("pr_bench");
-    }
-  }
   const titleRow = await sql<AnyRow>`select title from workouts where id = ${data.id}`;
   if (bool((await sql<AnyRow>`select public_profile from profiles where user_id = ${context.userId}`)[0]?.public_profile)) {
     const vol = sets.reduce((s, x) => s + (bool(x.completed) ? num(x.weight) * x.reps : 0), 0);
@@ -888,12 +1010,30 @@ export const setWorkoutStatus = createServerFn({ method: "POST" }).middleware([a
     newPrs
   };
 });
-export const listWorkouts = createServerFn({ method: "GET" }).middleware([authMiddleware]).validator((d: { muscle?: string } | undefined) => d ?? {}).handler(async ({ context, data }) => {
+export const listWorkouts = createServerFn({ method: "GET" }).middleware([authMiddleware]).validator((d: {
+  muscle?: string;
+  range?: "all" | "week" | "month";
+  kind?: "all" | "routine" | "free";
+  q?: string;
+} | undefined) => d ?? {}).handler(async ({ context, data }) => {
   const sql = await getSql();
+  const range = data.range === "week" || data.range === "month" ? data.range : "all";
+  const kind = data.kind === "routine" || data.kind === "free" ? data.kind : "all";
+  const q = (data.q ?? "").trim().toLowerCase();
+  let since: string | null = null;
+  if (range === "week") since = startOfWeek().toISOString();
+  if (range === "month") {
+    const m = new Date();
+    m.setDate(1);
+    m.setHours(0, 0, 0, 0);
+    since = m.toISOString();
+  }
+  const like = q ? `%${q}%` : null;
   return (await sql<AnyRow>`
-      select w.id, w.title, w.started_at, w.duration_seconds, w.status,
+      select w.id, w.title, w.started_at, w.duration_seconds, w.status, w.routine_id, w.notes,
         coalesce(sum(case when s.completed then s.weight * s.reps else 0 end),0) as volume,
         count(s.id) filter (where s.completed)::int as sets,
+        count(distinct s.exercise_id)::int as exercises,
         (
           select string_agg(name, ' · ')
           from (
@@ -904,6 +1044,15 @@ export const listWorkouts = createServerFn({ method: "GET" }).middleware([authMi
             limit 3
           ) t
         ) as lifts,
+        (
+          select string_agg(muscle, ',')
+          from (
+            select distinct e.muscle
+            from workout_sets sx
+            join exercises e on e.id = sx.exercise_id
+            where sx.workout_id = w.id
+          ) t
+        ) as muscles,
         exists (
           select 1 from personal_records pr
           where pr.user_id = w.user_id
@@ -912,13 +1061,27 @@ export const listWorkouts = createServerFn({ method: "GET" }).middleware([authMi
       from workouts w
       left join workout_sets s on s.workout_id = w.id
       where w.user_id = ${context.userId} and w.status = 'completed'
+        and (${since}::timestamptz is null or w.started_at >= ${since})
+        and (
+          ${kind}::text = 'all'
+          or (${kind} = 'free' and w.routine_id is null)
+          or (${kind} = 'routine' and w.routine_id is not null)
+        )
         and (${data.muscle ?? null}::text is null or exists (
           select 1 from workout_sets sx join exercises ex on ex.id = sx.exercise_id
           where sx.workout_id = w.id and (
             ex.muscle = ${data.muscle ?? null}
             or (${data.muscle ?? null} = 'Core' and ex.muscle in ('Core','Abdomen'))
             or (${data.muscle ?? null} = 'Abdomen' and ex.muscle in ('Core','Abdomen'))
+            or (${data.muscle ?? null} = 'Isquiotibiales' and ex.muscle = 'Femorales')
+            or (${data.muscle ?? null} = 'Gemelos' and ex.muscle = 'Pantorrillas')
+            or (${data.muscle ?? null} = 'Femorales' and ex.muscle = 'Femorales')
+            or (${data.muscle ?? null} = 'Pantorrillas' and ex.muscle = 'Pantorrillas')
           )
+        ))
+        and (${like}::text is null or w.title ilike ${like} or exists (
+          select 1 from workout_sets sx join exercises ex on ex.id = sx.exercise_id
+          where sx.workout_id = w.id and ex.name ilike ${like}
         ))
       group by w.id
       order by w.started_at desc
@@ -929,11 +1092,141 @@ export const listWorkouts = createServerFn({ method: "GET" }).middleware([authMi
     startedAt: reqIso(r.started_at),
     durationSeconds: num(r.duration_seconds),
     status: String(r.status ?? "completed"),
+    routineId: r.routine_id ? String(r.routine_id) : null,
+    notes: r.notes ? String(r.notes) : null,
     volume: num(r.volume),
     setCount: num(r.sets),
+    exerciseCount: num(r.exercises),
     lifts: r.lifts ? String(r.lifts) : null,
+    muscles: r.muscles ? String(r.muscles).split(",").filter(Boolean).map((m) => String(normalizeMuscle(m))) : [],
     hasPr: bool(r.has_pr)
   }));
+});
+export const saveBlockNote = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
+  const sql = await getSql();
+  await ensurePulseV4(sql);
+  if (!(await sql<AnyRow>`select count(*)::int as n from workouts where id = ${data.workoutId} and user_id = ${context.userId}`)[0]?.n) {
+    throw new Error("No autorizado");
+  }
+  const notes = String(data.notes ?? "").trim() || null;
+  if (!notes) {
+    await sql<AnyRow>`delete from workout_block_notes where workout_id = ${data.workoutId} and exercise_id = ${data.exerciseId}`;
+    return { ok: true };
+  }
+  await sql<AnyRow>`
+    insert into workout_block_notes (workout_id, exercise_id, notes)
+    values (${data.workoutId}, ${data.exerciseId}, ${notes})
+    on conflict (workout_id, exercise_id) do update set notes = excluded.notes
+  `;
+  return { ok: true };
+});
+export const deleteWorkout = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: { id: string }) => d).handler(async ({ context, data }) => {
+  const sql = await getSql();
+  const row = await sql<AnyRow>`select id from workouts where id = ${data.id} and user_id = ${context.userId}`;
+  if (!row[0]) throw new Error("Entrenamiento no encontrado");
+  await sql<AnyRow>`delete from workout_block_notes where workout_id = ${data.id}`;
+  await sql<AnyRow>`delete from activity_feed where workout_id = ${data.id} and user_id = ${context.userId}`;
+  await sql<AnyRow>`delete from workout_comments where workout_id = ${data.id}`;
+  await sql<AnyRow>`delete from workout_likes where workout_id = ${data.id}`;
+  await sql<AnyRow>`delete from workout_sets where workout_id = ${data.id}`;
+  await sql<AnyRow>`delete from workouts where id = ${data.id} and user_id = ${context.userId}`;
+  await recomputePrs(sql, context.userId);
+  return { ok: true };
+});
+export const duplicateWorkout = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: { id: string }) => d).handler(async ({ context, data }) => {
+  const sql = await getSql();
+  await ensureSetKind(sql);
+  await ensurePulseV4(sql);
+  const open = await sql<AnyRow>`
+    select id from workouts where user_id = ${context.userId} and status in ('in_progress','paused')
+    order by started_at desc limit 1
+  `;
+  if (open[0]) {
+    return { id: String(open[0].id), resumed: true };
+  }
+  const src = await sql<AnyRow>`select * from workouts where id = ${data.id} and user_id = ${context.userId}`;
+  if (!src[0]) throw new Error("Entrenamiento no encontrado");
+  const id = nid();
+  const title = String(src[0].title ?? "Entrenamiento");
+  await sql<AnyRow>`
+    insert into workouts (id, user_id, routine_id, title, status, source)
+    values (${id}, ${context.userId}, ${src[0].routine_id ?? null}, ${title}, 'in_progress', ${"manual"})
+  `;
+  const sets = await sql<AnyRow>`
+    select exercise_id, set_order, reps, weight, rpe, set_kind
+    from workout_sets where workout_id = ${data.id} order by set_order
+  `;
+  for (const s of sets) {
+    await sql<AnyRow>`
+      insert into workout_sets (id, workout_id, exercise_id, set_order, reps, weight, rpe, completed, set_kind)
+      values (${nid()}, ${id}, ${s.exercise_id}, ${num(s.set_order)}, ${num(s.reps)}, ${num(s.weight)}, ${numNull(s.rpe)}, false, ${mapKind(s.set_kind)})
+    `;
+  }
+  const notes = await sql<AnyRow>`select exercise_id, notes from workout_block_notes where workout_id = ${data.id}`;
+  for (const n of notes) {
+    if (!n.notes) continue;
+    await sql<AnyRow>`
+      insert into workout_block_notes (workout_id, exercise_id, notes)
+      values (${id}, ${n.exercise_id}, ${n.notes})
+    `;
+  }
+  return { id, resumed: false };
+});
+export const updateCompletedWorkout = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
+  const sql = await getSql();
+  await ensureSetKind(sql);
+  await ensurePulseV4(sql);
+  const w = await sql<AnyRow>`select id, status from workouts where id = ${data.id} and user_id = ${context.userId}`;
+  if (!w[0]) throw new Error("Entrenamiento no encontrado");
+  const title = String(data.title ?? "").trim() || "Entrenamiento";
+  const notes = data.notes != null ? String(data.notes) : null;
+  const duration = data.durationSeconds != null ? Math.max(0, Math.round(Number(data.durationSeconds))) : null;
+  const startedAt = data.startedAt ? new Date(data.startedAt) : null;
+  if (startedAt && Number.isNaN(startedAt.getTime())) throw new Error("Fecha no válida");
+  await sql<AnyRow>`
+    update workouts set
+      title = ${title},
+      notes = ${notes},
+      duration_seconds = coalesce(${duration}, duration_seconds),
+      started_at = coalesce(${startedAt ? startedAt.toISOString() : null}, started_at),
+      ended_at = coalesce(${startedAt && duration != null ? new Date(startedAt.getTime() + duration * 1000).toISOString() : null}, ended_at)
+    where id = ${data.id} and user_id = ${context.userId}
+  `;
+  const blocks = Array.isArray(data.blocks) ? data.blocks : null;
+  if (blocks) {
+    await sql<AnyRow>`delete from workout_sets where workout_id = ${data.id}`;
+    await sql<AnyRow>`delete from workout_block_notes where workout_id = ${data.id}`;
+    let order = 0;
+    for (const b of blocks) {
+      const exerciseId = String(b.exerciseId ?? "");
+      if (!exerciseId) continue;
+      const blockNote = String(b.notes ?? "").trim();
+      if (blockNote) {
+        await sql<AnyRow>`
+          insert into workout_block_notes (workout_id, exercise_id, notes)
+          values (${data.id}, ${exerciseId}, ${blockNote})
+        `;
+      }
+      const setList = Array.isArray(b.sets) ? b.sets : [];
+      for (const s of setList) {
+        await sql<AnyRow>`
+          insert into workout_sets (id, workout_id, exercise_id, set_order, reps, weight, rpe, completed, notes, set_kind)
+          values (
+            ${nid()}, ${data.id}, ${exerciseId}, ${order},
+            ${Math.max(0, Math.round(Number(s.reps) || 0))},
+            ${Math.max(0, Number(s.weight) || 0)},
+            ${s.rpe == null || s.rpe === "" ? null : Math.min(10, Math.max(0, Number(s.rpe)))},
+            ${s.completed !== false},
+            ${s.notes ? String(s.notes) : null},
+            ${mapKind(s.kind ?? s.setKind)}
+          )
+        `;
+        order += 1;
+      }
+    }
+  }
+  if (w[0].status === "completed") await recomputePrs(sql, context.userId);
+  return { ok: true };
 });
 export const getConsistency = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();
@@ -1028,6 +1321,42 @@ export const getProgress = createServerFn({ method: "GET" }).middleware([authMid
       select id, taken_at, image_data, caption from progress_photos
       where user_id = ${context.userId} order by taken_at
     `;
+  const weekStart = startOfWeek();
+  const prevWeekStart = new Date(weekStart);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const weekIso = weekStart.toISOString();
+  const prevIso = prevWeekStart.toISOString();
+  const weekRow = await sql<AnyRow>`
+      select
+        count(distinct w.id)::int as workouts,
+        count(s.id) filter (where s.completed)::int as sets,
+        coalesce(sum(case when s.completed then s.weight * s.reps else 0 end),0) as volume,
+        coalesce(sum(distinct w.duration_seconds),0) as duration
+      from workouts w
+      left join workout_sets s on s.workout_id = w.id
+      where w.user_id = ${context.userId} and w.status = 'completed' and w.started_at >= ${weekIso}
+    `;
+  const prevRow = await sql<AnyRow>`
+      select
+        count(distinct w.id)::int as workouts,
+        count(s.id) filter (where s.completed)::int as sets,
+        coalesce(sum(case when s.completed then s.weight * s.reps else 0 end),0) as volume
+      from workouts w
+      left join workout_sets s on s.workout_id = w.id
+      where w.user_id = ${context.userId} and w.status = 'completed'
+        and w.started_at >= ${prevIso} and w.started_at < ${weekIso}
+    `;
+  await ensurePulseV4(sql);
+  const recentPrs = await sql<AnyRow>`
+      select pr.id, pr.exercise_id, e.name, e.muscle, pr.kind, pr.one_rep_max, pr.weight, pr.reps, pr.volume, pr.recorded_at
+      from personal_records pr
+      join exercises e on e.id = pr.exercise_id
+      where pr.user_id = ${context.userId}
+      order by pr.recorded_at desc
+      limit 12
+    `;
+  const profile = await sql<AnyRow>`select weekly_goal from profiles where user_id = ${context.userId}`;
+  const streak = await computeStreak(sql, context.userId);
   return {
     weight: weight.map((r) => ({
       date: String(r.d).slice(0, 10),
@@ -1046,6 +1375,31 @@ export const getProgress = createServerFn({ method: "GET" }).middleware([authMid
       count: h.n
     })),
     photos,
+    week: {
+      workouts: num(weekRow[0]?.workouts),
+      sets: num(weekRow[0]?.sets),
+      volume: num(weekRow[0]?.volume),
+      duration: num(weekRow[0]?.duration),
+    },
+    prevWeek: {
+      workouts: num(prevRow[0]?.workouts),
+      sets: num(prevRow[0]?.sets),
+      volume: num(prevRow[0]?.volume),
+    },
+    recentPrs: recentPrs.map((p) => ({
+      id: String(p.id),
+      exerciseId: String(p.exercise_id),
+      name: String(p.name),
+      muscle: String(p.muscle),
+      kind: String(p.kind ?? "one_rm"),
+      oneRepMax: num(p.one_rep_max),
+      weight: num(p.weight),
+      reps: num(p.reps),
+      volume: num(p.volume),
+      recordedAt: reqIso(p.recorded_at),
+    })),
+    weeklyGoal: num(profile[0]?.weekly_goal) || 4,
+    streak,
     compare: (() => {
       const months = volumeMonth.map((r) => ({
         month: r.m,
@@ -1290,6 +1644,7 @@ export const deleteAccountData = createServerFn({ method: "POST" }).middleware([
   await sql<AnyRow>`delete from achievements where user_id = ${uid}`;
   await sql<AnyRow>`delete from personal_records where user_id = ${uid}`;
   await sql<AnyRow>`delete from exercise_favorites where user_id = ${uid}`;
+  await sql<AnyRow>`delete from workout_block_notes where workout_id in (select id from workouts where user_id = ${uid})`;
   await sql<AnyRow>`delete from workout_sets where workout_id in (select id from workouts where user_id = ${uid})`;
   await sql<AnyRow>`delete from workouts where user_id = ${uid}`;
   await sql<AnyRow>`delete from routine_exercises where routine_id in (select id from routines where user_id = ${uid})`;
@@ -1300,32 +1655,24 @@ export const deleteAccountData = createServerFn({ method: "POST" }).middleware([
 });
 export const getMuscleLoad = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator((d: { period?: "week" | "month" | "quarter" | "year" } | undefined) => d ?? {})
+  .validator((d: { period?: "week" | "month" | "quarter" | "year" | "all" } | undefined) => d ?? {})
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensurePulseV2(sql);
-    const days = data.period === "month" ? 30 : data.period === "quarter" ? 90 : data.period === "year" ? 365 : 7;
-    const since = new Date(Date.now() - days * 86400000).toISOString();
-    const prevSince = new Date(Date.now() - days * 2 * 86400000).toISOString();
+    const period = data.period ?? "week";
+    const days = period === "month" ? 30 : period === "quarter" ? 90 : period === "year" ? 365 : period === "all" ? null : 7;
+    const since = days == null ? null : new Date(Date.now() - days * 86400000).toISOString();
+    const prevSince = days == null ? null : new Date(Date.now() - days * 2 * 86400000).toISOString();
     const rows = await sql<AnyRow>`
       select e.muscle, count(*)::int as sets, coalesce(sum(s.weight * s.reps),0) as volume, max(w.started_at) as last
       from workout_sets s
       join workouts w on w.id = s.workout_id
       join exercises e on e.id = s.exercise_id
       where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
-        and w.started_at >= ${since}
+        and (${since}::timestamptz is null or w.started_at >= ${since})
       group by e.muscle
     `;
-    const secondary = await sql<AnyRow>`
-      select e.secondary_muscles, count(*)::int as n
-      from workout_sets s
-      join workouts w on w.id = s.workout_id
-      join exercises e on e.id = s.exercise_id
-      where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
-        and w.started_at >= ${since} and coalesce(e.secondary_muscles,'') <> ''
-      group by e.secondary_muscles
-    `;
-    const prevRows = await sql<AnyRow>`
+    const prevRows = days == null ? [] : await sql<AnyRow>`
       select e.muscle, count(*)::int as sets, coalesce(sum(s.weight * s.reps),0) as volume
       from workout_sets s
       join workouts w on w.id = s.workout_id
@@ -1333,16 +1680,6 @@ export const getMuscleLoad = createServerFn({ method: "GET" })
       where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
         and w.started_at >= ${prevSince} and w.started_at < ${since}
       group by e.muscle
-    `;
-    const prevSecondary = await sql<AnyRow>`
-      select e.secondary_muscles, count(*)::int as n
-      from workout_sets s
-      join workouts w on w.id = s.workout_id
-      join exercises e on e.id = s.exercise_id
-      where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
-        and w.started_at >= ${prevSince} and w.started_at < ${since}
-        and coalesce(e.secondary_muscles,'') <> ''
-      group by e.secondary_muscles
     `;
     const map = new Map<string, { sets: number; volume: number; last: string | null; prevSets: number; prevVolume: number }>();
     for (const r of rows) {
@@ -1356,30 +1693,10 @@ export const getMuscleLoad = createServerFn({ method: "GET" })
         last: last && (!cur.last || last > cur.last) ? last : cur.last,
       });
     }
-    for (const row of secondary) {
-      for (const name of String(row.secondary_muscles ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)) {
-        const key = String(normalizeMuscle(name));
-        const cur = map.get(key) ?? { sets: 0, volume: 0, last: null, prevSets: 0, prevVolume: 0 };
-        map.set(key, { ...cur, sets: cur.sets + num(row.n) * 0.5 });
-      }
-    }
     for (const r of prevRows) {
       const key = String(normalizeMuscle(r.muscle));
       const cur = map.get(key) ?? { sets: 0, volume: 0, last: null, prevSets: 0, prevVolume: 0 };
       map.set(key, { ...cur, prevSets: cur.prevSets + num(r.sets), prevVolume: cur.prevVolume + num(r.volume) });
-    }
-    for (const row of prevSecondary) {
-      for (const name of String(row.secondary_muscles ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)) {
-        const key = String(normalizeMuscle(name));
-        const cur = map.get(key) ?? { sets: 0, volume: 0, last: null, prevSets: 0, prevVolume: 0 };
-        map.set(key, { ...cur, prevSets: cur.prevSets + num(row.n) * 0.5 });
-      }
     }
     const topEx = await sql<AnyRow>`
       select e.muscle, e.name, count(*)::int as n
@@ -1387,7 +1704,7 @@ export const getMuscleLoad = createServerFn({ method: "GET" })
       join workouts w on w.id = s.workout_id
       join exercises e on e.id = s.exercise_id
       where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
-        and w.started_at >= ${since}
+        and (${since}::timestamptz is null or w.started_at >= ${since})
       group by e.muscle, e.name
       order by n desc
     `;

@@ -8,6 +8,7 @@ import { ProfileAvatar } from "@/components/pulse/avatar-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -15,6 +16,7 @@ import { deleteAccountData, devToolsAvailable, exportData, getBootstrap, purgeMy
 import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
+import { fromKg, toKg } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -108,7 +110,8 @@ function SettingsPage() {
             <div className="space-y-1.5">
               <Label>Peso {p?.units === "imperial" ? "lb" : "kg"}</Label>
               <Input
-                defaultValue={p?.weightKg ?? ""}
+                key={`${p?.units}-${p?.weightKg ?? ""}`}
+                defaultValue={p?.weightKg ? fromKg(p.weightKg, p.units) : ""}
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*[.,]?[0-9]*"
@@ -117,7 +120,7 @@ function SettingsPage() {
                 className="text-base"
                 onBlur={(e) => {
                   const n = Number(e.target.value.replace(",", "."));
-                  if (n > 0) save.mutate({ weightKg: n });
+                  if (n > 0) save.mutate({ weightKg: toKg(n, p?.units ?? "metric") });
                 }}
               />
             </div>
@@ -177,12 +180,21 @@ function SettingsPage() {
         </section>
 
         <section className="divide-y divide-border rounded-3xl bg-card hairline">
-          <Toggle
-            label="Unidades"
-            hint={p?.units === "imperial" ? "Libras" : "Kilogramos"}
-            checked={p?.units === "imperial"}
-            onChange={(v) => save.mutate({ units: v ? "imperial" : "metric" })}
-          />
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Unidades</p>
+              <p className="text-xs text-muted-foreground">Los pesos se guardan en kilogramos</p>
+            </div>
+            <Segmented
+              ariaLabel="Unidades de peso"
+              value={p?.units === "imperial" ? "imperial" : "metric"}
+              options={[
+                { value: "metric", label: "kg" },
+                { value: "imperial", label: "lb" },
+              ]}
+              onChange={(v) => save.mutate({ units: v })}
+            />
+          </div>
           <RowSelect
             label="Tema"
             value={p?.theme ?? "dark"}
@@ -209,6 +221,12 @@ function SettingsPage() {
             hint="Arranca el timer al completar una serie"
             checked={p?.autoRest ?? true}
             onChange={(v) => save.mutate({ autoRest: v })}
+          />
+          <Toggle
+            label="Mostrar RPE"
+            hint="Esfuerzo percibido en cada serie"
+            checked={p?.showRpe ?? true}
+            onChange={(v) => save.mutate({ showRpe: v })}
           />
           <Toggle
             label="Perfil público"

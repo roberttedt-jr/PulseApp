@@ -34,6 +34,20 @@ export function fromKg(value: number, units: "metric" | "imperial"): number {
   return units === "imperial" ? Math.round(value * 2.20462 * 10) / 10 : Math.round(value * 10) / 10;
 }
 
+export function daysAgoEs(iso: string | null | undefined, now = new Date()): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const a = new Date(now);
+  a.setHours(12, 0, 0, 0);
+  const b = new Date(d);
+  b.setHours(12, 0, 0, 0);
+  const days = Math.round((a.getTime() - b.getTime()) / 86400000);
+  if (days <= 0) return "hoy";
+  if (days === 1) return "ayer";
+  return `hace ${days} días`;
+}
+
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);

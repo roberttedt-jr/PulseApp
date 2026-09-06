@@ -1,17 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { VolumeBars, WeightLine } from "@/components/charts";
 import { ChartCard, LoadingBlock } from "@/components/pulse/cards";
 import { ConsistencyHeatmap } from "@/components/pulse/consistency";
 import { EmptyState } from "@/components/pulse/empty-state";
-import { MuscleMap } from "@/components/pulse/muscle-map";
+import { MuscleBalance } from "@/components/pulse/muscle-map";
 import { NumericField } from "@/components/pulse/numeric-field";
 import { Button } from "@/components/ui/button";
-import { addBodyLog, getMuscleLoad, getProgress } from "@/lib/pulse/fns";
+import { addBodyLog, getBootstrap, getMuscleLoad, getProgress } from "@/lib/pulse/fns";
 import { normalizeMuscle } from "@/lib/pulse/exercise-meta";
-import { cn } from "@/lib/utils";
+import { PR_KIND_LABEL, type PrKind } from "@/lib/pulse/prs";
+import { cn, daysAgoEs, formatKg, toKg } from "@/lib/utils";
 import { Activity } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,15 +21,13 @@ type Search = { muscle?: string };
 const PERIOD_LABEL = {
   week: "Esta semana",
   month: "Este mes",
-  quarter: "Últimos 3 meses",
-  year: "Este año",
+  all: "Total",
 } as const;
 
 const PERIOD_PHRASE = {
   week: "esta semana",
   month: "este mes",
-  quarter: "en los últimos 3 meses",
-  year: "este año",
+  all: "en total",
 } as const;
 
 export const Route = createFileRoute("/progress")({
@@ -41,22 +40,18 @@ export const Route = createFileRoute("/progress")({
 function ProgressPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { muscle: muscleParam } = Route.useSearch();
   const { data, isPending } = useQuery({ queryKey: ["progress"], queryFn: () => getProgress() });
+  const profile = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
+  const units = profile.data?.profile.units ?? "metric";
   const [weight, setWeight] = useState("");
-  const [period, setPeriod] = useState<"week" | "month" | "quarter" | "year">("week");
-  const [selected, setSelected] = useState<string | null>(muscleParam ?? null);
+  const [period, setPeriod] = useState<"week" | "month" | "all">("week");
   const load = useQuery({
     queryKey: ["muscle-load", period],
     queryFn: () => getMuscleLoad({ data: { period } }),
   });
 
-  useEffect(() => {
-    if (muscleParam) setSelected(muscleParam);
-  }, [muscleParam]);
-
   const log = useMutation({
-    mutationFn: () => addBodyLog({ data: { weightKg: Number(weight) } }),
+    mutationFn: () => addBodyLog({ data: { weightKg: toKg(Number(weight), units) } }),
     onSuccess: () => {
       setWeight("");
       void qc.invalidateQueries({ queryKey: ["progress"] });
@@ -91,6 +86,45 @@ function ProgressPage() {
     >
       <div className="mx-auto max-w-3xl space-y-4 pt-4">
         {isPending && <LoadingBlock />}
+
+        {data && (data.week.workouts > 0 || data.prevWeek.workouts > 0) && (
+          <ChartCard title="Resumen semanal">
+            <div className="grid grid-cols-3 gap-2">
+              <Mini k="Sesiones" v={`${data.week.workouts}/${data.weeklyGoal}`} />
+              <Mini k="Series" v={String(Math.round(data.week.sets))} />
+              <Mini k="Volumen" v={data.week.volume > 0 ? formatKg(data.week.volume, units) : "—"} />
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {weekDelta(data.week, data.prevWeek, units)}
+              {data.streak > 0 ? ` · Racha de ${data.streak} ${data.streak === 1 ? "día" : "días"}.` : ""}
+            </p>
+          </ChartCard>
+        )}
+
+        {data && data.recentPrs.length > 0 && (
+          <ChartCard title="Récords recientes">
+            <ul className="space-y-2">
+              {data.recentPrs.slice(0, 6).map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {PR_KIND_LABEL[(p.kind as PrKind) ?? "one_rm"] ?? p.kind}
+                      {p.recordedAt ? ` · ${daysAgoEs(p.recordedAt)}` : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 tabular font-semibold">
+                    {p.kind === "max_volume"
+                      ? formatKg(p.volume, units)
+                      : p.weight > 0
+                        ? `${formatKg(p.weight, units)} × ${p.reps}`
+                        : `${p.reps} reps`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </ChartCard>
+        )}
         <ChartCard title="Peso corporal">
           {(data?.weight.length ?? 0) === 0 ? (
             <EmptyState icon={Activity} title="Sin registros" hint="Añade tu peso para ver la evolución." className="py-6" />
@@ -109,7 +143,7 @@ function ProgressPage() {
               className="h-12 flex-1 rounded-2xl border border-border bg-muted px-4 text-left text-base"
               value={weight}
               onValueChange={setWeight}
-              placeholder="kg"
+              placeholder={units === "imperial" ? "lb" : "kg"}
               aria-label="Peso corporal"
             />
             <Button type="submit" size="sm" disabled={log.isPending}>
@@ -123,7 +157,7 @@ function ProgressPage() {
             <EmptyState
               icon={Activity}
               title="Completa tu primer entrenamiento para ver tu balance."
-              hint="El mapa muscular se llena con series reales, no con estimaciones."
+              hint="El balance se llena con series reales, no con estimaciones."
               className="py-8"
             />
           ) : (
@@ -133,8 +167,7 @@ function ProgressPage() {
               [
                 ["week", "Semana"],
                 ["month", "Mes"],
-                ["quarter", "3 meses"],
-                ["year", "Año"],
+                ["all", "Total"],
               ] as const
             ).map(([k, lab]) => (
               <button
@@ -150,21 +183,13 @@ function ProgressPage() {
               </button>
             ))}
           </div>
-          <MuscleMap
+          <MuscleBalance
             loads={loads}
-            selected={selected}
             periodLabel={PERIOD_LABEL[period]}
             periodPhrase={PERIOD_PHRASE[period]}
-            topExercises={load.data?.topExercises ?? []}
-            onSelect={(m) => {
-              setSelected(m);
-              void navigate({ to: "/progress", search: { muscle: m ?? undefined } });
-            }}
+            units={units}
             onOpenHistory={(m) => {
               void navigate({ to: "/history", search: { muscle: m } });
-            }}
-            onOpenLibrary={(m) => {
-              void navigate({ to: "/exercises", search: { muscle: m } });
             }}
           />
           </>
@@ -201,4 +226,32 @@ function ProgressPage() {
       </div>
     </AppPage>
   );
+}
+
+function Mini({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="rounded-2xl bg-muted px-3 py-3 text-center">
+      <p className="text-[11px] text-muted-foreground">{k}</p>
+      <p className="mt-1 text-[15px] font-semibold tabular">{v}</p>
+    </div>
+  );
+}
+
+function weekDelta(
+  week: { workouts: number; sets: number; volume: number },
+  prev: { workouts: number; sets: number; volume: number },
+  units: "metric" | "imperial",
+) {
+  if (prev.workouts <= 0 && prev.volume <= 0) {
+    return week.workouts > 0 ? "Primera semana con sesiones registradas." : "Aún no hay datos esta semana.";
+  }
+  const dw = week.workouts - prev.workouts;
+  const sessions =
+    dw === 0 ? "Igual número de sesiones" : dw > 0 ? `${dw} sesión${dw === 1 ? "" : "es"} más` : `${Math.abs(dw)} menos`;
+  if (prev.volume > 0) {
+    const pct = Math.round(((week.volume - prev.volume) / prev.volume) * 100);
+    if (pct === 0) return `${sessions} que la semana anterior.`;
+    return `${sessions} que la semana anterior · ${pct > 0 ? "+" : ""}${pct}% de volumen.`;
+  }
+  return `${sessions} que la semana anterior · ${week.volume > 0 ? formatKg(week.volume, units) : "sin volumen"}.`;
 }

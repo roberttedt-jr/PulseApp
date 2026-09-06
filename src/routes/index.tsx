@@ -298,6 +298,7 @@ function Dashboard() {
             loads={data.muscleLoad}
             periodLabel="Esta semana"
             periodPhrase="esta semana"
+            units={data.profile.units}
             onOpenHistory={(muscle) => void navigate({ to: "/history", search: { muscle } })}
             onOpenProgress={(muscle) => void navigate({ to: "/progress", search: { muscle } })}
           />

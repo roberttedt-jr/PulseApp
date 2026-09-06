@@ -62,6 +62,7 @@ export type Profile = {
   weeklyGoal: number;
   reminderHour: number | null;
   healthkitNotify: boolean;
+  showRpe: boolean;
 };
 
 export type Exercise = {
@@ -153,9 +154,11 @@ export type PersonalRecord = {
   exerciseId: string;
   exerciseName: string;
   muscle: string;
+  kind?: "one_rm" | "max_weight" | "max_reps" | "max_volume";
   oneRepMax: number;
   weight: number;
   reps: number;
+  volume?: number;
   recordedAt: string;
 };
 

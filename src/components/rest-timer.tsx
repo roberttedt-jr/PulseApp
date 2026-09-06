@@ -150,6 +150,23 @@ export function RestTimer({
           </Button>
         </div>
         <div className="mt-2 flex items-center gap-1">
+          {[60, 90, 120].map((n) => (
+            <Button
+              key={n}
+              variant={total === n ? "default" : "secondary"}
+              size="sm"
+              className="h-10 flex-1"
+              onClick={() => {
+                done.current = false;
+                setTotal(n);
+                setLeft(n);
+              }}
+            >
+              {n}s
+            </Button>
+          ))}
+        </div>
+        <div className="mt-1.5 flex items-center gap-1">
           <Button variant="secondary" size="sm" className="h-10 flex-1" onClick={() => add(15)}>
             +15 s
           </Button>

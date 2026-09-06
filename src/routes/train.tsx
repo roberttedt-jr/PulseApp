@@ -28,11 +28,14 @@ import {
   getBootstrap,
   getWorkout,
   listExercises,
+  removeSet,
+  saveBlockNote,
   setWorkoutStatus,
   upsertSet,
 } from "@/lib/pulse/fns";
 import { epley1rm } from "@/lib/pulse/formulas";
-import { cn, formatDuration, formatKg } from "@/lib/utils";
+import { displayMuscle } from "@/lib/pulse/exercise-meta";
+import { cn, daysAgoEs, formatDuration, formatKg, fromKg, toKg } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Search = { id: string };
@@ -91,6 +94,7 @@ function Live({ id }: { id: string }) {
   const units = profile.data?.profile.units ?? "metric";
   const sound = profile.data?.profile.restSound ?? true;
   const autoRest = profile.data?.profile.autoRest ?? true;
+  const showRpe = profile.data?.profile.showRpe ?? true;
 
   const finish = useMutation({
     mutationFn: async () => {
@@ -231,6 +235,7 @@ function Live({ id }: { id: string }) {
           block={block}
           workoutId={id}
           units={units}
+          showRpe={showRpe}
           onRest={(sec) => {
             if (autoRest) setRest(sec);
           }}
@@ -326,6 +331,7 @@ function ExerciseBlock({
   block,
   workoutId,
   units,
+  showRpe,
   onRest,
   onPlates,
   onPr,
@@ -333,6 +339,7 @@ function ExerciseBlock({
   block: Block;
   workoutId: string;
   units: "metric" | "imperial";
+  showRpe: boolean;
   onRest: (seconds: number) => void;
   onPlates: (kg: number) => void;
   onPr: (name: string, orm: number) => void;
@@ -341,7 +348,10 @@ function ExerciseBlock({
   const [restSec, setRestSec] = useState(block.restSeconds);
   const [demo, setDemo] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(block.notes ?? "");
+  useEffect(() => {
+    setNote(block.notes ?? "");
+  }, [block.exerciseId, block.notes]);
   const nextPending = block.sets.find((s) => !s.completed)?.id;
   const volume = block.sets.reduce((s, x) => s + (x.completed ? x.weight * x.reps : 0), 0);
   const best = useMemo(() => {
@@ -393,8 +403,17 @@ function ExerciseBlock({
         <button type="button" className="min-w-0 text-left" onClick={() => setDemo(true)}>
           <h3 className="font-semibold">{block.name}</h3>
           <p className="text-xs text-muted-foreground">
-            {block.muscle} · {block.equipment ?? "Libre"}
+            {displayMuscle(block.muscle)} · {block.equipment ?? "Libre"}
           </p>
+          {block.lastSession && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Última vez:{" "}
+              {block.lastSession.bestWeight > 0
+                ? `${formatKg(block.lastSession.bestWeight, units)} × ${block.lastSession.bestReps}`
+                : `${block.lastSession.bestReps} reps`}
+              {` · ${block.lastSession.setCount} series · ${daysAgoEs(block.lastSession.startedAt)}`}
+            </p>
+          )}
         </button>
         <div className="flex items-start gap-2">
           <div className="text-right">
@@ -412,12 +431,17 @@ function ExerciseBlock({
         </div>
       </div>
 
-      <div className="grid grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_1.7rem_2.2rem] items-center gap-1 px-0.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+      <div className={cn(
+        "grid items-center gap-1 px-0.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase",
+        showRpe
+          ? "grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_1.7rem_2.2rem]"
+          : "grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_2.2rem]",
+      )}>
         <span className="text-center">Set</span>
         <span>Antes</span>
         <span className="text-center">{units === "imperial" ? "lb" : "kg"}</span>
         <span className="text-center">Reps</span>
-        <span className="text-center">RPE</span>
+        {showRpe ? <span className="text-center">RPE</span> : null}
         <span />
       </div>
 
@@ -441,6 +465,7 @@ function ExerciseBlock({
               label={label}
               pending={s.id === nextPending}
               units={units}
+              showRpe={showRpe}
               onKind={() => {
                 const next = KINDS[(KINDS.indexOf(s.kind) + 1) % KINDS.length]!;
                 void patch(s.id, { setKind: next });
@@ -496,7 +521,7 @@ function ExerciseBlock({
               onClick={() => {
                 const open = block.sets.find((s) => !s.completed);
                 if (!open) return;
-                void patch(open.id, { weight: Math.max(0, Math.round((open.weight + Number(d)) * 2) / 2) });
+                void patch(open.id, { weight: Math.max(0, toKg(fromKg(open.weight, units) + Number(d), units)) });
               }}
             >
               {lab}
@@ -535,7 +560,7 @@ function ExerciseBlock({
           }}
           aria-label="Descanso entre series"
         >
-          {Math.round(volume)} kg · {restSec}s
+          {formatKg(volume, units)} · {restSec}s
         </button>
       </div>
 
@@ -552,12 +577,37 @@ function ExerciseBlock({
         </SheetContent>
       </Sheet>
 
-      <Sheet open={noteOpen} onOpenChange={setNoteOpen}>
+      <Sheet
+        open={noteOpen}
+        onOpenChange={(open) => {
+          setNoteOpen(open);
+          if (!open) {
+            void saveBlockNote({ data: { workoutId, exerciseId: block.exerciseId, notes: note } }).catch(() => {
+              toast.error("No se pudo guardar la nota");
+            });
+          }
+        }}
+      >
         <SheetContent className="px-4 pt-4">
           <SheetTitle className="mb-3 flex items-center gap-2">
             <StickyNote className="size-5" /> Nota
           </SheetTitle>
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Técnica, fatiga, setup…" />
+          {block.sets.length > 1 && (
+            <Button
+              variant="secondary"
+              className="mt-4 w-full"
+              onClick={async () => {
+                const last = block.sets.at(-1);
+                if (!last) return;
+                await removeSet({ data: { id: last.id, workoutId } });
+                await qc.invalidateQueries({ queryKey: ["workout", workoutId] });
+                setNoteOpen(false);
+              }}
+            >
+              Quitar última serie
+            </Button>
+          )}
         </SheetContent>
       </Sheet>
     </section>
@@ -570,6 +620,7 @@ function SetRow({
   label,
   pending,
   units,
+  showRpe,
   onKind,
   onCopy,
   onCommit,
@@ -580,30 +631,38 @@ function SetRow({
   label: string;
   pending: boolean;
   units: "metric" | "imperial";
+  showRpe: boolean;
   onKind: () => void;
   onCopy: () => void;
   onCommit: (p: { weight?: number; reps?: number; rpe?: number | null }) => void;
   onToggle: (on: boolean) => void;
 }) {
-  const [weight, setWeight] = useState(set.weight ? String(set.weight) : "");
+  const [weight, setWeight] = useState(set.weight ? String(fromKg(set.weight, units)) : "");
   const [reps, setReps] = useState(set.reps ? String(set.reps) : "");
   const [rpe, setRpe] = useState(set.rpe ? String(set.rpe) : "");
   const repsRef = useRef<HTMLInputElement>(null);
   const rpeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setWeight(set.weight ? String(set.weight) : "");
+    setWeight(set.weight ? String(fromKg(set.weight, units)) : "");
     setReps(set.reps ? String(set.reps) : "");
     setRpe(set.rpe ? String(set.rpe) : "");
-  }, [set.id, set.weight, set.reps, set.rpe]);
+  }, [set.id, set.weight, set.reps, set.rpe, units]);
 
   const prev =
-    last && last.weight > 0 ? `${last.weight}×${last.reps}` : last && last.reps ? `—×${last.reps}` : "—";
+    last && last.weight > 0
+      ? `${fromKg(last.weight, units)}×${last.reps}`
+      : last && last.reps
+        ? `—×${last.reps}`
+        : "—";
 
   return (
     <div
       className={cn(
-        "grid grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_1.7rem_2.2rem] items-center gap-1 rounded-2xl px-0.5 py-0.5",
+        "grid items-center gap-1 rounded-2xl px-0.5 py-0.5",
+        showRpe
+          ? "grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_1.7rem_2.2rem]"
+          : "grid-cols-[2rem_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_2.2rem]",
         set.completed && "bg-success/12 set-just-done",
         pending && !set.completed && "bg-primary/8 ring-1 ring-primary/25",
       )}
@@ -629,7 +688,6 @@ function SetRow({
         title="Copiar serie anterior"
       >
         {prev}
-        {units === "imperial" ? "" : ""}
       </button>
       <NumericField
         kind="decimal"
@@ -637,7 +695,9 @@ function SetRow({
         value={weight}
         onValueChange={setWeight}
         onCommit={(n) => {
-          if (n != null && n !== set.weight) onCommit({ weight: n });
+          if (n == null) return;
+          const kg = toKg(n, units);
+          if (Math.abs(kg - set.weight) > 0.001) onCommit({ weight: kg });
         }}
         onEnter={() => repsRef.current?.focus()}
         aria-label="Peso"
@@ -651,9 +711,13 @@ function SetRow({
         onCommit={(n) => {
           if (n != null && n !== set.reps) onCommit({ reps: n });
         }}
-        onEnter={() => rpeRef.current?.focus()}
+        onEnter={() => {
+          if (showRpe) rpeRef.current?.focus();
+          else if (!set.completed) onToggle(true);
+        }}
         aria-label="Repeticiones"
       />
+      {showRpe ? (
       <NumericField
         ref={rpeRef}
         kind="decimal"
@@ -670,6 +734,7 @@ function SetRow({
         }}
         aria-label="RPE"
       />
+      ) : null}
       <div className="flex justify-center">
         <Checkbox
           checked={set.completed}

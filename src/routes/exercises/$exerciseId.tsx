@@ -5,6 +5,9 @@ import { ExerciseDemo } from "@/components/pulse/exercise-demo";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getExerciseDetail } from "@/lib/pulse/fns";
+import { displayMuscle } from "@/lib/pulse/exercise-meta";
+import { PR_KIND_LABEL, type PrKind } from "@/lib/pulse/prs";
+import { formatKg } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Dumbbell } from "lucide-react";
@@ -28,7 +31,7 @@ function Detail() {
     <AppPage title={data.name}>
       <div className="mx-auto max-w-xl space-y-4 pt-4">
         <p className="text-sm text-muted-foreground">
-          {data.muscle} · {data.type} · {data.equipment}
+          {displayMuscle(data.muscle)} · {data.type} · {data.equipment}
           {data.secondaryMuscles?.length ? ` · + ${data.secondaryMuscles.join(", ")}` : ""}
         </p>
         <ExerciseDemo name={data.name} muscle={data.muscle} type={data.type} gifUrl={data.gifUrl} />
@@ -61,12 +64,16 @@ function Detail() {
               <EmptyState icon={Dumbbell} title="Todavía no hay récord" hint="La primera serie pesada se queda aquí." className="py-4" />
             )}
             {data.prs.map((p, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {format(new Date(p.recordedAt), "d MMM yyyy", { locale: es })}
+              <div key={i} className="flex justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-muted-foreground">
+                  {PR_KIND_LABEL[(p.kind as PrKind) ?? "one_rm"] ?? "PR"} · {format(new Date(p.recordedAt), "d MMM yyyy", { locale: es })}
                 </span>
-                <span className="tabular font-medium">
-                  {p.weight} × {p.reps} · 1RM {Math.round(p.oneRepMax)}
+                <span className="shrink-0 tabular font-medium">
+                  {p.kind === "max_volume"
+                    ? formatKg(p.volume)
+                    : p.weight > 0
+                      ? `${formatKg(p.weight)} × ${p.reps}`
+                      : `${p.reps} reps`}
                 </span>
               </div>
             ))}

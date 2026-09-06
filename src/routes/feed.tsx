@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/pulse/empty-state";
 import { HScroll } from "@/components/pulse/h-scroll";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addFeedComment,
@@ -188,8 +188,8 @@ function CommentsSheet({ feedId, onClose }: { feedId: string | null; onClose: ()
 
   return (
     <Sheet open={Boolean(feedId)} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="flex h-[80dvh] flex-col overflow-hidden px-4 pt-4">
-        <p className="mb-3 text-lg font-semibold">Comentarios</p>
+      <SheetContent className="flex max-h-[80dvh] min-h-0 flex-col overflow-hidden px-4 pt-4">
+        <SheetTitle className="mb-3">Comentarios</SheetTitle>
         <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto no-scrollbar overscroll-contain pb-4">
           {(data ?? []).length === 0 && (
             <p className="pt-8 text-center text-sm text-muted-foreground">Sé el primero en comentar</p>

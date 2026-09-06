@@ -21,9 +21,9 @@ function isActive(pathname: string, to: string) {
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
   if (!title && !action) return null;
   return (
-    <header className="page-header sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/50 bg-background/80 px-4 pb-3 backdrop-blur-2xl md:px-8">
-      <h1 className="min-w-0 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
-      {action}
+    <header className="page-header sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 border-b border-border/50 bg-background/80 px-4 pb-3 backdrop-blur-2xl md:px-8">
+      <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   );
 }

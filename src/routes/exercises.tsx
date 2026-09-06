@@ -8,7 +8,7 @@ import { HScroll } from "@/components/pulse/h-scroll";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { createExercise, listExercises, toggleFavorite } from "@/lib/pulse/fns";
 import { EQUIPMENT, EXERCISE_TYPES, MUSCLES } from "@/lib/pulse/types";
 import { toast } from "sonner";
@@ -126,6 +126,7 @@ function ExercisesPage() {
       </div>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="px-4 pt-4">
+          <SheetTitle className="mb-3">Nuevo ejercicio</SheetTitle>
           <CreateForm
             onDone={() => {
               setOpen(false);

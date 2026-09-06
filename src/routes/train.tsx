@@ -20,9 +20,8 @@ import { PlateStack } from "@/components/plate-calc";
 import { RestTimer } from "@/components/rest-timer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addExerciseToWorkout,
@@ -201,8 +200,8 @@ function Live({ id }: { id: string }) {
             >
               {paused ? <Play /> : <Pause />}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirm(true)}>
-              Fin
+            <Button size="sm" onClick={() => setConfirm(true)}>
+              Finalizar
             </Button>
           </div>
         </div>
@@ -264,7 +263,7 @@ function Live({ id }: { id: string }) {
 
       <Sheet open={picker} onOpenChange={setPicker}>
         <SheetContent className="overflow-hidden px-4 pt-4">
-          <p className="mb-3 text-lg font-semibold">Añadir ejercicio</p>
+          <SheetTitle className="mb-3">Añadir ejercicio</SheetTitle>
           <ExercisePicker
             onPick={async (exerciseId) => {
               await addExerciseToWorkout({ data: { workoutId: id, exerciseId } });
@@ -277,7 +276,7 @@ function Live({ id }: { id: string }) {
 
       <Sheet open={plates} onOpenChange={setPlates}>
         <SheetContent className="px-4 pt-4">
-          <p className="mb-3 text-lg font-semibold">Discos</p>
+          <SheetTitle className="mb-3">Discos</SheetTitle>
           <Input
             type="text"
             inputMode="decimal"
@@ -293,23 +292,23 @@ function Live({ id }: { id: string }) {
         </SheetContent>
       </Sheet>
 
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent>
-          <DialogTitle>¿Terminar entrenamiento?</DialogTitle>
-          <DialogDescription>
+      <Sheet open={confirm} onOpenChange={setConfirm}>
+        <SheetContent className="px-5 pt-3 pb-2">
+          <SheetTitle>¿Terminar entrenamiento?</SheetTitle>
+          <SheetDescription>
             {data.setCount} series · {formatKg(data.volume, units)} · {formatDuration(elapsed)}
             {pending > 0 ? ` · ${pending} series sin marcar` : ""}
-          </DialogDescription>
-          <div className="mt-5 flex gap-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setConfirm(false)}>
-              Seguir
+          </SheetDescription>
+          <div className="mt-5 flex min-w-0 gap-2">
+            <Button variant="secondary" className="min-w-0 flex-1" onClick={() => setConfirm(false)}>
+              Cancelar
             </Button>
-            <Button className="flex-1" onClick={() => finish.mutate()} loading={finish.isPending} loadingText="Guardando…">
+            <Button className="min-w-0 flex-1" onClick={() => finish.mutate()} loading={finish.isPending} loadingText="Guardando…">
               Terminar
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -542,7 +541,7 @@ function ExerciseBlock({
 
       <Sheet open={demo} onOpenChange={setDemo}>
         <SheetContent className="px-4 pt-4 pb-6">
-          <p className="mb-3 text-lg font-semibold">{block.name}</p>
+          <SheetTitle className="mb-3">{block.name}</SheetTitle>
           <ExerciseDemo name={block.name} muscle={block.muscle} type={block.type ?? "Compuesto"} gifUrl={block.gifUrl} />
           {block.instructions && <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{block.instructions}</p>}
           <Button asChild variant="secondary" className="mt-4 w-full">
@@ -555,9 +554,9 @@ function ExerciseBlock({
 
       <Sheet open={noteOpen} onOpenChange={setNoteOpen}>
         <SheetContent className="px-4 pt-4">
-          <p className="mb-3 flex items-center gap-2 text-lg font-semibold">
+          <SheetTitle className="mb-3 flex items-center gap-2">
             <StickyNote className="size-5" /> Nota
-          </p>
+          </SheetTitle>
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Técnica, fatiga, setup…" />
         </SheetContent>
       </Sheet>

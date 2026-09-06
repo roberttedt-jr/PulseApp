@@ -16,7 +16,7 @@ import { AppPage } from "@/components/auth-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { getRoutine, listExercises, saveRoutine } from "@/lib/pulse/fns";
 import { ROUTINE_COLORS, ROUTINE_ICONS } from "@/lib/pulse/types";
@@ -173,7 +173,7 @@ function Editor({
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="overflow-hidden px-4 pt-4">
-          <p className="mb-3 text-lg font-semibold">Ejercicios</p>
+          <SheetTitle className="mb-3">Ejercicios</SheetTitle>
           <Picker
             onPick={(ex) => {
               setRows((all) => [

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -49,6 +49,10 @@ const ICONS: Record<string, typeof Dumbbell> = {
 };
 
 function RoutinesPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname.startsWith("/routines/") && pathname !== "/routines/") {
+    return <Outlet />;
+  }
   const { templates } = Route.useSearch();
   const { data, isPending } = useQuery({ queryKey: ["routines"], queryFn: () => listRoutines({ data: {} }) });
   const navigate = useNavigate();

@@ -11,7 +11,10 @@ export type AuthHealth = {
     DATABASE_URL: boolean;
     POSTGRES_URL: boolean;
     VERCEL: boolean;
+    BETTER_AUTH_SECRET: boolean;
+    GROK_AUTH_CLIENT_ID: boolean;
   };
+  dbLikeKeys: string[];
   schema: {
     hasUserTable: boolean;
     hasAccountTable: boolean;
@@ -38,12 +41,15 @@ function runtimeEnv(key: string): string | undefined {
 
 function identity(): Pick<
   AuthHealth,
-  "ok" | "revision" | "dbSource" | "hasDatabaseUrl" | "betterAuthHost" | "envFlags"
+  "ok" | "revision" | "dbSource" | "hasDatabaseUrl" | "betterAuthHost" | "envFlags" | "dbLikeKeys"
 > {
   const hasUrl = Boolean(runtimeEnv("DATABASE_URL"));
+  const dbLikeKeys = Object.keys(process.env)
+    .filter((k) => /DATABASE|POSTGRES|NEON|^PG|SUPABASE|SQL/i.test(k))
+    .sort();
   return {
     ok: true,
-    revision: 4,
+    revision: 5,
     dbSource,
     hasDatabaseUrl: hasUrl,
     betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
@@ -51,7 +57,10 @@ function identity(): Pick<
       DATABASE_URL: hasUrl,
       POSTGRES_URL: Boolean(runtimeEnv("POSTGRES_URL")),
       VERCEL: Boolean(runtimeEnv("VERCEL")),
+      BETTER_AUTH_SECRET: Boolean(runtimeEnv("BETTER_AUTH_SECRET")),
+      GROK_AUTH_CLIENT_ID: Boolean(runtimeEnv("GROK_AUTH_CLIENT_ID")),
     },
+    dbLikeKeys,
   };
 }
 

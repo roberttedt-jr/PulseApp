@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { UserButton } from "@/lib/auth/gates";
+import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { deleteAccountData, exportData, getBootstrap, updateProfile } from "@/lib/pulse/fns";
 import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
-import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
+import { readRecoveryCode, storeRecoveryCode, clearSessionToken } from "@/lib/session-token";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -52,7 +52,16 @@ function SettingsPage() {
             <p className="font-semibold">{p?.displayName ?? user?.displayName ?? "Atleta"}</p>
             <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
           </div>
-          <UserButton />
+          <button
+            type="button"
+            className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium"
+            onClick={() => {
+              clearSessionToken();
+              void signOut("/");
+            }}
+          >
+            Cerrar sesión
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

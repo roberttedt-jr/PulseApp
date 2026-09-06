@@ -15,9 +15,14 @@ const queryClient = new QueryClient({
 });
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
-  const { getSessionUser } = await import("@/lib/auth/verify.server");
-  const u = await getSessionUser();
-  return u ? { id: u.id, email: u.email } : null;
+  try {
+    const { getSessionUser } = await import("@/lib/auth/verify.server");
+    const u = await getSessionUser();
+    return u ? { id: u.id, email: u.email } : null;
+  } catch {
+    // Auth/DB blips must never 500 the document — the client session fetch retries.
+    return null;
+  }
 });
 
 export const Route = createRootRoute({

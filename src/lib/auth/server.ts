@@ -142,7 +142,13 @@ const grokUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
 // schema from `migrations/auth/0001_auth.sql`, copied into `migrations/` when
 // the app turns sign-in on.
 const database = databaseUrl
-  ? new Pool({ connectionString: databaseUrl })
+  ? new Pool({
+      connectionString: databaseUrl,
+      max: 3,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 8_000,
+      allowExitOnIdle: true,
+    })
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
 /** Session token cookie name — also read by the live-preview popup completion page. */
@@ -184,6 +190,19 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
+  // Production default is 3 sign-up/sign-in POSTs per 10s. On Vercel the
+  // x-forwarded-for chain is multi-hop, Better Auth then cannot resolve an IP
+  // and ALL visitors share one bucket — that is the intermittent 429.
+  rateLimit: {
+    window: 60,
+    max: 80,
+    customRules: {
+      "/sign-up/email": { window: 60, max: 12 },
+      "/sign-in/email": { window: 60, max: 20 },
+      "/sign-out": { window: 60, max: 30 },
+    },
+  },
+
   // Encrypt broker-issued OAuth tokens at rest, and treat the broker's upstreams
   // as trusted first-party identities. The broker owns identity and X emails are
   // synthetic/unverified, so WITHOUT this a login can fail with
@@ -223,6 +242,14 @@ export const auth = betterAuth({
   advanced: {
     useSecureCookies: false,
     defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
+    ipAddress: {
+      ipAddressHeaders: [
+        "x-vercel-forwarded-for",
+        "x-real-ip",
+        "cf-connecting-ip",
+        "x-forwarded-for",
+      ],
+    },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
       session_data: { name: "__Host-grok-auth.session_data" },

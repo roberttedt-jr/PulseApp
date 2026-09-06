@@ -7,7 +7,7 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensureSetKind, seedDemoHistory, seedSocialWorld, seedTemplates, seedWeeklyPlan } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensureSetKind, seedSocialWorld, seedTemplates, seedWeeklyPlan } from "./seed";
 import type { Profile } from "./types";
 
 type AnyRow = Record<string, any>;
@@ -61,7 +61,6 @@ async function ensureProfile(sql: Sql, userId: string) {
     on conflict (user_id) do nothing
   `;
   await seedTemplates(sql, userId);
-  await seedDemoHistory(sql, userId);
   await seedWeeklyPlan(sql, userId);
   await seedSocialWorld(sql, userId);
   return mapProfile((await sql<AnyRow>`select * from profiles where user_id = ${userId}`)[0]);

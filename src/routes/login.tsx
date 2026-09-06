@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { PulseLogo } from "@/components/pulse-logo";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/login")({ component: Login });
 
 type Mode = "in" | "up" | "forgot";
 
-type AuthErr = { message?: string; code?: string } | null | undefined;
+type AuthErr = { message?: string; code?: string; status?: number } | null | undefined;
 
 /**
  * Google / X federate through the Grok auth broker. The shared preview client
@@ -37,11 +37,36 @@ function alreadyRegistered(error: AuthErr): boolean {
   );
 }
 
+function isRateLimited(error: AuthErr): boolean {
+  const code = error?.code ?? "";
+  const raw = (error?.message ?? "").toLowerCase();
+  return (
+    error?.status === 429 ||
+    code.includes("TOO_MANY") ||
+    raw.includes("too many") ||
+    raw.includes("rate limit")
+  );
+}
+
+function isNetworkFailure(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const m = err.message.toLowerCase();
+  return (
+    m.includes("failed to fetch") ||
+    m.includes("network") ||
+    m.includes("load failed") ||
+    m.includes("timeout") ||
+    err.name === "TimeoutError" ||
+    err.name === "AbortError"
+  );
+}
+
 function mapAuthError(error: AuthErr, kind: Mode): string {
+  if (isRateLimited(error)) return "No se ha podido conectar. Inténtalo de nuevo.";
   const code = error?.code ?? "";
   const raw = (error?.message ?? "").toLowerCase();
   if (alreadyRegistered(error)) {
-    return "Este correo ya está registrado. Inicia sesión o restablece tu contraseña.";
+    return "Este correo ya está registrado. Inicia sesión.";
   }
   if (code === "PASSWORD_TOO_SHORT" || raw.includes("too short")) {
     return "La contraseña debe tener al menos 8 caracteres.";
@@ -49,23 +74,28 @@ function mapAuthError(error: AuthErr, kind: Mode): string {
   if (code === "INVALID_EMAIL" || raw.includes("invalid email")) {
     return "El email no es válido.";
   }
-  if (kind === "up") return "No se ha podido crear la cuenta. Inténtalo de nuevo.";
+  if (kind === "up") return "No se ha podido conectar. Inténtalo de nuevo.";
   if (kind === "forgot") return "No se ha podido restablecer la contraseña.";
-  return "El email o la contraseña no son correctos.";
+  return "El correo o la contraseña no son correctos.";
 }
 
 function captureAuthToken(ctx: { response?: Response }) {
   persistSessionToken(ctx.response?.headers.get("set-auth-token"));
 }
 
-/** Persist the session token and refresh the client store. Never throws. */
 async function persistAndEnter(token: string | null | undefined): Promise<boolean> {
   persistSessionToken(token);
   try {
     const session = await authClient.getSession();
+    if (session.data?.user) return true;
+  } catch {
+    /* retry once below */
+  }
+  try {
+    const session = await authClient.getSession();
     return Boolean(session.data?.user);
   } catch {
-    return false;
+    return Boolean(token);
   }
 }
 
@@ -90,6 +120,8 @@ function Login() {
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
+  const slowTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setSocial(socialLoginAvailable());
@@ -97,27 +129,50 @@ function Login() {
     if (params.has("error")) {
       toast.error("No se pudo conectar con Google o X. Entra con tu email.");
     }
+    return () => {
+      if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
-    if (!isPending && user) {
+    if (!isPending && user && !submittingRef.current) {
       void navigate({ to: "/" });
     }
   }, [isPending, user, navigate]);
 
+  function armSlowNotice() {
+    if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+    slowTimerRef.current = window.setTimeout(() => {
+      setFormError("Estamos tardando más de lo normal. Comprueba tu conexión e inténtalo otra vez.");
+    }, 8000);
+  }
+
+  function disarmSlowNotice() {
+    if (slowTimerRef.current) {
+      window.clearTimeout(slowTimerRef.current);
+      slowTimerRef.current = null;
+    }
+  }
+
   async function enterApp(token: string | null | undefined, recoveryEmail: string) {
-    await persistAndEnter(token);
-    void issueAndStoreRecovery(recoveryEmail);
+    const ok = await persistAndEnter(token);
+    if (!ok && !token) {
+      throw new Error("No se ha podido conectar. Inténtalo de nuevo.");
+    }
+    window.setTimeout(() => void issueAndStoreRecovery(recoveryEmail), 1500);
     await navigate({ to: "/" });
   }
 
   async function onEmail(e: React.FormEvent) {
     e.preventDefault();
+    if (busy || submittingRef.current) return;
+    submittingRef.current = true;
     const trimmed = email.trim().toLowerCase();
     const pwd = password;
     const displayName = name.trim() || trimmed.split("@")[0] || "Atleta";
     setFormError(null);
     setBusy(true);
+    armSlowNotice();
     try {
       if (mode === "forgot") {
         if (pwd.length < 8) {
@@ -146,8 +201,9 @@ function Login() {
           fetchOptions: { onSuccess: captureAuthToken },
         });
         if (signed.error) {
-          setFormError("El email o la contraseña no son correctos.");
-          toast.error("El email o la contraseña no son correctos.");
+          const message = mapAuthError(signed.error, "in");
+          setFormError(message);
+          toast.error(message);
           return;
         }
         await enterApp(signed.data?.token, trimmed);
@@ -174,13 +230,10 @@ function Login() {
           return;
         }
         if (!data?.user) {
-          setFormError("No se ha podido crear la cuenta. Inténtalo de nuevo.");
-          toast.error("No se ha podido crear la cuenta. Inténtalo de nuevo.");
+          setFormError("No se ha podido conectar. Inténtalo de nuevo.");
+          toast.error("No se ha podido conectar. Inténtalo de nuevo.");
           return;
         }
-        // Better Auth auto-signs in on register. Do NOT call signIn.email here —
-        // a second credential POST is what used to surface "invalid credentials"
-        // after the user row already existed.
         await enterApp(data.token, trimmed);
         return;
       }
@@ -199,10 +252,16 @@ function Login() {
       }
       await enterApp(data?.token, trimmed);
     } catch (err) {
-      const message = err instanceof Error ? err.message : mapAuthError(null, mode);
+      const message = isNetworkFailure(err)
+        ? "No se ha podido conectar. Inténtalo de nuevo."
+        : err instanceof Error
+          ? err.message
+          : mapAuthError(null, mode);
       setFormError(message);
       toast.error(message);
     } finally {
+      disarmSlowNotice();
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -227,7 +286,7 @@ function Login() {
         ? "Creando cuenta…"
         : mode === "forgot"
           ? "Guardando…"
-          : "Entrando…"
+          : "Iniciando sesión…"
       : mode === "up"
         ? "Crear cuenta"
         : mode === "forgot"
@@ -363,6 +422,7 @@ function Login() {
               <button
                 type="button"
                 className="w-full pt-1 text-center text-sm text-primary"
+                disabled={busy}
                 onClick={() => {
                   setMode("forgot");
                   setFormError(null);
@@ -375,6 +435,7 @@ function Login() {
             <button
               type="button"
               className="w-full pt-1 text-center text-sm text-muted-foreground"
+              disabled={busy}
               onClick={() => {
                 setMode(mode === "up" ? "in" : "up");
                 setFormError(null);

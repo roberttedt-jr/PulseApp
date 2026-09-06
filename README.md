@@ -1,106 +1,101 @@
 # Pulse
 
-<p align="center">
-  <img src="public/pulse-icon.png" width="120" height="120" alt="Pulse" />
-</p>
+> Tu ritmo. Tu progreso.
 
-Tracker de entrenamientos con el pulso de iOS: series en vivo, PRs, racha y un Pulse Score que resume la semana.
+Pulse es una aplicación web de fitness diseñada para crear rutinas, registrar entrenamientos y consultar el progreso desde cualquier dispositivo, con una experiencia móvil en modo oscuro y una estética premium.
 
-![Landing de Pulse](screenshots/app-builder-preview.png)
+## Características
 
-## Stack
+- Registro e inicio de sesión con email y contraseña
+- Sesiones seguras mediante cookies `HttpOnly`, `Secure` y `SameSite=Lax`
+- Creación y gestión de rutinas de entrenamiento
+- Registro de ejercicios, series y entrenamientos finalizados
+- Historial y seguimiento del progreso
+- Persistencia de usuarios y datos de entrenamiento en Neon Postgres
+- Despliegue en producción con Vercel
+- Interfaz responsive optimizada para móvil
+- Inteligencia artificial utilizada como apoyo en la ideación, diseño, implementación y mejora del producto
 
-- TanStack Start + React 19 + TypeScript
-- Tailwind CSS v4 + Radix UI
-- Framer Motion + View Transitions API
-- Postgres (Neon en producción, PGLite en preview). Cualquier Postgres 15+, incluido el de un proyecto Supabase, funciona como `DATABASE_URL`.
-- Better Auth (email/password; Google/X vía broker en deploy de Grok)
-- Recharts, Zod, Sonner
-- Avatares: [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) cuando `BLOB_READ_WRITE_TOKEN` está definido
+## Arquitectura
 
-Pulse **no** usa el cliente JS de Supabase ni RLS del navegador. El navegador habla solo con las server functions; Postgres se consulta en el servidor, siempre filtrado por el `user_id` de la sesión.
+| Área | Tecnología / servicio |
+|---|---|
+| Frontend | React + Vite + TypeScript |
+| Autenticación | Better Auth |
+| Base de datos | Neon Postgres |
+| Hosting y despliegue | Vercel |
+| Sesiones | Cookies seguras del servidor |
 
-## Cuentas nuevas
+## Autenticación y seguridad
 
-Una cuenta recién creada empieza **vacía**. No se insertan entrenamientos, PRs, peso, rutinas personales, posts ni atletas de demostración. Las plantillas PPL / Upper-Lower / Full Body viven en la biblioteca y solo se copian a la cuenta si el usuario las elige.
+Pulse utiliza Better Auth para el flujo de email y contraseña. Las sesiones se gestionan en el servidor y las cookies son la fuente de verdad; no se mantiene un token bearer persistente en `localStorage`.
 
-Para sembrar datos de prueba en local (nunca en producción):
+- Cookies de sesión con prefijo `__Host-`
+- Cookies `HttpOnly`, `Secure` y `SameSite=Lax`
+- Sesiones persistentes en base de datos
+- Cierre de sesión con invalidación de sesión y limpieza de almacenamiento del cliente
+- Limitación de intentos por IP para registro e inicio de sesión
+- Mensajes de error diferenciados para credenciales incorrectas, email duplicado, red y límite de intentos
+
+## Desarrollo local
+
+### Requisitos
+
+- Node.js 20 o superior
+- Una base de datos PostgreSQL compatible, por ejemplo Neon
+
+### Instalación
 
 ```bash
-PULSE_SEED_DEMO=1 npm run dev
+git clone <URL_DEL_REPOSITORIO>
+cd pulse
+npm install
 ```
 
-En desarrollo aparece en Perfil el botón **Limpiar datos de prueba**. En producción ese botón no existe.
+### Variables de entorno
 
-## Foto de perfil
+Crea un archivo `.env.local` a partir de la configuración de ejemplo y añade tus credenciales:
 
-El recorte (cuadrado 1:1, máx. 1024 px) y la compresión (WebP/JPEG) ocurren en el cliente. El servidor valida MIME y tamaño (máx. 2 MB) y guarda solo la foto del usuario autenticado.
+```env
+DATABASE_URL=postgresql://...
+BETTER_AUTH_SECRET=un-secreto-largo-aleatorio
+BETTER_AUTH_URL=http://localhost:5173
+```
 
-| Variable | Obligatoria | Qué es |
-|---|---|---|
-| `BLOB_READ_WRITE_TOKEN` | recomendada en Vercel | Token de [Vercel Blob](https://vercel.com/docs/storage/vercel-blob). Sin ella, Pulse guarda el data URL ya comprimido (~80–150 KB) en `profiles.image`. Neon no ofrece object storage. |
+> No subas archivos `.env`, URLs de conexión, secretos, cookies ni tokens al repositorio.
 
-No se suben binarios crudos a Postgres. El fallback a data URL existe solo cuando Blob no está configurado. Los paths de Blob son `avatars/<userId>/<id>.<ext>` y un usuario no puede borrar la foto de otro.
-
-## Apple Health
-
-Pulse es una web/PWA: **no puede** pedir permisos de HealthKit ni leer el Apple Watch. En Ajustes → Integraciones aparece **Apple Health · Próximamente**, con aviso opcional `healthkit_notify`. Los entrenamientos y el peso llevan `source` (`manual` \| `imported` \| `healthkit`) para una futura app nativa. Nada se inventa.
-
-## Funciones
-
-- Onboarding breve: nombre, objetivo, unidades, días/semana y primera acción (crear rutina / empezar sin / explorar plantillas)
-- Dashboard: sesión de hoy, volumen, grupos musculares, PRs, racha, Pulse Score — o empty states si no hay datos
-- Rutinas propias + biblioteca PPL / Upper-Lower / Full Body
-- Biblioteca de 200+ ejercicios, favoritos, historial y 1RM Epley
-- Entrenamiento en vivo con timer circular, pesos de la última sesión y toast de PR
-- Historial, progreso corporal, heatmap, logros y feed social
-- Transiciones de pestaña 180–240 ms (View Transitions + fallback Motion)
-
-## Local
+### Ejecutar la aplicación
 
 ```bash
-npm install
 npm run dev
 ```
 
-Sin `DATABASE_URL` usa PGLite. La primera cuenta **no** recibe historial ni rutinas inventadas.
+La aplicación estará disponible normalmente en `http://localhost:5173`.
 
-## Deploy (Vercel)
+## Base de datos
 
-1. Crea un Postgres (Neon, o Project Settings → Database → URI en Supabase).
-2. En Vercel, define estas variables:
+La base de datos contiene las tablas de autenticación de Better Auth y las entidades propias de Pulse, incluyendo perfiles, rutinas, ejercicios, entrenamientos y series.
 
-| Variable | Obligatoria | Qué es |
-|---|---|---|
-| `DATABASE_URL` | sí | Connection string Postgres (`sslmode=require`) |
-| `BETTER_AUTH_SECRET` | sí | `openssl rand -hex 32` |
-| `BETTER_AUTH_URL` | sí | Origen público, sin barra final. Ej: `https://pulse.vercel.app` |
-| `VITE_AUTH_ENABLED` | sí | `true` |
-| `BLOB_READ_WRITE_TOKEN` | recomendada | Token de Vercel Blob para fotos de perfil |
+Antes de probar registro o inicio de sesión en un entorno nuevo, aplica las migraciones del proyecto contra la base de datos configurada.
 
-3. El build aplica las migraciones:
+## Despliegue
 
-```bash
-npm run build
-```
+La aplicación está desplegada en Vercel y utiliza Neon Postgres como almacenamiento persistente de producción.
 
-Equivale a `vite build` + `npm run db:migrate`. Si preferes ejecutar el SQL a mano, corre en este orden:
+Para desplegar una copia:
 
-- `migrations/0001_auth.sql`
-- `migrations/0002_pulse.sql`
-- `migrations/0003_set_kind.sql`
-- `migrations/0004_pulse_v2.sql`
-- `migrations/0005_recovery_codes.sql`
-- `migrations/0006_pulse_v3.sql`
+1. Importa el repositorio en Vercel.
+2. Crea o conecta una base de datos Neon Postgres.
+3. Configura `DATABASE_URL`, `BETTER_AUTH_SECRET` y `BETTER_AUTH_URL` para Production.
+4. Ejecuta las migraciones sobre la base de producción.
+5. Haz un redeploy.
 
-No hace falta ninguna `SUPABASE_ANON_KEY` ni `sb_secret`. No las añadas: el cliente no las usa y una service role en el navegador sería un agujero de seguridad.
+No uses un fallback de base de datos en memoria en producción: los usuarios, sesiones y entrenamientos deben persistir en PostgreSQL.
 
-Google y X solo funcionan en el preview de Grok (`*.grok-sandbox.com`), porque el broker de auth no acepta el callback de `*.vercel.app`. En la demo pública entra con **email y contraseña**.
+## Estado del proyecto
 
-## Tests
+Pulse se encuentra en desarrollo activo. La autenticación, persistencia de cuentas, rutinas y entrenamientos están conectadas a producción; continúo mejorando el diseño, la navegación, los modales y la experiencia mobile-first.
 
-```bash
-npm test
-```
+## Autor
 
-Cubre 1RM (Epley), IMC, Mifflin–St Jeor, Pulse Score, consistencia, puertas de seed demo y validación de avatar.
+Desarrollado por Roberto.

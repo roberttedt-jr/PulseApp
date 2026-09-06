@@ -175,6 +175,14 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
+            vercel: {
+              functions: {
+                // Auth + Neon on a cold isolate must finish before the platform
+                // kills the invocation. Hobby caps this; Pro honors 30s.
+                maxDuration: 30,
+                memory: 1024,
+              },
+            },
           }),
         ]
       : []),

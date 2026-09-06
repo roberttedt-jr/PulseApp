@@ -12,6 +12,7 @@ function chunks<T>(arr: T[], size: number): T[][] {
 
 let setKindReady = false;
 let pulseV2Ready = false;
+let catalogReady = false;
 
 export async function ensureSetKind(sql: Sql): Promise<void> {
   if (setKindReady) return;
@@ -52,6 +53,7 @@ export async function ensurePulseV2(sql: Sql): Promise<void> {
 }
 
 export async function ensureCatalog(sql: Sql): Promise<void> {
+  if (catalogReady) return;
   await ensureSetKind(sql);
   await ensurePulseV2(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
@@ -83,6 +85,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
       where id = ${e.id}
     `;
   }
+  if (pending.length === 0 && (rows[0]?.n ?? 0) > 0) catalogReady = true;
 }
 
 export async function seedTemplates(sql: Sql, userId: string): Promise<void> {
@@ -95,14 +98,26 @@ export async function seedTemplates(sql: Sql, userId: string): Promise<void> {
       insert into routines (id, user_id, name, description, icon, color, is_template)
       values (${id}, ${userId}, ${tpl.name}, ${tpl.description}, ${tpl.icon}, ${tpl.color}, true)
     `;
-    let order = 0;
-    for (const ex of tpl.exercises) {
-      await sql`
-        insert into routine_exercises (id, routine_id, exercise_id, sort_order, target_sets, target_reps, rest_seconds)
-        values (${nid()}, ${id}, ${ex.id}, ${order}, ${ex.sets}, ${ex.reps}, ${ex.rest})
-      `;
-      order += 1;
-    }
+    if (tpl.exercises.length === 0) continue;
+    const placeholders = tpl.exercises
+      .map((_, i) => {
+        const o = i * 7;
+        return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},$${o + 6},$${o + 7})`;
+      })
+      .join(",");
+    const params = tpl.exercises.flatMap((ex, order) => [
+      nid(),
+      id,
+      ex.id,
+      order,
+      ex.sets,
+      ex.reps,
+      ex.rest,
+    ]);
+    await sql.query(
+      `insert into routine_exercises (id, routine_id, exercise_id, sort_order, target_sets, target_reps, rest_seconds) values ${placeholders}`,
+      params,
+    );
   }
 }
 

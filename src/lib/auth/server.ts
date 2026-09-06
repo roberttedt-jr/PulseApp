@@ -32,6 +32,7 @@
 import { betterAuth } from "better-auth";
 import { bearer, genericOAuth } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { createAuthMiddleware } from "better-auth/api";
 import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
@@ -115,8 +116,12 @@ const baseURL = explicitBaseURL ?? {
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
+// Production (Vercel) must trust ONLY the public URL — localhost / preview
+// wildcards are not required and must not be an alternate accepted Origin.
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
+  ? process.env.VERCEL
+    ? [explicitBaseURL]
+    : [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
   : [
       // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
@@ -272,6 +277,32 @@ export const auth = betterAuth({
     // fires when an Authorization header is present, so the cookie path
     // (deployed apps) is unaffected.
     bearer(),
+
+    // Better Auth's built-in /sign-out only deletes the cookie session. On
+    // Vercel some mobile browsers drop __Host- cookies, so the live session is
+    // the bearer token — revoke that too or logout is a no-op.
+    {
+      id: "pulse-sign-out-bearer",
+      hooks: {
+        before: [
+          {
+            matcher: (ctx) => ctx.path === "/sign-out",
+            handler: createAuthMiddleware(async (ctx) => {
+              const raw = ctx.headers?.get("authorization") ?? "";
+              const token = raw.toLowerCase().startsWith("bearer ")
+                ? raw.slice(7).trim()
+                : "";
+              if (!token) return;
+              try {
+                await ctx.context.internalAdapter.deleteSession(token);
+              } catch {
+                /* already gone */
+              }
+            }),
+          },
+        ],
+      },
+    },
 
     // Bridges Better Auth's Set-Cookie into TanStack Start responses. MUST be
     // last so it runs after every other plugin's hooks.

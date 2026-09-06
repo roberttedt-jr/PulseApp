@@ -13,7 +13,7 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { deleteAccountData, exportData, getBootstrap, updateProfile } from "@/lib/pulse/fns";
 import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
-import { readRecoveryCode, storeRecoveryCode, clearSessionToken } from "@/lib/session-token";
+import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
@@ -26,6 +26,7 @@ function SettingsPage() {
   const email = user?.primaryEmail ?? "";
   const [recovery, setRecovery] = useState(() => (email ? readRecoveryCode(email) : null));
   const [minting, setMinting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data: patch }),
@@ -54,13 +55,17 @@ function SettingsPage() {
           </div>
           <button
             type="button"
-            className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium"
+            className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium disabled:opacity-60"
+            disabled={signingOut}
             onClick={() => {
-              clearSessionToken();
-              void signOut("/");
+              setSigningOut(true);
+              void signOut("/").catch(() => {
+                setSigningOut(false);
+                toast.error("No se ha podido cerrar sesión. Inténtalo de nuevo.");
+              });
             }}
           >
-            Cerrar sesión
+            {signingOut ? "Cerrando…" : "Cerrar sesión"}
           </button>
         </div>
 

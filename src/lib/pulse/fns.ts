@@ -62,7 +62,6 @@ async function ensureProfile(sql: Sql, userId: string) {
   `;
   await seedTemplates(sql, userId);
   await seedWeeklyPlan(sql, userId);
-  await seedSocialWorld(sql, userId);
   return mapProfile((await sql<AnyRow>`select * from profiles where user_id = ${userId}`)[0]);
 }
 function startOfWeek(d: Date = new Date()) {
@@ -1175,6 +1174,7 @@ export const setPlanDay = createServerFn({ method: "POST" }).middleware([authMid
 export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
+  await seedSocialWorld(sql, context.userId);
   await ensurePulseV2(sql);
   const items = await sql<AnyRow>`
       select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, p.display_name, p.image,

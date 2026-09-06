@@ -85,17 +85,21 @@ function captureAuthToken(ctx: { response?: Response }) {
 
 async function persistAndEnter(token: string | null | undefined): Promise<boolean> {
   persistSessionToken(token);
+  // Sign-up / sign-in already returned the user. A follow-up getSession that
+  // misses (cookie dropped, bearer not attached yet) would cache "signed out"
+  // and bounce the visitor back to login after a successful create.
+  if (token) return true;
   try {
     const session = await authClient.getSession();
     if (session.data?.user) return true;
   } catch {
-    /* retry once below */
+    /* retry once */
   }
   try {
     const session = await authClient.getSession();
     return Boolean(session.data?.user);
   } catch {
-    return Boolean(token);
+    return false;
   }
 }
 
@@ -120,6 +124,7 @@ function Login() {
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [slowNotice, setSlowNotice] = useState(false);
   const submittingRef = useRef(false);
   const slowTimerRef = useRef<number | null>(null);
 
@@ -142,8 +147,9 @@ function Login() {
 
   function armSlowNotice() {
     if (slowTimerRef.current) window.clearTimeout(slowTimerRef.current);
+    setSlowNotice(false);
     slowTimerRef.current = window.setTimeout(() => {
-      setFormError("Estamos tardando más de lo normal. Comprueba tu conexión e inténtalo otra vez.");
+      setSlowNotice(true);
     }, 8000);
   }
 
@@ -152,6 +158,7 @@ function Login() {
       window.clearTimeout(slowTimerRef.current);
       slowTimerRef.current = null;
     }
+    setSlowNotice(false);
   }
 
   async function enterApp(token: string | null | undefined, recoveryEmail: string) {
@@ -413,6 +420,11 @@ function Login() {
                 </>
               )}
               {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+              {busy && slowNotice && !formError ? (
+                <p className="text-sm text-muted-foreground">
+                  Estamos tardando más de lo normal. No cierres la pantalla.
+                </p>
+              ) : null}
               <Button type="submit" className="w-full" disabled={busy}>
                 {submitLabel}
               </Button>

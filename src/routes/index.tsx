@@ -4,9 +4,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Flame, Play, Trophy, Zap } from "lucide-react";
 import { useEffect } from "react";
-import { AppPage, ScreenSkeleton } from "@/components/auth-gate";
+import { AppPage, PublicEntryRedirect, ScreenSkeleton } from "@/components/auth-gate";
 import { WeekVolumeChart } from "@/components/charts";
-import { FadeIn, Stagger, StaggerItem } from "@/components/fade";
 import { ChartCard } from "@/components/pulse/cards";
 import { ActivityRings, WeekDots } from "@/components/pulse/activity-rings";
 import { ConsistencyCard } from "@/components/pulse/consistency";
@@ -14,11 +13,11 @@ import { HScroll } from "@/components/pulse/h-scroll";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { SectionHeader } from "@/components/pulse/metric-card";
 import { MuscleMap } from "@/components/pulse/muscle-map";
-import { PulseLogo, PulseMark } from "@/components/pulse-logo";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { flowPath, resolveAppFlow } from "@/lib/pulse/flow";
 import { getBootstrap, startWorkout } from "@/lib/pulse/fns";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { formatDuration, formatKg, greetingForHour } from "@/lib/utils";
@@ -35,55 +34,7 @@ function Home() {
     );
   }
   if (isPending) return <ScreenSkeleton />;
-  return <Landing />;
-}
-
-function Landing() {
-  return (
-    <main className="relative min-h-dvh overflow-x-hidden bg-background">
-      <div className="pointer-events-none absolute inset-x-0 top-[-20%] h-[55%] bg-[radial-gradient(ellipse_at_top,rgba(255,45,85,0.22),transparent_58%)]" />
-      <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-lg flex-col px-5 pt-[max(4rem,calc(var(--safe-top)+2.5rem))] pb-[max(2.5rem,calc(var(--safe-bottom)+1.5rem))]">
-        <FadeIn>
-          <div className="flex items-center gap-2">
-            <PulseMark />
-            <span className="text-lg font-semibold tracking-tight">Pulse</span>
-          </div>
-        </FadeIn>
-        <FadeIn delay={0.08} className="mt-14">
-          <PulseLogo animated size={112} alt="Pulse" className="mb-6" />
-          <h1 className="text-[clamp(1.85rem,8vw,2.5rem)] leading-[1.05] font-semibold tracking-tight">
-            El ritmo
-            <br />
-            de tu fuerza.
-          </h1>
-          <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            Registra series, conquista PRs y siente cada descanso. Pulse es el tracker de gimnasio que parece esculpido
-            en iOS.
-          </p>
-        </FadeIn>
-        <Stagger className="mt-10 grid gap-3">
-          {[
-            { t: "Entrenamiento en vivo", d: "Temporizador circular, 1RM y volumen al instante." },
-            { t: "Pulse Score", d: "Una cifra 0–100 que resume tu semana." },
-            { t: "Rutinas con alma", d: "PPL, Upper/Lower y las tuyas, reordenables." },
-          ].map((f) => (
-            <StaggerItem key={f.t}>
-              <div className="rounded-3xl bg-card px-5 py-4 hairline">
-                <p className="font-medium">{f.t}</p>
-                <p className="text-sm text-muted-foreground">{f.d}</p>
-              </div>
-            </StaggerItem>
-          ))}
-        </Stagger>
-        <FadeIn delay={0.28} className="mt-auto pt-10">
-          <Button asChild className="w-full" size="lg">
-            <Link to="/login">Empezar</Link>
-          </Button>
-          <p className="mt-3 text-center text-xs text-muted-foreground">Crea tu cuenta con email. Tus datos, tu racha.</p>
-        </FadeIn>
-      </div>
-    </main>
-  );
+  return <PublicEntryRedirect />;
 }
 
 function Dashboard() {
@@ -100,10 +51,9 @@ function Dashboard() {
   }, [data?.profile]);
 
   useEffect(() => {
-    if (!data || isPending) return;
-    if (!data.profile.onboardingDone) {
-      void navigate({ to: "/onboarding" });
-    }
+    if (!data?.profile) return;
+    const flow = resolveAppFlow(data.profile);
+    if (flow !== "app") void navigate({ to: flowPath(flow) });
   }, [data, isPending, navigate]);
 
   if (isPending || !data) {
@@ -213,29 +163,63 @@ function Dashboard() {
           )}
           <Button className="mt-5 w-full" size="lg" onClick={() => void startToday()}>
             <Play className="fill-current" />
-            {data.activeWorkoutId ? "Reanudar entrenamiento" : fresh ? "Iniciar primer entrenamiento" : "Iniciar entrenamiento"}
+            {data.activeWorkoutId ? "Reanudar entrenamiento" : "Empezar entrenamiento"}
+          </Button>
+          <Button asChild variant="secondary" className="mt-2 w-full">
+            <Link to="/routines/$routineId" params={{ routineId: "new" }}>
+              Crear rutina
+            </Link>
           </Button>
         </div>
       </section>
 
+      <section className="rounded-[24px] bg-card px-4 py-4 hairline">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Última sesión</p>
+          <Link to="/history" className="text-sm text-accent">
+            Historial
+          </Link>
+        </div>
+        {data.lastSession ? (
+          <Link to="/history/$workoutId" params={{ workoutId: data.lastSession.id }} className="mt-2 block">
+            <p className="text-[17px] font-semibold tracking-tight">{data.lastSession.title}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {data.lastSession.startedAt ? format(new Date(data.lastSession.startedAt), "d MMM", { locale: es }) : ""}
+              {data.lastSession.durationSeconds ? ` · ${formatDuration(data.lastSession.durationSeconds)}` : ""}
+              {data.lastSession.volume ? ` · ${formatKg(data.lastSession.volume, data.profile.units)}` : ""}
+            </p>
+          </Link>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">Aún no hay sesiones. Empieza tu primer entrenamiento.</p>
+        )}
+      </section>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/progress" className="rounded-3xl bg-card px-4 py-4 hairline">
+          <p className="text-xs text-muted-foreground">Progreso</p>
+          <p className="mt-1 text-sm font-medium">Ver marcas y volumen</p>
+        </Link>
+        <Link to="/history" className="rounded-3xl bg-card px-4 py-4 hairline">
+          <p className="text-xs text-muted-foreground">Historial</p>
+          <p className="mt-1 text-sm font-medium">Todas las sesiones</p>
+        </Link>
+      </div>
+
       {fresh ? (
-        <EmptyState
-          icon={Play}
-          title="Tu progreso empieza hoy."
-          hint="Las estadísticas, PRs y el balance muscular aparecerán cuando registres tu primera sesión real."
-          action={
-            <Button size="lg" onClick={() => void startToday()}>
-              Iniciar primer entrenamiento
-            </Button>
-          }
-        />
+        <section className="min-w-0 overflow-x-clip rounded-[28px] bg-card px-4 py-5 hairline sm:px-5">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Resumen semanal</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {data.week.workouts} sesiones · {formatKg(data.week.volume, data.profile.units)} · {formatDuration(data.week.duration)}
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">Las estadísticas aparecen cuando registres tu primera sesión.</p>
+        </section>
       ) : (
         <>
       <section className="min-w-0 overflow-x-clip rounded-[28px] bg-card px-4 py-5 hairline sm:px-5">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
           <ActivityRings
             sessions={data.week.workouts}
-            sessionGoal={data.profile.weeklyGoal}
+            sessionGoal={Math.max(1, data.profile.weeklyGoal)}
             volumePct={volumePct}
             streakPct={streakPct}
           />
@@ -250,7 +234,7 @@ function Dashboard() {
                   <span className="size-2 rounded-full bg-primary" /> Sesiones
                 </span>
                 <span className="font-semibold tabular">
-                  {data.week.workouts}/{data.profile.weeklyGoal}
+                  {data.profile.weeklyGoal > 0 ? `${data.week.workouts}/${data.profile.weeklyGoal}` : data.week.workouts}
                 </span>
               </li>
               <li className="flex items-center justify-between">

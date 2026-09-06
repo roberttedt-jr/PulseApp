@@ -33,13 +33,39 @@ export const EQUIPMENT = [
 export type Equipment = (typeof EQUIPMENT)[number];
 
 export const GOALS = [
+  { id: "strength", label: "Ganar fuerza", hint: "Cargas y progresión" },
   { id: "gain", label: "Ganar músculo", hint: "Hipertrofia y volumen" },
   { id: "lose", label: "Perder grasa", hint: "Déficit y consistencia" },
-  { id: "maintain", label: "Mantener", hint: "Salud y rendimiento" },
-  { id: "strength", label: "Mejorar fuerza", hint: "Cargas y progresión" },
+  { id: "active", label: "Mantenerme activo", hint: "Ritmo y constancia" },
+  { id: "log", label: "Registrar mis entrenamientos", hint: "Control de cada sesión" },
 ] as const;
 
-export type GoalId = (typeof GOALS)[number]["id"];
+export type GoalId = (typeof GOALS)[number]["id"] | "maintain";
+
+export const EXPERIENCE_LEVELS = [
+  { id: "beginner", label: "Principiante" },
+  { id: "intermediate", label: "Intermedio" },
+  { id: "advanced", label: "Avanzado" },
+] as const;
+export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number]["id"];
+
+export const TRAINING_LOCATIONS = [
+  { id: "gym", label: "Gimnasio" },
+  { id: "home", label: "Casa" },
+  { id: "both", label: "Ambos" },
+] as const;
+export type TrainingLocation = (typeof TRAINING_LOCATIONS)[number]["id"];
+
+export const WEEKLY_TRAINING_OPTIONS = [
+  { id: 2, label: "2 días" },
+  { id: 3, label: "3 días" },
+  { id: 4, label: "4 días" },
+  { id: 5, label: "5 días" },
+  { id: 6, label: "6+ días" },
+  { id: 0, label: "Aún no lo sé" },
+] as const;
+
+export const DEFAULT_REST_OPTIONS = [60, 90, 120] as const;
 
 export type Units = "metric" | "imperial";
 export type ThemePref = "dark" | "light" | "system";
@@ -63,6 +89,12 @@ export type Profile = {
   reminderHour: number | null;
   healthkitNotify: boolean;
   showRpe: boolean;
+  experienceLevel: ExperienceLevel | null;
+  trainingLocation: TrainingLocation | null;
+  defaultRestSeconds: number;
+  setupStep: number;
+  setupCompletedAt: string | null;
+  tutorialCompletedAt: string | null;
 };
 
 export type Exercise = {

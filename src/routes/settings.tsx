@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, ChevronRight, Download, HeartPulse, Info, KeyRound, Trophy, Users } from "lucide-react";
 import { useState } from "react";
@@ -17,12 +17,14 @@ import { issueRecoveryCode } from "@/lib/pulse/password-reset";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { fromKg, toKg } from "@/lib/utils";
+import { DEFAULT_REST_OPTIONS, EXPERIENCE_LEVELS, GOALS, TRAINING_LOCATIONS, WEEKLY_TRAINING_OPTIONS, type Profile } from "@/lib/pulse/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
   const user = useCurrentUser();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const tools = useQuery({ queryKey: ["dev-tools"], queryFn: () => devToolsAvailable() });
@@ -235,12 +237,33 @@ function SettingsPage() {
             onChange={(v) => save.mutate({ publicProfile: v })}
           />
           <RowSelect
+            label="Objetivo"
+            value={p?.goal ?? ""}
+            options={[["", "Sin definir"], ...GOALS.map((g) => [g.id, g.label])]}
+            onChange={(v) => save.mutate({ goal: (v || null) as Profile["goal"] })}
+          />
+          <RowSelect
+            label="Nivel"
+            value={p?.experienceLevel ?? ""}
+            options={[["", "Sin definir"], ...EXPERIENCE_LEVELS.map((g) => [g.id, g.label])]}
+            onChange={(v) => save.mutate({ experienceLevel: (v || null) as Profile["experienceLevel"] })}
+          />
+          <RowSelect
+            label="Lugar"
+            value={p?.trainingLocation ?? ""}
+            options={[["", "Sin definir"], ...TRAINING_LOCATIONS.map((g) => [g.id, g.label])]}
+            onChange={(v) => save.mutate({ trainingLocation: (v || null) as Profile["trainingLocation"] })}
+          />
+          <RowSelect
+            label="Descanso"
+            value={String(p?.defaultRestSeconds ?? 90)}
+            options={DEFAULT_REST_OPTIONS.map((n) => [String(n), `${n} s`])}
+            onChange={(v) => save.mutate({ defaultRestSeconds: Number(v) })}
+          />
+          <RowSelect
             label="Objetivo semanal"
             value={String(p?.weeklyGoal ?? 4)}
-            options={["1", "2", "3", "4", "5", "6", "7"].map((n) => [
-              n,
-              `${n} ${n === "1" ? "día" : "días"}`,
-            ])}
+            options={WEEKLY_TRAINING_OPTIONS.map((n) => [String(n.id), n.label])}
             onChange={(v) => save.mutate({ weeklyGoal: Number(v) })}
           />
         </section>
@@ -259,6 +282,9 @@ function SettingsPage() {
         </nav>
 
         <div className="flex flex-col gap-2">
+          <Button variant="secondary" onClick={() => void navigate({ to: "/welcome", search: { replay: true } })}>
+            Ver presentación
+          </Button>
           <Button
             variant="secondary"
             onClick={async () => {

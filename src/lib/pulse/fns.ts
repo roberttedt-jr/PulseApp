@@ -7,9 +7,9 @@ import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
 import { epley1rm, pulseScore } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
-import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
+import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
-import type { Profile } from "./types";
+import type { ExperienceLevel, GoalId, Profile, TrainingLocation } from "./types";
 
 type AnyRow = Record<string, any>;
 
@@ -29,7 +29,20 @@ function numNull(v: unknown) {
 function bool(v: unknown) {
   return v === true || v === "t" || v === "true";
 }
+function mapGoal(v: unknown): GoalId | null {
+  if (v === "gain" || v === "lose" || v === "maintain" || v === "strength" || v === "active" || v === "log") return v;
+  return null;
+}
+function mapExperience(v: unknown): ExperienceLevel | null {
+  if (v === "beginner" || v === "intermediate" || v === "advanced") return v;
+  return null;
+}
+function mapLocation(v: unknown): TrainingLocation | null {
+  if (v === "gym" || v === "home" || v === "both") return v;
+  return null;
+}
 function mapProfile(r: AnyRow): Profile {
+  const rest = num(r.default_rest_seconds);
   return {
     userId: r.user_id,
     displayName: r.display_name,
@@ -38,17 +51,23 @@ function mapProfile(r: AnyRow): Profile {
     weightKg: numNull(r.weight_kg),
     heightCm: numNull(r.height_cm),
     birthDate: r.birth_date,
-    goal: r.goal === "gain" || r.goal === "lose" || r.goal === "maintain" || r.goal === "strength" ? r.goal : null,
+    goal: mapGoal(r.goal),
     units: r.units === "imperial" ? "imperial" : "metric",
     theme: r.theme === "light" || r.theme === "system" ? r.theme : "dark",
     restSound: bool(r.rest_sound),
     autoRest: r.auto_rest == null ? true : bool(r.auto_rest),
     publicProfile: bool(r.public_profile),
     onboardingDone: bool(r.onboarding_done),
-    weeklyGoal: num(r.weekly_goal) || 4,
+    weeklyGoal: r.weekly_goal == null ? 4 : num(r.weekly_goal),
     reminderHour: numNull(r.reminder_hour),
     healthkitNotify: bool(r.healthkit_notify),
     showRpe: r.show_rpe == null ? true : bool(r.show_rpe),
+    experienceLevel: mapExperience(r.experience_level),
+    trainingLocation: mapLocation(r.training_location),
+    defaultRestSeconds: rest === 60 || rest === 120 ? rest : 90,
+    setupStep: Math.max(0, Math.min(4, num(r.setup_step))),
+    setupCompletedAt: toIso(r.setup_completed_at),
+    tutorialCompletedAt: toIso(r.tutorial_completed_at),
   };
 }
 async function ensureProfile(sql: Sql, userId: string) {
@@ -56,6 +75,7 @@ async function ensureProfile(sql: Sql, userId: string) {
   await ensurePulseV2(sql);
   await ensurePulseV3(sql);
   await ensurePulseV4(sql);
+  await ensurePulseV5(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
@@ -262,6 +282,17 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       select count(*)::int as n from workouts
       where user_id = ${context.userId} and status = 'completed'
     `;
+  const lastSessionRows = await sql<AnyRow>`
+      select w.id, w.title, w.started_at, w.duration_seconds,
+        coalesce(sum(case when s.completed then s.weight * s.reps else 0 end), 0) as volume
+      from workouts w
+      left join workout_sets s on s.workout_id = w.id
+      where w.user_id = ${context.userId} and w.status = 'completed'
+      group by w.id
+      order by w.started_at desc
+      limit 1
+    `;
+  const last = lastSessionRows[0];
   return {
     profile,
     lifetimeWorkouts: lifetime[0]?.n ?? 0,
@@ -313,6 +344,15 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       exercises: todayExercises.map((e) => e.name)
     } : null,
     activeWorkoutId: active[0]?.id ?? null,
+    lastSession: last
+      ? {
+          id: String(last.id),
+          title: last.title || "Entrenamiento",
+          startedAt: toIso(last.started_at),
+          durationSeconds: num(last.duration_seconds),
+          volume: num(last.volume),
+        }
+      : null,
     suggestion,
     heatmap: heatmap.map((h) => ({
       date: String(h.d).slice(0, 10),
@@ -345,6 +385,9 @@ export const updateProfile = createServerFn({ method: "POST" }).middleware([auth
         reminder_hour = coalesce(${data.reminderHour ?? null}, reminder_hour),
         healthkit_notify = coalesce(${data.healthkitNotify ?? null}, healthkit_notify),
         show_rpe = coalesce(${data.showRpe ?? null}, show_rpe),
+        experience_level = coalesce(${data.experienceLevel ?? null}, experience_level),
+        training_location = coalesce(${data.trainingLocation ?? null}, training_location),
+        default_rest_seconds = coalesce(${data.defaultRestSeconds ?? null}, default_rest_seconds),
         updated_at = now()
       where user_id = ${context.userId}
     `;
@@ -354,21 +397,85 @@ export const completeOnboarding = createServerFn({ method: "POST" }).middleware(
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
   const name = String(data.displayName ?? "").trim() || "Atleta";
-  const goal = data.goal === "gain" || data.goal === "lose" || data.goal === "maintain" || data.goal === "strength" ? data.goal : null;
+  const goal = mapGoal(data.goal);
   const units = data.units === "imperial" ? "imperial" : "metric";
-  const weekly = Math.min(7, Math.max(1, Number(data.weeklyGoal) || 4));
+  const weekly = Math.min(7, Math.max(0, Number(data.weeklyGoal) || 0));
   await sql<AnyRow>`
       update profiles set
         display_name = ${name},
         goal = ${goal},
         units = ${units},
-        weekly_goal = ${weekly},
+        weekly_goal = ${weekly || 4},
         onboarding_done = true,
+        setup_step = 4,
+        setup_completed_at = coalesce(setup_completed_at, now()),
+        tutorial_completed_at = coalesce(tutorial_completed_at, now()),
         updated_at = now()
       where user_id = ${context.userId}
     `;
   return { ok: true };
 });
+
+type SetupPatch = {
+  goal?: GoalId | null;
+  experienceLevel?: ExperienceLevel | null;
+  trainingLocation?: TrainingLocation | null;
+  weeklyGoal?: number | null;
+  units?: "metric" | "imperial" | null;
+  defaultRestSeconds?: number | null;
+  setupStep?: number;
+  complete?: boolean;
+};
+
+export const saveSetupProgress = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: SetupPatch) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ensureProfile(sql, context.userId);
+    const goal = data.goal === undefined ? undefined : mapGoal(data.goal);
+    const experience = data.experienceLevel === undefined ? undefined : mapExperience(data.experienceLevel);
+    const location = data.trainingLocation === undefined ? undefined : mapLocation(data.trainingLocation);
+    const units = data.units === "imperial" || data.units === "metric" ? data.units : undefined;
+    const rest = data.defaultRestSeconds === 60 || data.defaultRestSeconds === 90 || data.defaultRestSeconds === 120
+      ? data.defaultRestSeconds
+      : undefined;
+    const weekly = data.weeklyGoal == null ? undefined : Math.min(7, Math.max(0, Number(data.weeklyGoal)));
+    const step = data.setupStep == null ? undefined : Math.max(0, Math.min(4, Number(data.setupStep)));
+    const done = Boolean(data.complete);
+    await sql<AnyRow>`
+      update profiles set
+        goal = coalesce(${goal ?? null}, goal),
+        experience_level = coalesce(${experience ?? null}, experience_level),
+        training_location = coalesce(${location ?? null}, training_location),
+        units = coalesce(${units ?? null}, units),
+        weekly_goal = coalesce(${weekly ?? null}, weekly_goal),
+        default_rest_seconds = coalesce(${rest ?? null}, default_rest_seconds),
+        setup_step = coalesce(${step ?? null}, setup_step),
+        onboarding_done = case when ${done} then true else onboarding_done end,
+        setup_completed_at = case when ${done} then coalesce(setup_completed_at, now()) else setup_completed_at end,
+        updated_at = now()
+      where user_id = ${context.userId}
+    `;
+    return mapProfile((await sql<AnyRow>`select * from profiles where user_id = ${context.userId}`)[0]);
+  });
+
+export const completeTutorial = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensureProfile(sql, context.userId);
+    await sql<AnyRow>`
+      update profiles set
+        tutorial_completed_at = coalesce(tutorial_completed_at, now()),
+        onboarding_done = true,
+        setup_completed_at = coalesce(setup_completed_at, now()),
+        setup_step = 4,
+        updated_at = now()
+      where user_id = ${context.userId}
+    `;
+    return { ok: true };
+  });
 export const listExercises = createServerFn({ method: "GET" }).middleware([authMiddleware]).validator((d: any) => d ?? {}).handler(async ({ context, data }) => {
   const sql = await getSql();
   await ensureCatalog(sql);
@@ -749,6 +856,9 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
   await ensureSetKind(sql);
   await ensurePulseV2(sql);
   await ensurePulseV4(sql);
+  await ensurePulseV5(sql);
+  const profile = await ensureProfile(sql, context.userId);
+  const defaultRest = profile.defaultRestSeconds || 90;
   const w = await sql<AnyRow>`select * from workouts where id = ${data.id} and user_id = ${context.userId}`;
   if (!w[0]) return null;
   const sets = await sql<AnyRow>`
@@ -841,7 +951,7 @@ export const getWorkout = createServerFn({ method: "GET" }).middleware([authMidd
       type: head.type,
       instructions: head.instructions,
       notes: noteMap.get(exerciseId) || null,
-      restSeconds: restMap.get(exerciseId) ?? 90,
+      restSeconds: restMap.get(exerciseId) ?? defaultRest,
       targetSets: arr.length,
       targetReps: "8-12",
       estimated1rm: best || null,

@@ -19,8 +19,11 @@ import { Route as PlanRouteImport } from './routes/plan'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as RoutinesRouteImport } from './routes/routines'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TrainRouteImport } from './routes/train'
+import { Route as TutorialRouteImport } from './routes/tutorial'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiAuthHealthRouteImport } from './routes/api/auth-health'
 import { Route as ExercisesExerciseIdRouteImport } from './routes/exercises/$exerciseId'
 import { Route as HistoryWorkoutIdRouteImport } from './routes/history/$workoutId'
@@ -78,6 +81,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -86,6 +94,16 @@ const StatsRoute = StatsRouteImport.update({
 const TrainRoute = TrainRouteImport.update({
   id: '/train',
   path: '/train',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TutorialRoute = TutorialRouteImport.update({
+  id: '/tutorial',
+  path: '/tutorial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthHealthRoute = ApiAuthHealthRouteImport.update({
@@ -130,8 +148,11 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/routines': typeof RoutinesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/tutorial': typeof TutorialRoute
+  '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -150,8 +171,11 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/routines': typeof RoutinesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/tutorial': typeof TutorialRoute
+  '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -171,8 +195,11 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/routines': typeof RoutinesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
   '/stats': typeof StatsRoute
   '/train': typeof TrainRoute
+  '/tutorial': typeof TutorialRoute
+  '/welcome': typeof WelcomeRoute
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -193,8 +220,11 @@ export interface FileRouteTypes {
     | '/progress'
     | '/routines'
     | '/settings'
+    | '/setup'
     | '/stats'
     | '/train'
+    | '/tutorial'
+    | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
@@ -213,8 +243,11 @@ export interface FileRouteTypes {
     | '/progress'
     | '/routines'
     | '/settings'
+    | '/setup'
     | '/stats'
     | '/train'
+    | '/tutorial'
+    | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
@@ -233,8 +266,11 @@ export interface FileRouteTypes {
     | '/progress'
     | '/routines'
     | '/settings'
+    | '/setup'
     | '/stats'
     | '/train'
+    | '/tutorial'
+    | '/welcome'
     | '/api/auth-health'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
@@ -254,8 +290,11 @@ export interface RootRouteChildren {
   ProgressRoute: typeof ProgressRoute
   RoutinesRoute: typeof RoutinesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  SetupRoute: typeof SetupRoute
   StatsRoute: typeof StatsRoute
   TrainRoute: typeof TrainRoute
+  TutorialRoute: typeof TutorialRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiAuthHealthRoute: typeof ApiAuthHealthRoute
   ShareSlugRoute: typeof ShareSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -333,6 +372,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stats': {
       id: '/stats'
       path: '/stats'
@@ -345,6 +391,20 @@ declare module '@tanstack/react-router' {
       path: '/train'
       fullPath: '/train'
       preLoaderRoute: typeof TrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tutorial': {
+      id: '/tutorial'
+      path: '/tutorial'
+      fullPath: '/tutorial'
+      preLoaderRoute: typeof TutorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth-health': {
@@ -438,8 +498,11 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressRoute: ProgressRoute,
   RoutinesRoute: RoutinesRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  SetupRoute: SetupRoute,
   StatsRoute: StatsRoute,
   TrainRoute: TrainRoute,
+  TutorialRoute: TutorialRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiAuthHealthRoute: ApiAuthHealthRoute,
   ShareSlugRoute: ShareSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

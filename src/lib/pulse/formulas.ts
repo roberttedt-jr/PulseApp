@@ -39,7 +39,7 @@ export function mifflinStJeor(opts: {
 /** Sedentary-to-active multiplier for a gym-going adult (~1.55). */
 export function recommendedCalories(
   ree: number,
-  goal: "gain" | "lose" | "maintain" | "strength" | null | undefined,
+  goal: "gain" | "lose" | "maintain" | "strength" | "active" | "log" | null | undefined,
 ): number {
   if (ree <= 0) return 0;
   const tdee = ree * 1.55;

@@ -8,9 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { persistSessionToken, readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { issueRecoveryCode, resetWithRecovery } from "@/lib/pulse/password-reset";
+import { hasSeenPublicOnboarding } from "@/lib/pulse/flow";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({
+  validateSearch: (s: Record<string, unknown>): { mode?: "in" | "up" } => ({
+    mode: s.mode === "in" || s.mode === "up" ? s.mode : undefined,
+  }),
+  component: Login,
+});
 
 type Mode = "in" | "up" | "forgot";
 
@@ -129,7 +135,8 @@ async function issueAndStoreRecovery(email: string): Promise<void> {
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("up");
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<Mode>(search.mode === "in" ? "in" : "up");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -139,6 +146,7 @@ function Login() {
   const [formError, setFormError] = useState<string | null>(null);
   const [slowNotice, setSlowNotice] = useState(false);
   const submittingRef = useRef(false);
+  const enteredRef = useRef(false);
   const userCancelRef = useRef(false);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -156,8 +164,16 @@ function Login() {
   }, []);
 
   useEffect(() => {
+    if (enteredRef.current) return;
     if (!isPending && user && !submittingRef.current) {
       void navigate({ to: "/" });
+    }
+  }, [isPending, user, navigate]);
+
+  useEffect(() => {
+    if (isPending || user) return;
+    if (!hasSeenPublicOnboarding()) {
+      void navigate({ to: "/welcome" });
     }
   }, [isPending, user, navigate]);
 
@@ -208,9 +224,11 @@ function Login() {
       /* hard redirect below re-reads cookies + tab bearer */
     }
     window.setTimeout(() => void issueAndStoreRecovery(recoveryEmail), 1500);
+    enteredRef.current = true;
+    submittingRef.current = true;
     // Full navigation so a stale signed-out session cache cannot paint the
     // marketing landing after a successful sign-in.
-    window.location.assign("/");
+    window.location.assign(mode === "up" ? "/setup" : "/");
   }
 
   async function onEmail(e: React.FormEvent) {
@@ -354,8 +372,10 @@ function Login() {
     } finally {
       if (requestId !== requestIdRef.current) return;
       disarmSlowNotice();
-      submittingRef.current = false;
-      setBusy(false);
+      if (!enteredRef.current) {
+        submittingRef.current = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -392,7 +412,17 @@ function Login() {
                   : "Entra con el email de tu cuenta."}
             </p>
 
-            <form onSubmit={(ev) => void onEmail(ev)} className="space-y-3">
+            <form
+              method="post"
+              action="/login"
+              onSubmit={(ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                void onEmail(ev);
+              }}
+              className="space-y-3"
+              data-auth-form="1"
+            >
               {mode === "up" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Nombre</Label>

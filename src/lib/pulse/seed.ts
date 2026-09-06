@@ -18,6 +18,27 @@ let pulseV2Ready = false;
 let catalogReady = false;
 let pulseV3Ready = false;
 let pulseV4Ready = false;
+let pulseV5Ready = false;
+
+export async function ensurePulseV5(sql: Sql): Promise<void> {
+  if (pulseV5Ready) return;
+  await sql.query(`alter table profiles add column if not exists experience_level text`);
+  await sql.query(`alter table profiles add column if not exists training_location text`);
+  await sql.query(`alter table profiles add column if not exists default_rest_seconds integer not null default 90`);
+  await sql.query(`alter table profiles add column if not exists setup_step integer not null default 0`);
+  await sql.query(`alter table profiles add column if not exists setup_completed_at timestamptz`);
+  await sql.query(`alter table profiles add column if not exists tutorial_completed_at timestamptz`);
+  await sql.query(`
+    update profiles
+    set
+      setup_completed_at = coalesce(setup_completed_at, updated_at, now()),
+      tutorial_completed_at = coalesce(tutorial_completed_at, updated_at, now()),
+      setup_step = 4
+    where onboarding_done = true
+      and setup_completed_at is null
+  `);
+  pulseV5Ready = true;
+}
 
 export async function ensurePulseV4(sql: Sql): Promise<void> {
   if (pulseV4Ready) return;
@@ -93,6 +114,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV2(sql);
   await ensurePulseV3(sql);
   await ensurePulseV4(sql);
+  await ensurePulseV5(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

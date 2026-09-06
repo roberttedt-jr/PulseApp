@@ -43,6 +43,16 @@ function isRateLimited(error: AuthErr): boolean {
   );
 }
 
+function isAbortLike(error: AuthErr | unknown): boolean {
+  if (!error) return false;
+  if (error instanceof Error) {
+    const m = error.message.toLowerCase();
+    return error.name === "AbortError" || m.includes("abort") || m.includes("aborted");
+  }
+  const raw = String((error as AuthErr)?.message ?? "").toLowerCase();
+  return raw.includes("abort") || raw.includes("aborted");
+}
+
 function isNetworkFailure(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const m = err.message.toLowerCase();
@@ -58,6 +68,7 @@ function isNetworkFailure(err: unknown): boolean {
 
 function mapAuthError(error: AuthErr, kind: Mode): string {
   if (isRateLimited(error)) return RATE_LIMIT_MSG;
+  if (isAbortLike(error)) return CONNECT_MSG;
   const code = error?.code ?? "";
   const raw = (error?.message ?? "").toLowerCase();
   if (alreadyRegistered(error)) {
@@ -234,6 +245,7 @@ function Login() {
         });
         if (requestId !== requestIdRef.current) return;
         if (signed.error) {
+          if (userCancelRef.current) return;
           const message = mapAuthError(signed.error, "in");
           setFormError(message);
           toast.error(message);
@@ -252,6 +264,7 @@ function Login() {
         });
         if (requestId !== requestIdRef.current) return;
         if (error) {
+          if (userCancelRef.current) return;
           const message = mapAuthError(error, "up");
           if (alreadyRegistered(error)) {
             setMode("in");
@@ -280,6 +293,7 @@ function Login() {
       });
       if (requestId !== requestIdRef.current) return;
       if (error) {
+        if (userCancelRef.current) return;
         const message = mapAuthError(error, "in");
         setFormError(message);
         toast.error(message);

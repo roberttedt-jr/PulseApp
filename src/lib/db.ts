@@ -1,6 +1,21 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
 /**
+ * Read an env var at RUNTIME.
+ *
+ * Vite statically replaces `process.env.FOO` (dot access) at build time. On
+ * Vercel that inlines `undefined` for secrets that are not `VITE_`-prefixed,
+ * so production would silently fall back to PGLite while Better Auth (which
+ * reads `process.env[key]`) still talks to Neon. Bracket access is not
+ * replaced, so signup/login and app data share one database.
+ */
+function runtimeEnv(key: string): string | undefined {
+  if (typeof process === "undefined" || !process.env) return undefined;
+  const value = process.env[key]?.trim();
+  return value ? value : undefined;
+}
+
+/**
  * Better Auth reads BETTER_AUTH_URL at module init (via `@/lib/auth/server`).
  * This file is imported first, so we align that URL with the live Vercel host
  * BEFORE Better Auth builds `trustedOrigins`. Without this, email/password
@@ -12,22 +27,21 @@ import { pendingMigrations } from "../../scripts/migration-plan.mjs";
  * live host is left alone.
  */
 function applyVercelAuthOrigin(): void {
-  if (typeof process === "undefined") return;
-  if (!process.env.VERCEL) return;
+  if (!runtimeEnv("VERCEL")) return;
 
   const raw =
-    process.env.VERCEL_ENV === "production"
-      ? process.env.VERCEL_PROJECT_PRODUCTION_URL || "pulse-psi-blond.vercel.app"
-      : process.env.VERCEL_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  if (!raw?.trim()) return;
+    runtimeEnv("VERCEL_ENV") === "production"
+      ? runtimeEnv("VERCEL_PROJECT_PRODUCTION_URL") || "pulse-psi-blond.vercel.app"
+      : runtimeEnv("VERCEL_URL") || runtimeEnv("VERCEL_PROJECT_PRODUCTION_URL");
+  if (!raw) return;
 
-  const host = raw.trim().replace(/\/$/, "");
+  const host = raw.replace(/\/$/, "");
   const liveUrl =
     host.startsWith("http://") || host.startsWith("https://")
       ? host
       : `https://${host}`;
 
-  const current = process.env.BETTER_AUTH_URL?.trim().replace(/\/$/, "");
+  const current = runtimeEnv("BETTER_AUTH_URL")?.replace(/\/$/, "");
   if (current) {
     try {
       if (new URL(current).host === new URL(liveUrl).host) return;
@@ -45,10 +59,8 @@ export type DbSource = "neon" | "pglite";
 
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
-const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+// MUST use runtimeEnv() (bracket access). Dot-access is replaced at build time.
+const databaseUrl = runtimeEnv("DATABASE_URL");
 
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured

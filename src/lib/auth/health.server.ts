@@ -24,6 +24,11 @@ export type AuthHealth = {
   hashKinds: { kind: string; n: number }[];
 };
 
+function runtimeEnv(key: string): string | undefined {
+  const value = process.env[key]?.trim();
+  return value ? value : undefined;
+}
+
 function hostOnly(url: string | undefined): string | null {
   if (!url) return null;
   try {
@@ -72,8 +77,8 @@ export async function getAuthHealth(): Promise<AuthHealth> {
     return {
       ok: true,
       dbSource,
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
-      betterAuthHost: hostOnly(process.env.BETTER_AUTH_URL),
+      hasDatabaseUrl: Boolean(runtimeEnv("DATABASE_URL")),
+      betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
       schema: {
         hasUserTable: names.has("user"),
         hasAccountTable: names.has("account"),
@@ -151,8 +156,8 @@ export async function getAuthHealth(): Promise<AuthHealth> {
   return {
     ok: true,
     dbSource,
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
-    betterAuthHost: hostOnly(process.env.BETTER_AUTH_URL),
+    hasDatabaseUrl: Boolean(runtimeEnv("DATABASE_URL")),
+    betterAuthHost: hostOnly(runtimeEnv("BETTER_AUTH_URL")),
     schema: {
       hasUserTable: true,
       hasAccountTable: true,

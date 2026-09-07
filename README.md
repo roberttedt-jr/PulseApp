@@ -22,11 +22,11 @@ Pulse es una aplicación web y móvil de fitness de alto rendimiento orientada a
 
 | Dashboard & Inicio | Planificador de Rutinas | Progreso & Récords (PRs) |
 |:---:|:---:|:---:|
-| <img src="./IMG_8920.jpg" width="230" alt="Dashboard e Inicio" style="border-radius: 12px;" /> | <img src="./IMG_8922.jpg" width="230" alt="Entrenamiento y Rutinas" style="border-radius: 12px;" /> | <img src="./IMG_8923.jpg" width="230" alt="Progreso y Récords" style="border-radius: 12px;" /> |
+| <img src="./IMG_8920.png" width="230" alt="Dashboard e Inicio" style="border-radius: 12px;" /> | <img src="./IMG_8922.png" width="230" alt="Entrenamiento y Rutinas" style="border-radius: 12px;" /> | <img src="./IMG_892.png" width="230" alt="Progreso y Récords" style="border-radius: 12px;" /> |
 
 | Feed Social & Comunidad | Biblioteca de Ejercicios |
 |:---:|:---:|
-| <img src="./IMG_8921.jpg" width="230" alt="Feed Social y Actividad" style="border-radius: 12px;" /> | <img src="./IMG_8924.jpg" width="230" alt="Buscador de Ejercicios" style="border-radius: 12px;" /> |
+| <img src="./IMG_8921.png" width="230" alt="Feed Social y Actividad" style="border-radius: 12px;" /> | <img src="./IMG_8924.png" width="230" alt="Buscador de Ejercicios" style="border-radius: 12px;" /> |
 
 ---
 

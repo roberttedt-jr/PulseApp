@@ -51,15 +51,6 @@ function Dashboard() {
 
   useEffect(() => {
     if (!data?.profile) return;
-    const dark =
-      data.profile.theme === "dark" ||
-      (data.profile.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.classList.toggle("dark", dark);
-    document.documentElement.classList.toggle("light", !dark);
-  }, [data?.profile]);
-
-  useEffect(() => {
-    if (!data?.profile) return;
     const flow = resolveAppFlow(data.profile);
     if (flow !== "app") void navigate({ to: flowPath(flow) });
   }, [data, isPending, navigate]);

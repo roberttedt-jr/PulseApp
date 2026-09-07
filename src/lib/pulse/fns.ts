@@ -54,7 +54,7 @@ function mapProfile(r: AnyRow): Profile {
     birthDate: r.birth_date,
     goal: mapGoal(r.goal),
     units: r.units === "imperial" ? "imperial" : "metric",
-    theme: r.theme === "light" || r.theme === "system" ? r.theme : "dark",
+    theme: "dark",
     restSound: bool(r.rest_sound),
     autoRest: r.auto_rest == null ? true : bool(r.auto_rest),
     publicProfile: bool(r.public_profile) || parseVisibility(r.profile_visibility) === "public",

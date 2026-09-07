@@ -197,21 +197,6 @@ function SettingsPage() {
               onChange={(v) => save.mutate({ units: v })}
             />
           </div>
-          <RowSelect
-            label="Tema"
-            value={p?.theme ?? "dark"}
-            options={[
-              ["dark", "Oscuro"],
-              ["light", "Claro"],
-              ["system", "Automático"],
-            ]}
-            onChange={(v) => {
-              save.mutate({ theme: v as "dark" | "light" | "system" });
-              const dark = v === "dark" || (v === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-              document.documentElement.classList.toggle("dark", dark);
-              document.documentElement.classList.toggle("light", !dark);
-            }}
-          />
           <Toggle
             label="Sonido de descanso"
             hint="Beep al terminar el timer"

@@ -7,6 +7,8 @@ import { useEffect } from "react";
  */
 export function NoMobileZoom() {
   useEffect(() => {
+    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("light");
     const blockGesture = (e: Event) => {
       e.preventDefault();
     };

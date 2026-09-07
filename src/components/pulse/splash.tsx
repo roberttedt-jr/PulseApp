@@ -8,8 +8,8 @@ import { getActivityFeed } from "@/lib/pulse/social-fns";
 export const PULSE_SPLASH_CSS = `
 html,body{background:#000000;color-scheme:dark}
 #pulse-splash,.pulse-splash-fallback{
-  position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
-  background:#000000;color:#f5f5f7;pointer-events:none;overflow:visible;
+  position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;
+  padding-top:22vh;background:#000000;color:#f5f5f7;pointer-events:none;overflow:visible;
 }
 #pulse-splash{transition:opacity 200ms cubic-bezier(0.22,1,0.36,1)}
 #pulse-splash.is-done{opacity:0}
@@ -30,6 +30,16 @@ html,body{background:#000000;color-scheme:dark}
   animation:heartbeat 1.35s ease-in-out infinite;
   will-change:transform;
   filter:none;
+}
+.pulse-splash-word{
+  margin:28px 0 0;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",system-ui,sans-serif;
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:0.46em;
+  padding-left:0.46em;
+  color:#f5f5f7;
+  text-transform:uppercase;
 }
 @keyframes heartbeat{
   0%{transform:scale(1);filter:drop-shadow(0 0 0px rgba(255,45,85,0))}
@@ -54,11 +64,12 @@ export const PULSE_SPLASH_HTML = `
     src="/pulse-icon.png"
     width="100"
     height="100"
-    alt="Pulse"
+    alt=""
     decoding="async"
     fetchpriority="high"
   />
 </span>
+<p class="pulse-splash-word">Pulse</p>
 `;
 
 let splashShownAt = typeof performance !== "undefined" ? performance.now() : 0;
@@ -83,9 +94,13 @@ export function hidePulseSplash() {
 
 export function PulseSplashScreen() {
   return (
-    <div className="pulse-splash-fallback" aria-busy="true" aria-label="Cargando Pulse" data-splash-fallback="1">
-      <div dangerouslySetInnerHTML={{ __html: PULSE_SPLASH_HTML }} />
-    </div>
+    <div
+      className="pulse-splash-fallback"
+      aria-busy="true"
+      aria-label="Cargando Pulse"
+      data-splash-fallback="1"
+      dangerouslySetInnerHTML={{ __html: PULSE_SPLASH_HTML }}
+    />
   );
 }
 

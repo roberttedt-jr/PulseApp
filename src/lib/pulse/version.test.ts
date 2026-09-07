@@ -29,7 +29,9 @@ describe("Pulse 3.7 identity", () => {
     assert.match(splash, /pulse-icon\.png/);
     assert.match(splash, /1\.35s/);
     assert.match(splash, /scale\(1\.06\)/);
-    assert.match(splash, /#nprogress/);
+    assert.match(splash, /pulse-splash-word/);
+    assert.match(splash, /padding-top:22vh/);
+    assert.match(splash, />Pulse</);
     assert.match(splash, /display:none!important/);
     assert.doesNotMatch(splash, /linear-gradient\([^)]*#nprogress/);
     assert.doesNotMatch(splash, /<svg/);

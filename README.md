@@ -1,3 +1,5 @@
+
+
 # Pulse
 
 > **Tu ritmo. Tu progreso.**
@@ -124,6 +126,8 @@ La aplicación está lista para desplegarse en **Vercel** enlazada a **Neon Post
 1. Vincula tu repositorio de GitHub en Vercel.
 2. Añade las variables de entorno (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`) en la configuración de Vercel.
 3. Ejecuta las migraciones de esquema en tu base de datos de Neon.
+
+
 4. Completa el despliegue automático.
 
 ---

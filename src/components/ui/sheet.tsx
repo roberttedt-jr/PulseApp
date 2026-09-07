@@ -38,7 +38,7 @@ export function SheetContent({
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-card text-card-foreground shadow-float outline-none",
           side === "bottom" &&
-            "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(85dvh,720px)] rounded-t-[28px] border-t border-white/12",
+            "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(90dvh,760px)] rounded-t-[28px] border-t border-white/12",
           side === "right" && "inset-y-0 right-0 h-full w-[min(100%,420px)] max-w-full rounded-l-3xl border-l border-white/12",
         )}
         {...props}

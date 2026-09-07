@@ -3,22 +3,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
-  Bookmark,
+  Camera,
+  ChevronDown,
   Clock,
   Copy,
   Dumbbell,
   Flag,
   Heart,
+  ImagePlus,
   MessageCircle,
   MoreHorizontal,
-  Pencil,
   Trash2,
   UserMinus,
   UserX,
+  X,
 } from "lucide-react";
-import { useState, type ReactNode, useEffect } from "react";
+import { useState, type ReactNode, useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Segmented } from "@/components/ui/segmented";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { ChoiceButton } from "@/components/pulse/flow-shell";
@@ -27,7 +33,6 @@ import {
   blockUser,
   cancelFollowRequest,
   copySharedRoutine,
-  createTextPost,
   deletePostComment,
   deleteSocialPost,
   followUser,
@@ -38,14 +43,22 @@ import {
   unfollowUser,
   updatePostComment,
   updatePostVisibility,
-  updateTextPost,
   type FeedComment,
   type FeedPost,
   type PersonCard,
 } from "@/lib/pulse/social-fns";
-import { COMMENT_MAX, REPORT_LABELS, TEXT_POST_MAX, type ReportReason, type ReportTarget, type WorkoutVisibility } from "@/lib/pulse/social";
+import { CAPTION_MAX, COMMENT_MAX, PHOTO_MAX, REPORT_LABELS, TITLE_MAX, type ReportReason, type ReportTarget, type WorkoutVisibility } from "@/lib/pulse/social";
+import { prepareWorkoutPhoto } from "@/lib/pulse/image";
 import { cn, formatDuration, formatKg } from "@/lib/utils";
 import { toast } from "sonner";
+
+function relativeDate(isoDate: string) {
+  try {
+    return formatDistanceToNow(new Date(isoDate), { addSuffix: true, locale: es });
+  } catch {
+    return "";
+  }
+}
 
 function bustSocial(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["activity-feed"] });
@@ -53,6 +66,8 @@ function bustSocial(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["social-profile"] });
   void qc.invalidateQueries({ queryKey: ["routines"] });
   void qc.invalidateQueries({ queryKey: ["post-comments"] });
+  void qc.invalidateQueries({ queryKey: ["notifications"] });
+  void qc.invalidateQueries({ queryKey: ["feed-post"] });
 }
 
 export function FollowButton({
@@ -221,96 +236,180 @@ export function ShareSheet({
   );
 }
 
-export function TextComposerSheet({
-  open,
-  onOpenChange,
-  postId,
-  initialBody = "",
-  initialVisibility = "followers",
+export function WorkoutPublishForm({
+  routineName,
+  durationSeconds,
+  volume,
+  setCount,
+  exerciseCount,
+  prs,
+  units = "metric",
+  busy,
+  onSubmit,
+  onCancel,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  postId?: string;
-  initialBody?: string;
-  initialVisibility?: WorkoutVisibility;
+  routineName: string;
+  durationSeconds: number;
+  volume: number;
+  setCount: number;
+  exerciseCount?: number;
+  prs: string[];
+  units?: "metric" | "imperial";
+  busy?: boolean;
+  onSubmit: (data: { visibility: WorkoutVisibility; title: string; caption: string; photos: string[] }) => Promise<void> | void;
+  onCancel: () => void;
 }) {
-  const qc = useQueryClient();
-  const [body, setBody] = useState(initialBody);
-  const [visibility, setVisibility] = useState<WorkoutVisibility>(initialVisibility);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (open) {
-      setBody(initialBody);
-      setVisibility(initialVisibility);
-    }
-  }, [open, initialBody, initialVisibility]);
-  const editing = Boolean(postId);
-  async function submit() {
-    if (busy) return;
-    setBusy(true);
+  const [title, setTitle] = useState(routineName);
+  const [caption, setCaption] = useState("");
+  const [visibility, setVisibility] = useState<WorkoutVisibility>("me");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function addPhotos(files: FileList | null) {
+    if (!files || photoBusy) return;
+    const room = PHOTO_MAX - photos.length;
+    if (room <= 0) return;
+    setPhotoBusy(true);
     try {
-      if (editing && postId) {
-        await updateTextPost({ data: { postId, body } });
-        toast.success("Publicación actualizada");
-      } else {
-        await createTextPost({ data: { body, visibility } });
-        toast.success(visibility === "me" ? "Guardado solo para ti" : "Publicación creada");
+      const next = [...photos];
+      for (const file of Array.from(files).slice(0, room)) {
+        const prepared = await prepareWorkoutPhoto(file);
+        next.push(prepared.dataUrl);
       }
-      bustSocial(qc);
-      onOpenChange(false);
+      setPhotos(next);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo publicar.");
+      toast.error(e instanceof Error ? e.message : "No se pudo añadir la foto.");
     } finally {
-      setBusy(false);
+      setPhotoBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
+
   return (
-    <Sheet open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <SheetContent className="px-5 pt-3 pb-3">
-        <SheetTitle>{editing ? "Editar publicación" : "Publicar"}</SheetTitle>
-        <SheetDescription>
-          {editing ? "Cambia el texto. La visibilidad se gestiona desde la publicación." : "Texto corto. Sin fotos ni GIFs todavía."}
-        </SheetDescription>
-        <Textarea
-          aria-label="Texto de la publicación"
-          value={body}
-          maxLength={TEXT_POST_MAX}
-          className="mt-4 min-h-32"
-          placeholder="¿Qué quieres compartir?"
-          onChange={(e) => setBody(e.target.value)}
+    <div className="space-y-5" data-publish-form="1">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <MiniStat label="Duración" value={formatDuration(durationSeconds)} />
+        <MiniStat label="Volumen" value={formatKg(volume, units)} />
+        <MiniStat label="Series" value={String(setCount)} />
+        <MiniStat
+          label="Ejercicios"
+          value={exerciseCount != null ? String(exerciseCount) : "—"}
         />
-        <p className="mt-1 text-right text-[11px] text-muted-foreground">
-          {body.length}/{TEXT_POST_MAX}
+      </div>
+      {prs.length > 0 && (
+        <p className="rounded-2xl bg-warning/15 px-3 py-2 text-sm font-medium text-warning" data-publish-prs="1">
+          PRs: {prs.join(", ")}
         </p>
-        {!editing && (
-          <div className="mt-3 space-y-2" role="radiogroup" aria-label="Visibilidad">
-            <ChoiceButton selected={visibility === "me"} title="Solo yo" hint="No aparece en Siguiendo ni en Para ti." onClick={() => setVisibility("me")} />
-            <ChoiceButton
-              selected={visibility === "followers"}
-              title="Seguidores"
-              hint="Lo ven las personas que te siguen."
-              onClick={() => setVisibility("followers")}
-            />
-            <ChoiceButton
-              selected={visibility === "public"}
-              title="Público"
-              hint="Puede aparecer en tu perfil y en Para ti."
-              onClick={() => setVisibility("public")}
-            />
-          </div>
-        )}
+      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="publish-title">Título</Label>
+        <Input
+          id="publish-title"
+          value={title}
+          maxLength={TITLE_MAX}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={routineName}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="publish-notes">Notas (opcional)</Label>
+        <Textarea
+          id="publish-notes"
+          value={caption}
+          maxLength={CAPTION_MAX}
+          className="min-h-24"
+          placeholder="Cómo te has sentido, el foco del día…"
+          onChange={(e) => setCaption(e.target.value)}
+        />
+        <p className="text-right text-[11px] text-muted-foreground">
+          {caption.length}/{CAPTION_MAX}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label>Fotos de la sesión</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {photos.map((src, i) => (
+            <div key={`${src.slice(0, 24)}-${i}`} className="relative overflow-hidden rounded-2xl bg-muted">
+              <img src={src} alt="" className="aspect-square h-full w-full object-cover" />
+              <button
+                type="button"
+                className="absolute top-1.5 right-1.5 grid size-8 place-items-center rounded-full bg-black/55 text-white"
+                aria-label="Quitar foto"
+                onClick={() => setPhotos(photos.filter((_, j) => j !== i))}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+          {photos.length < PHOTO_MAX && (
+            <button
+              type="button"
+              disabled={photoBusy || busy}
+              onClick={() => fileRef.current?.click()}
+              className="grid aspect-square place-items-center rounded-2xl bg-muted text-muted-foreground pressable"
+              aria-label="Añadir foto"
+            >
+              {photoBusy ? <Camera className="size-5 animate-pulse" /> : <ImagePlus className="size-5" />}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="sr-only"
+          onChange={(e) => void addPhotos(e.target.files)}
+        />
+        <p className="text-[11px] text-muted-foreground">Hasta {PHOTO_MAX} fotos. Opcional.</p>
+      </div>
+      <div className="space-y-2">
+        <Label>Quién puede verlo</Label>
+        <Segmented
+          ariaLabel="Visibilidad del entrenamiento"
+          className="flex w-full"
+          value={visibility}
+          options={[
+            { value: "me", label: "Solo yo" },
+            { value: "followers", label: "Seguidores" },
+            { value: "public", label: "Público" },
+          ]}
+          onChange={setVisibility}
+        />
+        <p className="text-xs text-muted-foreground">
+          {visibility === "me"
+            ? "Se guarda en tu historial. No aparece en el feed."
+            : visibility === "followers"
+              ? "Lo ven las personas que te siguen."
+              : "Visible en Para ti y en tu perfil."}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <Button
-          className="mt-4 w-full"
-          disabled={busy || !body.trim()}
+          className="w-full"
+          disabled={busy || photoBusy}
           loading={busy}
-          loadingText="Publicando…"
-          data-composer-submit="1"
-          onClick={() => void submit()}
+          loadingText="Guardando…"
+          data-save-publish="1"
+          onClick={() => void onSubmit({ visibility, title: title.trim() || routineName, caption, photos })}
         >
-          {editing ? "Guardar cambios" : visibility === "me" ? "Guardar solo para mí" : "Publicar"}
+          {visibility === "me" ? "Guardar en historial" : "Guardar y compartir"}
         </Button>
-      </SheetContent>
-    </Sheet>
+        <Button variant="ghost" className="w-full" disabled={busy} onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-muted/80 px-3 py-2.5 text-center">
+      <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular">{value}</p>
+    </div>
   );
 }
 
@@ -318,22 +417,26 @@ export function PostCard({
   post,
   units = "metric",
   onChanged,
+  openComments = false,
 }: {
   post: FeedPost;
   units?: "metric" | "imperial";
   onChanged?: () => void;
+  openComments?: boolean;
 }) {
   const qc = useQueryClient();
+  const commentsStartOpen = openComments;
   const [menu, setMenu] = useState(false);
   const [report, setReport] = useState<"post" | "user" | null>(null);
   const [visOpen, setVisOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(commentsStartOpen);
   const [likeBusy, setLikeBusy] = useState(false);
   const [copyBusy, setCopyBusy] = useState(false);
   const [liked, setLiked] = useState(post.liked);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [exercisesOpen, setExercisesOpen] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     setLiked(post.liked);
@@ -386,7 +489,7 @@ export function PostCard({
 
   return (
     <article className="rounded-[22px] bg-card p-4 hairline" data-post-kind={post.kind} data-post-id={post.id}>
-      <div className="flex gap-3">
+      <div className="flex items-start gap-3">
         {post.username ? (
           <Link to="/u/$username" params={{ username: post.username }} className="shrink-0">
             <Avatar src={post.image} fallback={post.name} />
@@ -400,12 +503,17 @@ export function PostCard({
               {post.username ? (
                 <Link to="/u/$username" params={{ username: post.username }} className="block min-w-0">
                   <p className="truncate text-sm font-semibold">{post.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{post.handle}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {post.handle}
+                    <span className="text-muted-foreground"> · {relativeDate(post.createdAt)}</span>
+                  </p>
                 </Link>
               ) : (
                 <>
                   <p className="truncate text-sm font-semibold">{post.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{post.handle}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {post.handle} · {relativeDate(post.createdAt)}
+                  </p>
                 </>
               )}
             </div>
@@ -418,71 +526,109 @@ export function PostCard({
               <MoreHorizontal className="size-5" />
             </button>
           </div>
-          {post.kind === "text" ? (
-            <p className="mt-2 whitespace-pre-wrap break-words text-[15px] leading-relaxed">{post.body || post.title}</p>
-          ) : (
-            <p className="mt-2 text-[15px] font-semibold tracking-tight">{post.title}</p>
-          )}
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: es })}
-            {post.visibility === "me" ? " · Solo yo" : post.visibility === "followers" ? " · Seguidores" : ""}
-          </p>
-          {post.kind === "workout" && (
-            <>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {post.durationSeconds != null && (
-                  <Chip icon={<Clock className="size-3.5" />}>{formatDuration(post.durationSeconds)}</Chip>
-                )}
-                {post.exerciseCount != null && (
-                  <Chip icon={<Dumbbell className="size-3.5" />}>
-                    {post.exerciseCount} {post.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
-                  </Chip>
-                )}
-                {post.setCount != null && (
-                  <Chip>
-                    {post.setCount} {post.setCount === 1 ? "serie" : "series"}
-                  </Chip>
-                )}
-                {post.volume != null && post.volume > 0 && <Chip>{formatKg(post.volume, units)}</Chip>}
-              </ul>
-              {post.muscles.length > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">{post.muscles.join(" · ")}</p>
-              )}
-              {post.prLabel && <p className="mt-2 text-xs font-medium text-warning">{post.prLabel}</p>}
-            </>
-          )}
-          {post.kind === "routine" && post.routine && (
-            <div className="mt-3 rounded-2xl bg-muted/70 p-3">
-              <p className="text-xs font-medium text-muted-foreground">
-                {post.routine.exerciseCount} {post.routine.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
-              </p>
-              <ul className="mt-2 space-y-1">
-                {post.routine.exercises.slice(0, 6).map((ex, i) => (
-                  <li key={`${ex.name}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate">{ex.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground tabular">
-                      {ex.sets ? `${ex.sets} × ${ex.reps || "—"}` : ex.reps}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {post.routine.exercises.length > 6 && (
-                <p className="mt-1 text-[11px] text-muted-foreground">+{post.routine.exercises.length - 6} más</p>
-              )}
-              {!post.mine && (
-                <div className="mt-3 flex min-w-0 flex-col gap-2">
-                  <Button size="sm" disabled={copyBusy} loading={copyBusy} loadingText="Copiando…" onClick={() => void copyRoutine()}>
-                    <Copy className="size-4" /> Copiar a mis rutinas
-                  </Button>
-                  <Button size="sm" variant="secondary" disabled={copyBusy} onClick={() => void copyRoutine()}>
-                    <Bookmark className="size-4" /> Guardar rutina
-                  </Button>
-                </div>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <p className="text-[15px] font-semibold tracking-tight">{post.title}</p>
+        {post.caption || post.body ? (
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-pretty">{post.caption || post.body}</p>
+        ) : null}
+        {post.visibility === "me" ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">Solo yo</p>
+        ) : post.visibility === "followers" ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">Seguidores</p>
+        ) : null}
+      </div>
+
+      {post.photos.length > 0 && (
+        <div
+          className={cn("mt-3 grid gap-1 overflow-hidden rounded-2xl", post.photos.length === 1 ? "grid-cols-1" : "grid-cols-2")}
+          data-post-photos="1"
+        >
+          {post.photos.map((src, i) => (
+            <button
+              key={`${post.id}-ph-${i}`}
+              type="button"
+              className={cn("overflow-hidden bg-muted", post.photos.length === 1 ? "aspect-[4/3]" : "aspect-square")}
+              onClick={() => setPhoto(src)}
+              aria-label="Ver foto"
+            >
+              <img src={src} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {post.kind === "workout" && (
+        <div className="mt-3 rounded-2xl bg-muted/70 p-3" data-workout-stats="1">
+          <ul className="flex flex-wrap gap-1.5">
+            {post.durationSeconds != null && (
+              <Chip icon={<Clock className="size-3.5" />}>{formatDuration(post.durationSeconds)}</Chip>
+            )}
+            {post.volume != null && post.volume > 0 && <Chip>{formatKg(post.volume, units)}</Chip>}
+            {post.setCount != null && (
+              <Chip>
+                {post.setCount} {post.setCount === 1 ? "serie" : "series"}
+              </Chip>
+            )}
+            {post.exerciseCount != null && (
+              <Chip icon={<Dumbbell className="size-3.5" />}>
+                {post.exerciseCount} {post.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
+              </Chip>
+            )}
+          </ul>
+          {post.prLabel && <p className="mt-2 text-xs font-medium text-warning">{post.prLabel}</p>}
+          {post.exercises.length > 0 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-1 text-xs font-medium text-muted-foreground"
+                aria-expanded={exercisesOpen}
+                onClick={() => setExercisesOpen((v) => !v)}
+              >
+                {exercisesOpen ? "Ocultar ejercicios" : "Ver ejercicios"}
+                <ChevronDown className={cn("size-3.5 transition-transform", exercisesOpen && "rotate-180")} />
+              </button>
+              {exercisesOpen && (
+                <ul className="mt-1 space-y-1">
+                  {post.exercises.map((ex, i) => (
+                    <li key={`${ex.name}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate">{ex.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground tabular">
+                        {ex.sets ? `${ex.sets} ${ex.sets === 1 ? "serie" : "series"}` : ex.reps}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {post.kind === "routine" && post.routine && (
+        <div className="mt-3 rounded-2xl bg-muted/70 p-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            {post.routine.exerciseCount} {post.routine.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {post.routine.exercises.slice(0, 6).map((ex, i) => (
+              <li key={`${ex.name}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate">{ex.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground tabular">
+                  {ex.sets ? `${ex.sets} × ${ex.reps || "—"}` : ex.reps}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {!post.mine && (
+            <Button size="sm" className="mt-3 w-full" disabled={copyBusy} loading={copyBusy} loadingText="Copiando…" onClick={() => void copyRoutine()}>
+              <Copy className="size-4" /> Copiar a mis rutinas
+            </Button>
+          )}
+        </div>
+      )}
       <div className="mt-3 flex items-center">
         <button
           type="button"
@@ -515,16 +661,6 @@ export function PostCard({
           <div className="mt-4 flex flex-col">
             {post.mine ? (
               <>
-                {post.kind === "text" && (
-                  <MenuRow
-                    icon={Pencil}
-                    label="Editar texto"
-                    onClick={() => {
-                      setMenu(false);
-                      setEditOpen(true);
-                    }}
-                  />
-                )}
                 <MenuRow
                   icon={Clock}
                   label="Cambiar visibilidad"
@@ -639,14 +775,6 @@ export function PostCard({
         }}
       />
 
-      <TextComposerSheet
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        postId={post.id}
-        initialBody={post.body || post.title}
-        initialVisibility={post.visibility}
-      />
-
       <CommentsSheet
         open={commentsOpen}
         onOpenChange={setCommentsOpen}
@@ -663,6 +791,13 @@ export function PostCard({
         targetType={report ?? "post"}
         targetId={report === "user" ? post.authorId : post.id}
       />
+
+      <Dialog open={Boolean(photo)} onOpenChange={(o) => !o && setPhoto(null)}>
+        <DialogContent className="max-w-lg p-0">
+          <DialogTitle className="sr-only">Foto del entrenamiento</DialogTitle>
+          {photo ? <img src={photo} alt="" className="max-h-[80dvh] w-full object-contain" /> : null}
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

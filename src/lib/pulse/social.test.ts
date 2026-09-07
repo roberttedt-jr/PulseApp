@@ -14,6 +14,9 @@ import {
   sanitizeSearchQuery,
   sanitizeSocialText,
   TEXT_POST_MAX,
+  notificationCopy,
+  sanitizeOptionalText,
+  CAPTION_MAX,
   validateBio,
   validateDisplayName,
   validateUsername,
@@ -199,5 +202,25 @@ describe("cursor", () => {
   it("round-trips", () => {
     const raw = encodeCursor("2026-01-01T00:00:00.000Z", "abc");
     assert.deepEqual(decodeCursor(raw), { createdAt: "2026-01-01T00:00:00.000Z", id: "abc" });
+  });
+});
+
+describe("captions and notifications", () => {
+  it("allows empty captions and rejects overflow", () => {
+    assert.equal(sanitizeOptionalText("   ", CAPTION_MAX), "");
+    assert.equal(sanitizeOptionalText("  Día de pierna  ", CAPTION_MAX), "Día de pierna");
+    assert.throws(() => sanitizeOptionalText("x".repeat(CAPTION_MAX + 1), CAPTION_MAX), /280/);
+  });
+  it("writes Hevy-style notification copy", () => {
+    assert.match(
+      notificationCopy({ type: "like", handle: "@ana", workoutTitle: "Push" }),
+      /@ana le ha dado me gusta a tu entrenamiento Push/,
+    );
+    assert.match(
+      notificationCopy({ type: "comment", handle: "@leo", commentPreview: "brutal" }),
+      /@leo ha comentado en tu entrenamiento: 'brutal'/,
+    );
+    assert.equal(notificationCopy({ type: "follow", handle: "@mia" }), "@mia ha comenzado a seguirte");
+    assert.equal(notificationCopy({ type: "follow_request", handle: "@mia" }), "@mia quiere seguirte");
   });
 });

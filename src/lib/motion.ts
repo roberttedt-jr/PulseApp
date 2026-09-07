@@ -28,7 +28,7 @@ export function tabIndex(pathname: string): number {
   if (pathname.startsWith("/feed") || pathname.startsWith("/u/") || pathname.startsWith("/compare")) return 2;
   if (pathname.startsWith("/progress") || pathname.startsWith("/stats")) return 3;
   if (pathname.startsWith("/history")) return 0;
-  if (pathname.startsWith("/settings") || pathname.startsWith("/onboarding")) {
+  if (pathname.startsWith("/settings") || pathname.startsWith("/account") || pathname.startsWith("/onboarding")) {
     return 4;
   }
   return -1;

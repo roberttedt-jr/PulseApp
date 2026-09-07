@@ -40,7 +40,7 @@ function ComparePickerPage() {
           <section className="rounded-[22px] bg-card p-4 hairline" data-compare-viewer-off="1">
             <p className="text-sm font-medium">{COMPARE_COPY.viewerOff}</p>
             <Button asChild className="mt-3 w-full">
-              <Link to="/settings" hash="comparativas">
+              <Link to="/account" hash="comparativas">
                 Ir a Privacidad
               </Link>
             </Button>

@@ -25,7 +25,7 @@ function isActive(pathname: string, to: string) {
   }
   if (to === "/feed") return pathname.startsWith("/feed") || pathname.startsWith("/u/") || pathname.startsWith("/compare");
   if (to === "/progress") return pathname.startsWith("/progress") || pathname.startsWith("/stats");
-  return pathname.startsWith(to);
+  return pathname.startsWith(to) || (to === "/settings" && pathname.startsWith("/account"));
 }
 
 function useCollapseOnScroll(pathname: string) {

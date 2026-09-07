@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ExercisesRouteImport } from './routes/exercises'
 import { Route as FeedRouteImport } from './routes/feed'
@@ -28,6 +29,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiAuthHealthRouteImport } from './routes/api/auth-health'
 import { Route as CompareUsernameRouteImport } from './routes/compare/$username'
 import { Route as ExercisesExerciseIdRouteImport } from './routes/exercises/$exerciseId'
+import { Route as FeedNotificationsRouteImport } from './routes/feed/notifications'
 import { Route as FeedRequestsRouteImport } from './routes/feed/requests'
 import { Route as FeedSearchRouteImport } from './routes/feed/search'
 import { Route as HistoryWorkoutIdRouteImport } from './routes/history/$workoutId'
@@ -35,10 +37,16 @@ import { Route as RoutinesRoutineIdRouteImport } from './routes/routines/$routin
 import { Route as ShareSlugRouteImport } from './routes/share/$slug'
 import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as FeedPPostIdRouteImport } from './routes/feed/p/$postId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareRoute = CompareRouteImport.update({
@@ -131,6 +139,11 @@ const ExercisesExerciseIdRoute = ExercisesExerciseIdRouteImport.update({
   path: '/$exerciseId',
   getParentRoute: () => ExercisesRoute,
 } as any)
+const FeedNotificationsRoute = FeedNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => FeedRoute,
+} as any)
 const FeedRequestsRoute = FeedRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -166,9 +179,15 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FeedPPostIdRoute = FeedPPostIdRouteImport.update({
+  id: '/p/$postId',
+  path: '/p/$postId',
+  getParentRoute: () => FeedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
@@ -187,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/notifications': typeof FeedNotificationsRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -194,9 +214,11 @@ export interface FileRoutesByFullPath {
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/feed/p/$postId': typeof FeedPPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
@@ -215,6 +237,7 @@ export interface FileRoutesByTo {
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/notifications': typeof FeedNotificationsRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -222,10 +245,12 @@ export interface FileRoutesByTo {
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/feed/p/$postId': typeof FeedPPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
@@ -244,6 +269,7 @@ export interface FileRoutesById {
   '/api/auth-health': typeof ApiAuthHealthRoute
   '/compare/$username': typeof CompareUsernameRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
+  '/feed/notifications': typeof FeedNotificationsRoute
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
@@ -251,11 +277,13 @@ export interface FileRoutesById {
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/feed/p/$postId': typeof FeedPPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/compare'
     | '/exercises'
     | '/feed'
@@ -274,6 +302,7 @@ export interface FileRouteTypes {
     | '/api/auth-health'
     | '/compare/$username'
     | '/exercises/$exerciseId'
+    | '/feed/notifications'
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
@@ -281,9 +310,11 @@ export interface FileRouteTypes {
     | '/share/$slug'
     | '/u/$username'
     | '/api/auth/$'
+    | '/feed/p/$postId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/compare'
     | '/exercises'
     | '/feed'
@@ -302,6 +333,7 @@ export interface FileRouteTypes {
     | '/api/auth-health'
     | '/compare/$username'
     | '/exercises/$exerciseId'
+    | '/feed/notifications'
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
@@ -309,9 +341,11 @@ export interface FileRouteTypes {
     | '/share/$slug'
     | '/u/$username'
     | '/api/auth/$'
+    | '/feed/p/$postId'
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/compare'
     | '/exercises'
     | '/feed'
@@ -330,6 +364,7 @@ export interface FileRouteTypes {
     | '/api/auth-health'
     | '/compare/$username'
     | '/exercises/$exerciseId'
+    | '/feed/notifications'
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
@@ -337,10 +372,12 @@ export interface FileRouteTypes {
     | '/share/$slug'
     | '/u/$username'
     | '/api/auth/$'
+    | '/feed/p/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   CompareRoute: typeof CompareRouteWithChildren
   ExercisesRoute: typeof ExercisesRouteWithChildren
   FeedRoute: typeof FeedRouteWithChildren
@@ -369,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compare': {
@@ -497,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExercisesExerciseIdRouteImport
       parentRoute: typeof ExercisesRoute
     }
+    '/feed/notifications': {
+      id: '/feed/notifications'
+      path: '/notifications'
+      fullPath: '/feed/notifications'
+      preLoaderRoute: typeof FeedNotificationsRouteImport
+      parentRoute: typeof FeedRoute
+    }
     '/feed/requests': {
       id: '/feed/requests'
       path: '/requests'
@@ -546,6 +597,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/feed/p/$postId': {
+      id: '/feed/p/$postId'
+      path: '/p/$postId'
+      fullPath: '/feed/p/$postId'
+      preLoaderRoute: typeof FeedPPostIdRouteImport
+      parentRoute: typeof FeedRoute
+    }
   }
 }
 
@@ -573,13 +631,17 @@ const ExercisesRouteWithChildren = ExercisesRoute._addFileChildren(
 )
 
 interface FeedRouteChildren {
+  FeedNotificationsRoute: typeof FeedNotificationsRoute
   FeedRequestsRoute: typeof FeedRequestsRoute
   FeedSearchRoute: typeof FeedSearchRoute
+  FeedPPostIdRoute: typeof FeedPPostIdRoute
 }
 
 const FeedRouteChildren: FeedRouteChildren = {
+  FeedNotificationsRoute: FeedNotificationsRoute,
   FeedRequestsRoute: FeedRequestsRoute,
   FeedSearchRoute: FeedSearchRoute,
+  FeedPPostIdRoute: FeedPPostIdRoute,
 }
 
 const FeedRouteWithChildren = FeedRoute._addFileChildren(FeedRouteChildren)
@@ -609,6 +671,7 @@ const RoutinesRouteWithChildren = RoutinesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   CompareRoute: CompareRouteWithChildren,
   ExercisesRoute: ExercisesRouteWithChildren,
   FeedRoute: FeedRouteWithChildren,

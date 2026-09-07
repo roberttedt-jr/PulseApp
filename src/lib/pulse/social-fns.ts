@@ -4,7 +4,8 @@ import { getSql, type Sql } from "@/lib/db";
 import { nid, toIso } from "@/lib/utils";
 import { normalizeMuscle } from "./exercise-meta";
 import { isDemoUserId } from "./seed-flags";
-import { ensurePulseV6, ensurePulseV7 } from "./seed";
+import { ensurePulseV6, ensurePulseV7, ensurePulseV9 } from "./seed";
+import { storeWorkoutPhoto } from "./avatar-store";
 import {
   COMMENT_MAX,
   decodeCursor,
@@ -12,21 +13,28 @@ import {
   formatHandle,
   isUniqueViolation,
   normalizeUsername,
+  notificationCopy,
   parseFeedKind,
+  parseNotificationType,
   parseReportReason,
   parseReportTarget,
   parseVisibility,
   parseWorkoutVisibility,
+  PHOTO_MAX,
   rateLimit,
+  sanitizeOptionalText,
   sanitizeSearchQuery,
   sanitizeSocialText,
   socialError,
   TEXT_POST_MAX,
+  TITLE_MAX,
+  CAPTION_MAX,
   validateBio,
   validateDisplayName,
   validateUsername,
   type FeedKind,
   type FollowStatus,
+  type NotificationType,
   type ProfileVisibility,
   type ReportTarget,
   type WorkoutVisibility,
@@ -48,6 +56,7 @@ function iso(v: unknown) {
 async function ready(sql: Sql) {
   await ensurePulseV6(sql);
   await ensurePulseV7(sql);
+  await ensurePulseV9(sql);
 }
 
 function followStatusOf(v: unknown): FollowStatus | null {
@@ -104,6 +113,9 @@ export type FeedPost = {
   kind: FeedKind;
   title: string;
   body: string | null;
+  caption: string | null;
+  photos: string[];
+  exercises: RoutinePeek["exercises"];
   durationSeconds: number | null;
   exerciseCount: number | null;
   setCount: number | null;
@@ -115,6 +127,7 @@ export type FeedPost = {
   likeCount: number;
   commentCount: number;
   mine: boolean;
+  workoutId: string | null;
   routine: RoutinePeek | null;
 };
 
@@ -152,6 +165,20 @@ function mapPerson(r: AnyRow, viewerId: string): PersonCard {
   };
 }
 
+function parsePhotos(raw: unknown): string[] {
+  if (!raw) return [];
+  try {
+    const v = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(v)) return [];
+    return v
+      .map((item) => String(item ?? ""))
+      .filter((u) => u.startsWith("http://") || u.startsWith("https://") || u.startsWith("data:image/"))
+      .slice(0, PHOTO_MAX);
+  } catch {
+    return [];
+  }
+}
+
 function mapPost(r: AnyRow, viewerId: string): FeedPost {
   const vis = parseWorkoutVisibility(r.visibility);
   const kind = parseFeedKind(r.kind);
@@ -161,8 +188,12 @@ function mapPost(r: AnyRow, viewerId: string): FeedPost {
     .map((m) => m.trim())
     .filter(Boolean);
   const detail = r.detail == null ? "" : String(r.detail);
-  const body = kind === "text" ? detail || String(r.title || "") : null;
-  const exercises = kind === "routine" ? parseRoutineStructure(detail) : [];
+  const caption = r.caption ? String(r.caption) : null;
+  const body = kind === "text" ? detail || String(r.title || "") : caption;
+  const fromJson = parseRoutineStructure(r.exercises_json);
+  const fromDetail = kind === "routine" ? parseRoutineStructure(detail) : [];
+  const exercises = fromJson.length ? fromJson : fromDetail;
+  const mine = r.user_id === viewerId;
   return {
     id: String(r.id),
     authorId: String(r.user_id),
@@ -174,17 +205,21 @@ function mapPost(r: AnyRow, viewerId: string): FeedPost {
     kind,
     title: String(r.title || (kind === "text" ? "Publicación" : kind === "routine" ? "Rutina" : "Entrenamiento libre")),
     body,
+    caption,
+    photos: parsePhotos(r.photos),
+    exercises,
     durationSeconds: r.duration_seconds == null ? null : num(r.duration_seconds),
     exerciseCount: r.exercise_count == null ? null : num(r.exercise_count),
     setCount: r.set_count == null ? null : num(r.set_count),
     muscles,
-    volume: bool(r.share_volume) ? num(r.volume) : null,
-    prLabel: bool(r.share_prs) && r.pr_label ? String(r.pr_label) : null,
+    volume: mine || bool(r.share_volume) ? num(r.volume) : null,
+    prLabel: (mine || bool(r.share_prs)) && r.pr_label ? String(r.pr_label) : null,
     visibility: vis,
     liked: bool(r.liked),
     likeCount: num(r.like_count),
     commentCount: num(r.comment_count),
-    mine: r.user_id === viewerId,
+    mine,
+    workoutId: r.workout_id ? String(r.workout_id) : null,
     routine:
       kind === "routine"
         ? {
@@ -195,6 +230,39 @@ function mapPost(r: AnyRow, viewerId: string): FeedPost {
           }
         : null,
   };
+}
+
+async function insertNotification(
+  sql: Sql,
+  args: {
+    userId: string;
+    actorId: string;
+    type: NotificationType;
+    postId?: string | null;
+    workoutTitle?: string | null;
+    commentPreview?: string | null;
+  },
+) {
+  if (!args.userId || args.userId === args.actorId) return;
+  if (args.type === "like" && args.postId) {
+    await sql`
+      delete from notifications
+      where user_id = ${args.userId} and actor_id = ${args.actorId} and type = 'like' and post_id = ${args.postId}
+    `;
+  }
+  if (args.type === "follow" || args.type === "follow_request") {
+    await sql`
+      delete from notifications
+      where user_id = ${args.userId} and actor_id = ${args.actorId} and type in ('follow', 'follow_request')
+    `;
+  }
+  await sql`
+    insert into notifications (id, user_id, actor_id, type, post_id, workout_title, comment_preview)
+    values (
+      ${nid()}, ${args.userId}, ${args.actorId}, ${args.type}, ${args.postId ?? null},
+      ${args.workoutTitle ?? null}, ${args.commentPreview ?? null}
+    )
+  `;
 }
 
 export const saveSocialProfile = createServerFn({ method: "POST" })
@@ -311,6 +379,11 @@ export const followUser = createServerFn({ method: "POST" })
       values (${context.userId}, ${target}, ${status})
       on conflict (follower_id, following_id) do update set status = excluded.status
     `;
+    await insertNotification(sql, {
+      userId: target,
+      actorId: context.userId,
+      type: status === "accepted" ? "follow" : "follow_request",
+    });
     return { status };
   });
 
@@ -352,6 +425,11 @@ export const acceptFollowRequest = createServerFn({ method: "POST" })
       returning follower_id
     `;
     if (!updated[0]) throw socialError(404, "No hay ninguna solicitud pendiente.");
+    await sql`
+      update notifications
+      set type = 'follow', read_at = coalesce(read_at, now())
+      where user_id = ${context.userId} and actor_id = ${data.userId} and type = 'follow_request'
+    `;
     return { status: "accepted" as FollowStatus };
   });
 
@@ -365,6 +443,10 @@ export const rejectFollowRequest = createServerFn({ method: "POST" })
     await sql`
       delete from follows
       where follower_id = ${data.userId} and following_id = ${context.userId} and status = 'pending'
+    `;
+    await sql`
+      delete from notifications
+      where user_id = ${context.userId} and actor_id = ${data.userId} and type = 'follow_request'
     `;
     return { ok: true };
   });
@@ -413,6 +495,7 @@ export const getActivityFeed = createServerFn({ method: "GET" })
     const rows = await sql<AnyRow>`
       select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
         a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
+        a.caption, a.photos, a.exercises_json, a.workout_id,
         p.display_name, p.image, p.username,
         exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
         (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
@@ -420,7 +503,7 @@ export const getActivityFeed = createServerFn({ method: "GET" })
       from activity_feed a
       join profiles p on p.user_id = a.user_id
       where a.deleted_at is null
-        and a.kind in ('workout', 'text', 'routine')
+        and a.kind = 'workout'
         and a.visibility in ('followers', 'public')
         and a.user_id not like ${"pulse-demo-%"}
         and (
@@ -462,6 +545,10 @@ export const getActivityFeed = createServerFn({ method: "GET" })
       select count(*)::int as n from follows
       where following_id = ${context.userId} and status = 'pending'
     `;
+    const unread = await sql<AnyRow>`
+      select count(*)::int as n from notifications
+      where user_id = ${context.userId} and read_at is null
+    `;
     const me = (await sql<AnyRow>`select username from profiles where user_id = ${context.userId}`)[0];
     const last = page[page.length - 1];
     return {
@@ -469,6 +556,7 @@ export const getActivityFeed = createServerFn({ method: "GET" })
       nextCursor: extra && last ? encodeCursor(iso(last.created_at), String(last.id)) : null,
       followingCount: num(following[0]?.n),
       pendingIncoming: num(pending[0]?.n),
+      unreadNotifications: num(unread[0]?.n),
       username: me?.username ? String(me.username) : null,
     };
   });
@@ -492,6 +580,24 @@ async function workoutStats(sql: Sql, userId: string, workoutId: string, sharePr
     ...new Set(done.map((s) => String(normalizeMuscle(s.muscle) || s.muscle || "")).filter(Boolean)),
   ];
   const volume = done.reduce((sum, s) => sum + num(s.weight) * num(s.reps), 0);
+  const grouped = new Map<string, { name: string; muscle?: string; sets: number; reps: string }>();
+  for (const s of done) {
+    const id = String(s.exercise_id);
+    const cur = grouped.get(id);
+    const reps = String(s.reps ?? "");
+    if (cur) {
+      cur.sets += 1;
+      if (reps) cur.reps = reps;
+    } else {
+      grouped.set(id, {
+        name: String(s.name ?? "Ejercicio"),
+        muscle: s.muscle ? String(s.muscle) : undefined,
+        sets: 1,
+        reps,
+      });
+    }
+  }
+  const exercises = [...grouped.values()];
   let prLabel: string | null = null;
   if (sharePrs) {
     const started = iso(w.started_at) || new Date(0).toISOString();
@@ -514,6 +620,8 @@ async function workoutStats(sql: Sql, userId: string, workoutId: string, sharePr
     muscles: muscles.join(","),
     volume,
     prLabel,
+    exercises,
+    exercisesJson: JSON.stringify(exercises),
   };
 }
 
@@ -522,6 +630,9 @@ export const shareWorkout = createServerFn({ method: "POST" })
   .validator((d: {
     workoutId: string;
     visibility: WorkoutVisibility;
+    title?: string;
+    caption?: string;
+    photos?: string[];
     shareVolume?: boolean;
     sharePrs?: boolean;
   }) => d)
@@ -530,6 +641,20 @@ export const shareWorkout = createServerFn({ method: "POST" })
     await ready(sql);
     rateLimit(context.userId, "post", 20);
     const visibility = parseWorkoutVisibility(data.visibility);
+    const caption = sanitizeOptionalText(data.caption, CAPTION_MAX);
+    const titleOverride = sanitizeOptionalText(data.title, TITLE_MAX);
+    const incomingPhotos = Array.isArray(data.photos) ? data.photos.slice(0, PHOTO_MAX) : [];
+    const storedPhotos: string[] = [];
+    for (const photo of incomingPhotos) {
+      const raw = String(photo ?? "");
+      if (!raw) continue;
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        storedPhotos.push(raw);
+        continue;
+      }
+      storedPhotos.push(await storeWorkoutPhoto(context.userId, raw));
+    }
+    const photosJson = storedPhotos.length ? JSON.stringify(storedPhotos) : null;
     const existing = (await sql<AnyRow>`
       select id from activity_feed
       where user_id = ${context.userId} and workout_id = ${data.workoutId} and deleted_at is null
@@ -542,17 +667,18 @@ export const shareWorkout = createServerFn({ method: "POST" })
       }
       return { posted: false, id: null as string | null };
     }
-    const prefs = (await sql<AnyRow>`
-      select share_volume, share_prs from profiles where user_id = ${context.userId}
-    `)[0];
-    const shareVolume = data.shareVolume ?? bool(prefs?.share_volume);
-    const sharePrs = data.sharePrs ?? bool(prefs?.share_prs);
+    const shareVolume = data.shareVolume ?? true;
+    const sharePrs = data.sharePrs ?? true;
     const stats = await workoutStats(sql, context.userId, data.workoutId, sharePrs);
+    const title = titleOverride || stats.title;
     if (existing) {
       await sql`
         update activity_feed set
           visibility = ${visibility},
-          title = ${stats.title},
+          title = ${title},
+          caption = ${caption || null},
+          photos = ${photosJson},
+          exercises_json = ${stats.exercisesJson},
           volume = ${stats.volume},
           duration_seconds = ${stats.durationSeconds},
           share_volume = ${shareVolume},
@@ -570,10 +696,11 @@ export const shareWorkout = createServerFn({ method: "POST" })
     const id = nid();
     await sql`
       insert into activity_feed (
-        id, user_id, kind, title, workout_id, volume, duration_seconds, visibility,
+        id, user_id, kind, title, caption, photos, exercises_json, workout_id, volume, duration_seconds, visibility,
         share_volume, share_prs, exercise_count, set_count, muscles, pr_label
       ) values (
-        ${id}, ${context.userId}, 'workout', ${stats.title}, ${data.workoutId}, ${stats.volume},
+        ${id}, ${context.userId}, 'workout', ${title}, ${caption || null}, ${photosJson}, ${stats.exercisesJson},
+        ${data.workoutId}, ${stats.volume},
         ${stats.durationSeconds}, ${visibility}, ${shareVolume}, ${sharePrs},
         ${stats.exerciseCount}, ${stats.setCount}, ${stats.muscles}, ${stats.prLabel}
       )
@@ -651,15 +778,27 @@ export const togglePostLike = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ready(sql);
     rateLimit(context.userId, "like", 60);
-    await assertCanSeePost(sql, context.userId, data.postId);
+    const post = await assertCanSeePost(sql, context.userId, data.postId);
     const existing = (await sql<AnyRow>`
       select 1 from feed_likes where feed_id = ${data.postId} and user_id = ${context.userId}
     `)[0];
     if (existing) {
       await sql`delete from feed_likes where feed_id = ${data.postId} and user_id = ${context.userId}`;
+      await sql`
+        delete from notifications
+        where user_id = ${String(post.user_id)} and actor_id = ${context.userId} and type = 'like' and post_id = ${data.postId}
+      `;
       return { liked: false };
     }
     await sql`insert into feed_likes (feed_id, user_id) values (${data.postId}, ${context.userId}) on conflict do nothing`;
+    const title = (await sql<AnyRow>`select title from activity_feed where id = ${data.postId}`)[0];
+    await insertNotification(sql, {
+      userId: String(post.user_id),
+      actorId: context.userId,
+      type: "like",
+      postId: data.postId,
+      workoutTitle: title?.title ? String(title.title) : null,
+    });
     return { liked: true };
   });
 
@@ -775,20 +914,31 @@ export const listBlockedUsers = createServerFn({ method: "GET" })
 
 export const getSocialProfile = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator((d: { username: string }) => d)
+  .validator((d: { username?: string } | undefined) => d ?? {})
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ready(sql);
-    const username = normalizeUsername(data.username);
-    if (!username) throw socialError(422, "El @usuario no es válido.");
-    const p = (await sql<AnyRow>`
-      select p.user_id, p.username, p.display_name, p.image, p.bio, p.profile_visibility, p.public_profile
-      from profiles p
-      where lower(p.username) = ${username}
-      limit 1
-    `)[0];
+    let p: AnyRow | undefined;
+    if (data.username) {
+      const username = normalizeUsername(data.username);
+      if (!username) throw socialError(422, "El @usuario no es válido.");
+      p = (await sql<AnyRow>`
+        select p.user_id, p.username, p.display_name, p.image, p.bio, p.profile_visibility, p.public_profile
+        from profiles p
+        where lower(p.username) = ${username}
+        limit 1
+      `)[0];
+    } else {
+      p = (await sql<AnyRow>`
+        select p.user_id, p.username, p.display_name, p.image, p.bio, p.profile_visibility, p.public_profile
+        from profiles p
+        where p.user_id = ${context.userId}
+        limit 1
+      `)[0];
+    }
     if (!p) throw socialError(404, "No se ha encontrado este perfil.");
     const userId = String(p.user_id);
+    const username = p.username ? String(p.username) : null;
     if (await isBlockedEitherWay(sql, context.userId, userId)) {
       throw socialError(404, "No se ha encontrado este perfil.");
     }
@@ -805,10 +955,14 @@ export const getSocialProfile = createServerFn({ method: "GET" })
       select count(*)::int as n from follows where follower_id = ${userId} and status = 'accepted'
     `;
     let posts: FeedPost[] = [];
+    let publicRoutines: RoutinePeek[] = [];
+    let workoutCount: number | null = null;
+    let stats: { workouts: number; weekWorkouts: number; prs: number } | null = null;
     if (!locked) {
       const rows = await sql<AnyRow>`
         select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
           a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
+          a.caption, a.photos, a.exercises_json, a.workout_id,
           p.display_name, p.image, p.username,
           exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
           (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
@@ -817,7 +971,7 @@ export const getSocialProfile = createServerFn({ method: "GET" })
         join profiles p on p.user_id = a.user_id
         where a.user_id = ${userId}
           and a.deleted_at is null
-          and a.kind in ('workout', 'text', 'routine')
+          and a.kind = 'workout'
           and not exists (
             select 1 from hidden_posts h where h.user_id = ${context.userId} and h.post_id = a.id
           )
@@ -830,6 +984,41 @@ export const getSocialProfile = createServerFn({ method: "GET" })
         limit 30
       `;
       posts = rows.map((r) => mapPost(r, context.userId));
+      const completed = await sql<AnyRow>`
+        select count(*)::int as n from workouts
+        where user_id = ${userId} and status = 'completed'
+      `;
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const week = await sql<AnyRow>`
+        select count(*)::int as n from workouts
+        where user_id = ${userId} and status = 'completed'
+          and started_at >= ${weekAgo}::timestamptz
+      `;
+      const prs = await sql<AnyRow>`
+        select count(*)::int as n from personal_records where user_id = ${userId}
+      `;
+      workoutCount = num(completed[0]?.n);
+      stats = {
+        workouts: workoutCount,
+        weekWorkouts: num(week[0]?.n),
+        prs: num(prs[0]?.n),
+      };
+      const routineRows = await sql<AnyRow>`
+        select r.id, r.name,
+          (select count(*)::int from routine_exercises re where re.routine_id = r.id) as exercise_count
+        from routines r
+        where r.user_id = ${userId}
+          and coalesce(r.is_archived, false) = false
+          and (r.visibility = 'public' or r.is_public = true)
+        order by r.updated_at desc nulls last, r.name
+        limit 20
+      `;
+      publicRoutines = routineRows.map((r) => ({
+        id: String(r.id),
+        name: String(r.name || "Rutina"),
+        exerciseCount: num(r.exercise_count),
+        exercises: [],
+      }));
     }
     return {
       userId,
@@ -843,8 +1032,11 @@ export const getSocialProfile = createServerFn({ method: "GET" })
       profileVisibility,
       followStatus,
       incomingStatus,
-      followerCount: locked ? null : num(followers[0]?.n),
-      followingCount: locked ? null : num(following[0]?.n),
+      followerCount: num(followers[0]?.n),
+      followingCount: num(following[0]?.n),
+      workoutCount,
+      stats,
+      publicRoutines,
       compareAvailable: !mine && followStatus === "accepted" && incomingStatus === "accepted",
       posts,
     };
@@ -897,6 +1089,7 @@ export const getDiscoverFeed = createServerFn({ method: "GET" })
     const rows = await sql<AnyRow>`
       select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
         a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
+        a.caption, a.photos, a.exercises_json, a.workout_id,
         p.display_name, p.image, p.username,
         exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
         (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
@@ -904,7 +1097,7 @@ export const getDiscoverFeed = createServerFn({ method: "GET" })
       from activity_feed a
       join profiles p on p.user_id = a.user_id
       where a.deleted_at is null
-        and a.kind in ('workout', 'text', 'routine')
+        and a.kind = 'workout'
         and a.visibility = 'public'
         and a.user_id not like ${"pulse-demo-%"}
         and (p.profile_visibility = 'public' or p.public_profile = true)
@@ -1044,6 +1237,15 @@ export const addPostComment = createServerFn({ method: "POST" })
       insert into feed_comments (id, feed_id, user_id, body)
       values (${id}, ${data.postId}, ${context.userId}, ${body})
     `;
+    const title = (await sql<AnyRow>`select title from activity_feed where id = ${data.postId}`)[0];
+    await insertNotification(sql, {
+      userId: String(post.user_id),
+      actorId: context.userId,
+      type: "comment",
+      postId: data.postId,
+      workoutTitle: title?.title ? String(title.title) : null,
+      commentPreview: body.length > 80 ? `${body.slice(0, 77)}…` : body,
+    });
     const me = (await sql<AnyRow>`select username, display_name, image from profiles where user_id = ${context.userId}`)[0];
     return {
       comment: mapComment(
@@ -1257,5 +1459,156 @@ export const copySharedRoutine = createServerFn({ method: "POST" })
       `;
     }
     return { id, name: String(src.name), exerciseCount: ex.length };
+  });
+
+export const getFeedPost = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: { postId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    await assertCanSeePost(sql, context.userId, data.postId);
+    const rows = await sql<AnyRow>`
+      select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
+        a.share_volume, a.share_prs, a.exercise_count, a.set_count, a.muscles, a.pr_label, a.routine_id,
+        a.caption, a.photos, a.exercises_json, a.workout_id,
+        p.display_name, p.image, p.username,
+        exists(select 1 from feed_likes l where l.feed_id = a.id and l.user_id = ${context.userId}) as liked,
+        (select count(*)::int from feed_likes l where l.feed_id = a.id) as like_count,
+        (select count(*)::int from feed_comments c where c.feed_id = a.id and c.deleted_at is null) as comment_count
+      from activity_feed a
+      join profiles p on p.user_id = a.user_id
+      where a.id = ${data.postId} and a.deleted_at is null
+      limit 1
+    `;
+    if (!rows[0] || parseFeedKind(rows[0].kind) !== "workout") {
+      throw socialError(404, "No se ha encontrado este entrenamiento.");
+    }
+    return { post: mapPost(rows[0], context.userId) };
+  });
+
+export type ActivityNotification = {
+  id: string;
+  type: NotificationType;
+  createdAt: string;
+  read: boolean;
+  actorId: string;
+  username: string | null;
+  handle: string;
+  name: string;
+  image: string | null;
+  postId: string | null;
+  workoutTitle: string | null;
+  commentPreview: string | null;
+  text: string;
+};
+
+export const listNotifications = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const pending = await sql<AnyRow>`
+      select p.user_id, p.username, p.display_name, p.image, f.created_at
+      from follows f
+      join profiles p on p.user_id = f.follower_id
+      where f.following_id = ${context.userId} and f.status = 'pending'
+      order by f.created_at desc
+      limit 40
+    `;
+    for (const row of pending) {
+      const exists = (await sql<AnyRow>`
+        select 1 from notifications
+        where user_id = ${context.userId} and actor_id = ${String(row.user_id)} and type = 'follow_request'
+        limit 1
+      `)[0];
+      if (!exists) {
+        await insertNotification(sql, {
+          userId: context.userId,
+          actorId: String(row.user_id),
+          type: "follow_request",
+        });
+      }
+    }
+    const rows = await sql<AnyRow>`
+      select n.id, n.type, n.created_at, n.read_at, n.post_id, n.workout_title, n.comment_preview,
+        n.actor_id, p.username, p.display_name, p.image
+      from notifications n
+      join profiles p on p.user_id = n.actor_id
+      where n.user_id = ${context.userId}
+        and not exists (
+          select 1 from user_blocks b
+          where (b.blocker_id = ${context.userId} and b.blocked_id = n.actor_id)
+             or (b.blocker_id = n.actor_id and b.blocked_id = ${context.userId})
+        )
+      order by n.created_at desc
+      limit 60
+    `;
+    const items: ActivityNotification[] = rows.map((r) => {
+      const type = parseNotificationType(r.type);
+      const username = r.username ? String(r.username) : null;
+      const handle = formatHandle(username) || String(r.display_name ?? "Alguien");
+      return {
+        id: String(r.id),
+        type,
+        createdAt: iso(r.created_at),
+        read: Boolean(r.read_at),
+        actorId: String(r.actor_id),
+        username,
+        handle: formatHandle(username),
+        name: String(r.display_name ?? "Atleta"),
+        image: r.image ? String(r.image) : null,
+        postId: r.post_id ? String(r.post_id) : null,
+        workoutTitle: r.workout_title ? String(r.workout_title) : null,
+        commentPreview: r.comment_preview ? String(r.comment_preview) : null,
+        text: notificationCopy({
+          type,
+          handle,
+          workoutTitle: r.workout_title ? String(r.workout_title) : null,
+          commentPreview: r.comment_preview ? String(r.comment_preview) : null,
+        }),
+      };
+    });
+    const unread = items.filter((n) => !n.read).length;
+    return { items, unread };
+  });
+
+export const markNotificationsRead = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { ids?: string[] } | undefined) => d ?? {})
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const ids = Array.isArray(data.ids) ? data.ids.filter(Boolean).slice(0, 80) : [];
+    if (ids.length) {
+      for (const id of ids) {
+        await sql`
+          update notifications set read_at = coalesce(read_at, now())
+          where id = ${id} and user_id = ${context.userId} and type <> 'follow_request'
+        `;
+      }
+    } else {
+      await sql`
+        update notifications set read_at = coalesce(read_at, now())
+        where user_id = ${context.userId} and read_at is null and type <> 'follow_request'
+      `;
+    }
+    return { ok: true };
+  });
+
+export const getNotificationBadge = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const unread = await sql<AnyRow>`
+      select count(*)::int as n from notifications
+      where user_id = ${context.userId} and read_at is null
+    `;
+    const pending = await sql<AnyRow>`
+      select count(*)::int as n from follows
+      where following_id = ${context.userId} and status = 'pending'
+    `;
+    return { unread: num(unread[0]?.n), pendingIncoming: num(pending[0]?.n) };
   });
 

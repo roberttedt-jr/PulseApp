@@ -96,7 +96,7 @@ function CompareWithFriendPage() {
             action={
               viewerOff ? (
                 <Button asChild>
-                  <Link to="/settings" hash="comparativas">
+                  <Link to="/account" hash="comparativas">
                     Ir a Privacidad
                   </Link>
                 </Button>
@@ -131,7 +131,7 @@ function CompareWithFriendPage() {
                 hint="Elige en Privacidad qué métricas quieres compartir."
                 action={
                   <Button asChild>
-                    <Link to="/settings" hash="comparativas">
+                    <Link to="/account" hash="comparativas">
                       Ajustar permisos
                     </Link>
                   </Button>

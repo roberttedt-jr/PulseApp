@@ -86,3 +86,46 @@ export async function prepareAvatar(file: File): Promise<{ dataUrl: string; prev
   });
   return { dataUrl, previewUrl: dataUrl, mime };
 }
+
+export async function prepareWorkoutPhoto(file: File): Promise<{ dataUrl: string; previewUrl: string; mime: string }> {
+  const err = validateAvatarFile(file);
+  if (err) throw new Error(err);
+  const img = await loadImage(file);
+  const w0 = img.naturalWidth;
+  const h0 = img.naturalHeight;
+  if (w0 < 32 || h0 < 32) throw new Error("La imagen es demasiado pequeña.");
+  const maxSide = 1280;
+  const scale = Math.min(1, maxSide / Math.max(w0, h0));
+  const w = Math.max(1, Math.round(w0 * scale));
+  const h = Math.max(1, Math.round(h0 * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No se pudo procesar la foto.");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let mime = "image/webp";
+  let quality = 0.82;
+  let blob = await canvasToBlob(canvas, mime, quality);
+  if (blob.size === 0 || blob.type !== "image/webp") {
+    mime = "image/jpeg";
+    blob = await canvasToBlob(canvas, mime, 0.84);
+  }
+  while (blob.size > AVATAR_MAX_OUTPUT_BYTES && quality > 0.5) {
+    quality -= 0.08;
+    blob = await canvasToBlob(canvas, mime, quality);
+  }
+  if (blob.size > AVATAR_MAX_OUTPUT_BYTES) {
+    throw new Error("La foto sigue siendo demasiado pesada después de comprimirla.");
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("No se pudo leer la foto."));
+    reader.readAsDataURL(blob);
+  });
+  return { dataUrl, previewUrl: dataUrl, mime };
+}

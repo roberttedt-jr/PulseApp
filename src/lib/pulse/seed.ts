@@ -22,6 +22,7 @@ let pulseV5Ready = false;
 let pulseV6Ready = false;
 let pulseV7Ready = false;
 let pulseV8Ready = false;
+let pulseV9Ready = false;
 
 export async function ensurePulseV5(sql: Sql): Promise<void> {
   if (pulseV5Ready) return;
@@ -153,6 +154,35 @@ export async function ensurePulseV8(sql: Sql): Promise<void> {
   pulseV8Ready = true;
 }
 
+export async function ensurePulseV9(sql: Sql): Promise<void> {
+  if (pulseV9Ready) return;
+  await ensurePulseV8(sql);
+  await sql.query(`alter table activity_feed add column if not exists caption text`);
+  await sql.query(`alter table activity_feed add column if not exists photos text`);
+  await sql.query(`alter table activity_feed add column if not exists exercises_json text`);
+  await sql.query(`
+    create table if not exists notifications (
+      id text primary key,
+      user_id text not null,
+      actor_id text not null,
+      type text not null,
+      post_id text,
+      workout_title text,
+      comment_preview text,
+      read_at timestamptz,
+      created_at timestamptz not null default now()
+    )
+  `);
+  await sql.query(`create index if not exists notifications_user_created_idx on notifications (user_id, created_at desc)`);
+  await sql.query(`
+    create index if not exists notifications_unread_idx
+      on notifications (user_id, created_at desc)
+      where read_at is null
+  `);
+  await sql.query(`create index if not exists notifications_actor_type_post_idx on notifications (actor_id, type, post_id)`);
+  pulseV9Ready = true;
+}
+
 export async function ensurePulseV4(sql: Sql): Promise<void> {
   if (pulseV4Ready) return;
   await sql.query(`alter table profiles add column if not exists show_rpe boolean not null default true`);
@@ -231,6 +261,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV6(sql);
   await ensurePulseV7(sql);
   await ensurePulseV8(sql);
+  await ensurePulseV9(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

@@ -48,6 +48,27 @@ export async function storeAvatar(userId: string, dataUrl: string): Promise<stri
   return dataUrl;
 }
 
+export async function storeWorkoutPhoto(userId: string, dataUrl: string): Promise<string> {
+  const { mime, bytes } = parseAvatarDataUrl(dataUrl);
+  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  if (token) {
+    try {
+      const { put } = await import("@vercel/blob");
+      const pathname = `workouts/${userId}/${nid()}.${extFor(mime)}`;
+      const res = await put(pathname, bytes, {
+        access: "public",
+        contentType: mime,
+        addRandomSuffix: false,
+        token,
+      });
+      if (res?.url) return res.url;
+    } catch {
+      /* Blob not configured or SDK missing — fall through. */
+    }
+  }
+  return dataUrl;
+}
+
 export async function deleteStoredAvatar(url: string | null | undefined, userId: string): Promise<void> {
   if (!url || url.startsWith("data:")) return;
   if (!url.includes(`/avatars/${userId}/`)) return;

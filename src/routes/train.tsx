@@ -9,6 +9,7 @@ import {
   Plus,
   StickyNote,
   Weight,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { ShareSheet } from "@/components/pulse/social";
+import { WorkoutPublishForm } from "@/components/pulse/social";
 import {
   addExerciseToWorkout,
   getBootstrap,
@@ -76,8 +77,7 @@ function Live({ id }: { id: string }) {
   const [plates, setPlates] = useState(false);
   const [plateKg, setPlateKg] = useState("100");
   const [confirm, setConfirm] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [summary, setSummary] = useState<{ volume: number; sets: number; prs: string[] } | null>(null);
+  const [summary, setSummary] = useState<{ volume: number; sets: number; prs: string[]; exercises: number } | null>(null);
   const [prFlash, setPrFlash] = useState<string | null>(null);
 
   useEffect(() => {
@@ -110,8 +110,12 @@ function Live({ id }: { id: string }) {
     onSuccess: (res) => {
       setConfirm(false);
       setDone(true);
-      setShareOpen(true);
-      setSummary({ volume: data?.volume ?? 0, sets: data?.setCount ?? 0, prs: res.newPrs });
+      setSummary({
+        volume: data?.volume ?? 0,
+        sets: data?.setCount ?? 0,
+        prs: res.newPrs,
+        exercises: data?.blocks.length ?? 0,
+      });
       if (res.newPrs.length > 0) {
         toast.success(`PR · ${res.newPrs.join(", ")}`);
       }
@@ -121,14 +125,23 @@ function Live({ id }: { id: string }) {
   });
 
   const share = useMutation({
-    mutationFn: (visibility: WorkoutVisibility) => shareWorkout({ data: { workoutId: id, visibility } }),
+    mutationFn: (payload: { visibility: WorkoutVisibility; title: string; caption: string; photos: string[] }) =>
+      shareWorkout({
+        data: {
+          workoutId: id,
+          visibility: payload.visibility,
+          title: payload.title,
+          caption: payload.caption,
+          photos: payload.photos,
+        },
+      }),
     onSuccess: (res) => {
-      setShareOpen(false);
-      toast.success(res.posted ? "Entrenamiento compartido" : "Guardado solo para ti");
+      toast.success(res.posted ? "Entrenamiento compartido" : "Guardado en tu historial");
+      void navigate({ to: "/" });
     },
     onError: (e) => {
-      setShareOpen(false);
       toast.error(e instanceof Error ? e.message : "El entrenamiento se guardó, pero no se pudo compartir.");
+      void navigate({ to: "/" });
     },
   });
 
@@ -146,64 +159,44 @@ function Live({ id }: { id: string }) {
 
   if (done && summary) {
     return (
-      <div className="mx-auto max-w-md pt-8 text-center">
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-sm font-medium tracking-wide text-primary uppercase"
-        >
-          Sesión completada
-        </motion.p>
-        <motion.h2
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.06 }}
-          className="mt-2 text-3xl font-semibold tracking-tight"
-        >
-          {data.title}
-        </motion.h2>
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          {[
-            { k: "Volumen", v: formatKg(summary.volume, units) },
-            { k: "Series", v: String(summary.sets) },
-            { k: "Tiempo", v: formatDuration(elapsed) },
-          ].map((item, i) => (
-            <motion.div
-              key={item.k}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.07, duration: 0.22 }}
-            >
-              <Mini k={item.k} v={item.v} />
-            </motion.div>
-          ))}
-        </div>
-        {summary.prs.length > 0 && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.32 }}
-            className="mt-5 text-sm text-warning"
+      <div className="mx-auto max-w-md pt-4 pb-8" data-publish-screen="1">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium tracking-wide text-primary uppercase">Sesión completada</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">{data.title}</h2>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="glass-control"
+            aria-label="Cerrar y guardar en privado"
+            onClick={() => {
+              void shareWorkout({ data: { workoutId: id, visibility: "me" } }).catch(() => {});
+              void navigate({ to: "/" });
+            }}
           >
-            Nuevos PRs: {summary.prs.join(", ")}
-          </motion.p>
-        )}
-        <Button className="mt-8 w-full" onClick={() => navigate({ to: "/" })}>
-          Volver al inicio
-        </Button>
-        <ShareSheet
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-          defaultVisibility={profile.data?.profile.defaultWorkoutVisibility ?? "me"}
-          busy={share.isPending}
-          onShare={async (visibility) => {
-            if (visibility === "me") {
-              setShareOpen(false);
-              return;
-            }
-            await share.mutateAsync(visibility);
-          }}
-        />
+            <X className="size-5" />
+          </Button>
+        </div>
+        <div className="mt-5">
+          <WorkoutPublishForm
+            routineName={data.title}
+            durationSeconds={elapsed}
+            volume={summary.volume}
+            setCount={summary.sets}
+            exerciseCount={summary.exercises}
+            prs={summary.prs}
+            units={units}
+            busy={share.isPending}
+            onCancel={() => {
+              void shareWorkout({ data: { workoutId: id, visibility: "me" } }).catch(() => {});
+              void navigate({ to: "/" });
+            }}
+            onSubmit={async (payload) => {
+              await share.mutateAsync(payload);
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -344,15 +337,6 @@ function Live({ id }: { id: string }) {
           </div>
         </SheetContent>
       </Sheet>
-    </div>
-  );
-}
-
-function Mini({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="rounded-2xl bg-card py-3 hairline">
-      <p className="text-[11px] text-muted-foreground">{k}</p>
-      <p className="mt-1 font-semibold tabular">{v}</p>
     </div>
   );
 }

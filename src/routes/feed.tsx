@@ -1,11 +1,11 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Bell, PenLine, Search, Sparkles, Users } from "lucide-react";
+import { Bell, Search, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { CompareCtaCard } from "@/components/pulse/compare";
-import { PostCard, TextComposerSheet } from "@/components/pulse/social";
+import { PostCard } from "@/components/pulse/social";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,7 +24,6 @@ function FeedLayout() {
 
 function ActivityPage() {
   const [tab, setTab] = useState<"following" | "foryou">("following");
-  const [composer, setComposer] = useState(false);
   const bootstrap = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const units = bootstrap.data?.profile.units ?? "metric";
   const feed = useInfiniteQuery({
@@ -39,10 +38,12 @@ function ActivityPage() {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   });
-  const items = feed.data?.pages.flatMap((p) => p.items) ?? [];
-  const discoverItems = discover.data?.pages.flatMap((p) => p.items) ?? [];
+  const items = (feed.data?.pages.flatMap((p) => p.items) ?? []).filter((p) => p.kind === "workout");
+  const discoverItems = (discover.data?.pages.flatMap((p) => p.items) ?? []).filter((p) => p.kind === "workout");
   const meta = feed.data?.pages[0];
   const pending = meta?.pendingIncoming ?? 0;
+  const unread = meta?.unreadNotifications ?? 0;
+  const badge = unread + pending > 0;
   const active = tab === "foryou" ? discover : feed;
   const activeItems = tab === "foryou" ? discoverItems : items;
 
@@ -51,17 +52,16 @@ function ActivityPage() {
       title="Actividad"
       action={
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="glass-control" aria-label="Publicar" onClick={() => setComposer(true)}>
-            <PenLine className="size-5" />
-          </Button>
-          <Button asChild size="icon" variant="ghost" className="glass-control" aria-label="Solicitudes">
-            <Link to="/feed/requests" className="relative">
+          <Button asChild size="icon" variant="ghost" className="glass-control">
+            <Link to="/feed/notifications" className="relative" aria-label="Notificaciones">
               <Bell className="size-5" />
-              {pending > 0 && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />}
+              {badge && (
+                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" data-unread-badge="1" />
+              )}
             </Link>
           </Button>
-          <Button asChild size="icon" variant="ghost" className="glass-control" aria-label="Buscar personas">
-            <Link to="/feed/search">
+          <Button asChild size="icon" variant="ghost" className="glass-control">
+            <Link to="/feed/search" aria-label="Buscar personas">
               <Search className="size-5" />
             </Link>
           </Button>
@@ -80,21 +80,10 @@ function ActivityPage() {
           onChange={setTab}
         />
 
-        <button
-          type="button"
-          onClick={() => setComposer(true)}
-          className="flex w-full items-center gap-3 rounded-[22px] bg-card px-4 py-3 text-left hairline pressable"
-        >
-          <span className="grid size-9 place-items-center rounded-full bg-muted text-muted-foreground">
-            <PenLine className="size-4" />
-          </span>
-          <span className="text-sm text-muted-foreground">¿Qué quieres compartir?</span>
-        </button>
-
         <CompareCtaCard />
 
         {meta && !meta.username && (
-          <Link to="/settings" hash="perfil-social" className="block rounded-[22px] bg-card p-4 text-sm hairline">
+          <Link to="/account" hash="perfil-social" className="block rounded-[22px] bg-card p-4 text-sm hairline">
             <p className="font-medium">Elige tu @usuario</p>
             <p className="mt-1 text-muted-foreground">Así tus amigos pueden encontrarte en Pulse.</p>
           </Link>
@@ -115,25 +104,20 @@ function ActivityPage() {
         ) : tab === "foryou" && activeItems.length === 0 ? (
           <EmptyState
             icon={Sparkles}
-            title="La comunidad está empezando."
-            hint="Comparte tu primer entrenamiento o descubre a otros atletas."
+            title="Todavía no hay entrenamientos públicos."
+            hint="Cuando alguien publique un entreno en público, aparecerá aquí."
             action={
-              <>
-                <Button asChild>
-                  <Link to="/feed/search">Buscar personas</Link>
-                </Button>
-                <Button asChild variant="secondary">
-                  <Link to="/routines">Compartir entrenamiento</Link>
-                </Button>
-              </>
+              <Button asChild>
+                <Link to="/feed/search">Buscar personas</Link>
+              </Button>
             }
           />
         ) : tab === "following" && activeItems.length === 0 ? (
           (meta?.followingCount ?? 0) === 0 ? (
             <EmptyState
               icon={Users}
-              title="Aún no sigues a nadie."
-              hint="Sigue a tus amigos para ver sus entrenamientos aquí."
+              title="Sigue a tus amigos para ver sus entrenamientos aquí"
+              hint="Busca a gente que conoces y empieza a seguirla."
               action={
                 <Button asChild>
                   <Link to="/feed/search">Buscar personas</Link>
@@ -173,7 +157,6 @@ function ActivityPage() {
           </div>
         )}
       </div>
-      <TextComposerSheet open={composer} onOpenChange={setComposer} />
     </AppPage>
   );
 }

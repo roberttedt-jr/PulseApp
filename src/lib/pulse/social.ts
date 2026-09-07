@@ -7,6 +7,11 @@ export type FeedKind = "workout" | "text" | "routine";
 
 export const TEXT_POST_MAX = 280;
 export const COMMENT_MAX = 280;
+export const CAPTION_MAX = 280;
+export const TITLE_MAX = 80;
+export const PHOTO_MAX = 3;
+
+export type NotificationType = "like" | "comment" | "follow" | "follow_request";
 
 export const RESERVED_USERNAMES = new Set([
   "pulse",
@@ -22,7 +27,8 @@ export const RESERVED_USERNAMES = new Set([
   "tutorial",
   "onboarding",
   "feed",
-  "settings",
+  "account",
+  "notifications",
   "perfil",
   "profile",
   "me",
@@ -133,6 +139,43 @@ export function sanitizeSocialText(raw: string, max: number): string {
   if (!t) throw socialError(422, "Escribe un texto.");
   if (t.length > max) throw socialError(422, `El texto no puede superar ${max} caracteres.`);
   return t;
+}
+
+export function sanitizeOptionalText(raw: string | null | undefined, max: number): string {
+  const t = String(raw ?? "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+  if (t.length > max) throw socialError(422, `El texto no puede superar ${max} caracteres.`);
+  return t;
+}
+
+export function parseNotificationType(v: unknown): NotificationType {
+  if (v === "like" || v === "comment" || v === "follow" || v === "follow_request") return v;
+  return "like";
+}
+
+export function notificationCopy(n: {
+  type: NotificationType;
+  handle: string;
+  workoutTitle?: string | null;
+  commentPreview?: string | null;
+}): string {
+  const who = n.handle || "Alguien";
+  if (n.type === "like") {
+    return n.workoutTitle
+      ? `${who} le ha dado me gusta a tu entrenamiento ${n.workoutTitle}`
+      : `${who} le ha dado me gusta a tu entrenamiento`;
+  }
+  if (n.type === "comment") {
+    const preview = n.commentPreview ? ` '${n.commentPreview}'` : "";
+    return `${who} ha comentado en tu entrenamiento:${preview}`;
+  }
+  if (n.type === "follow") return `${who} ha comenzado a seguirte`;
+  return `${who} quiere seguirte`;
 }
 
 export function encodeCursor(createdAt: string, id: string): string {

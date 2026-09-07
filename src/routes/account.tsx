@@ -25,6 +25,7 @@ import { listBlockedUsers, saveSocialProfile, unblockUser } from "@/lib/pulse/so
 import { COMPARE_COPY, COMPARE_METRICS, type CompareMetricId, type ComparePrefs } from "@/lib/pulse/compare";
 import { saveComparePrefs } from "@/lib/pulse/compare-fns";
 import { toast } from "sonner";
+import { PULSE_TAGLINE, PULSE_VERSION, PULSE_VERSION_NAME } from "@/lib/pulse/version";
 
 export const Route = createFileRoute("/account")({ component: SettingsPage });
 
@@ -336,12 +337,19 @@ function SettingsPage() {
           </Button>
         </div>
 
-        <div className="rounded-3xl bg-card p-4 text-sm text-muted-foreground hairline">
+        <div className="rounded-3xl bg-card p-4 text-sm text-muted-foreground hairline" data-about-pulse="1">
           <p className="flex items-center gap-2 font-medium text-foreground">
             <Info className="size-4" /> About Pulse
           </p>
-          <p className="mt-3 text-foreground">Versión 3.3</p>
-          <p className="mt-1">Diseñada por Roberto</p>
+          <p className="mt-3 text-foreground">
+            Versión {PULSE_VERSION} · {PULSE_VERSION_NAME}
+          </p>
+          <p className="mt-1 text-sm">{PULSE_TAGLINE}</p>
+          <p className="mt-3 leading-relaxed">
+            Pulse registra entrenamientos reales, comparte solo sesiones completadas y muestra tu progreso
+            con claridad. Comunidad de atletas, no un muro de texto.
+          </p>
+          <p className="mt-3">Diseñada por Roberto</p>
           <p className="mt-3 text-xs">© {new Date().getFullYear()} Pulse. Todos los derechos reservados.</p>
         </div>
       </div>

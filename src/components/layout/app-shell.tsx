@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Activity, Dumbbell, House, UserRound, Users } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
 import { cn } from "@/lib/utils";
@@ -56,14 +56,14 @@ function useCollapseOnScroll(pathname: string) {
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
   if (!title && !action) return null;
   return (
-    <header className="page-header sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 bg-background/70 px-4 pb-3 backdrop-blur-2xl md:px-8">
+    <header className="page-header sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 px-4 pb-3 md:px-8">
       <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   );
 }
 
-export function BottomNavigation({ pathname }: { pathname: string }) {
+export const BottomNavigation = memo(function BottomNavigation({ pathname }: { pathname: string }) {
   const collapsed = useCollapseOnScroll(pathname);
   const active = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
   return (
@@ -71,7 +71,7 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
       <ul className="relative grid grid-cols-5 px-1.5 py-1.5">
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full bg-white/12 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+          className="pulse-tabbar-pill pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
           style={{ transform: `translateX(${active * 100}%)` }}
         />
         {TABS.map((tab) => {
@@ -81,9 +81,10 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
             <li key={tab.to} className="min-w-0">
               <Link
                 to={tab.to}
+                preload="intent"
                 className={cn(
                   "relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold tracking-wide transition-colors duration-200",
-                  on ? "text-foreground" : "text-foreground-tertiary",
+                  on ? "text-white" : "text-foreground-tertiary",
                 )}
                 aria-current={on ? "page" : undefined}
                 aria-label={tab.label}
@@ -92,7 +93,7 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
                   className={cn("size-5 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]", on && "scale-[1.06]")}
                   strokeWidth={on ? 2.4 : 1.85}
                   fill={on ? "currentColor" : "none"}
-                  fillOpacity={on ? 0.16 : 0}
+                  fillOpacity={on ? 0.22 : 0}
                 />
                 <span className={cn("max-w-full truncate px-0.5", on ? "opacity-100" : "opacity-75")}>{tab.label}</span>
               </Link>
@@ -102,7 +103,7 @@ export function BottomNavigation({ pathname }: { pathname: string }) {
       </ul>
     </nav>
   );
-}
+});
 
 export function AppShell({
   children,
@@ -138,6 +139,7 @@ export function AppShell({
                 <Link
                   key={tab.to}
                   to={tab.to}
+                  preload="intent"
                   className={cn(
                     "flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-medium transition-[background-color,color] duration-200",
                     on ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",

@@ -3,9 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Flame, Play, Trophy, Zap } from "lucide-react";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { AppPage, PublicEntryRedirect, ScreenSkeleton } from "@/components/auth-gate";
-import { WeekVolumeChart } from "@/components/charts";
 import { ChartCard } from "@/components/pulse/cards";
 import { ActivityRings, WeekDots } from "@/components/pulse/activity-rings";
 import { ConsistencyCard } from "@/components/pulse/consistency";
@@ -21,6 +20,10 @@ import { flowPath, resolveAppFlow } from "@/lib/pulse/flow";
 import { getBootstrap, startWorkout } from "@/lib/pulse/fns";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { formatDuration, formatKg, greetingForHour } from "@/lib/utils";
+
+const WeekVolumeChart = lazy(() =>
+  import("@/components/charts").then((m) => ({ default: m.WeekVolumeChart })),
+);
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -39,7 +42,11 @@ function Home() {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { data, isPending, error } = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
+  const { data, isPending, error } = useQuery({
+    queryKey: ["bootstrap"],
+    queryFn: () => getBootstrap(),
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (!data?.profile) return;
@@ -280,7 +287,9 @@ function Dashboard() {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ChartCard title="Volumen de la semana">
-          <WeekVolumeChart data={data.volumeByDay} />
+          <Suspense fallback={<div className="h-44 rounded-2xl bg-muted/40" aria-hidden />}>
+            <WeekVolumeChart data={data.volumeByDay} />
+          </Suspense>
         </ChartCard>
         <ChartCard title="Balance muscular" className="overflow-visible">
           <MuscleMap
@@ -336,7 +345,7 @@ function Dashboard() {
             <Row k="IMC" v={bmiValue ? `${bmiValue.toFixed(1)} · ${bmiLabel(bmiValue)}` : "Añadir peso"} />
             <Row k="kcal / día" v={kcal ? String(kcal) : "Completar perfil"} />
             <Row k="Peso" v={data.profile.weightKg ? formatKg(data.profile.weightKg, data.profile.units) : "Añadir peso"} />
-            <Link to="/settings" className="inline-flex items-center gap-1 text-sm text-accent">
+            <Link to="/account" className="inline-flex items-center gap-1 text-sm text-accent">
               {hasBody ? "Ver perfil" : "Completar perfil"} <Zap className="size-3.5" />
             </Link>
           </div>

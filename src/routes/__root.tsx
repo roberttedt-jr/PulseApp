@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { NoMobileZoom } from "@/components/no-mobile-zoom";
+import { PULSE_SPLASH_CSS, PULSE_SPLASH_HTML, SplashController } from "@/components/pulse/splash";
 import { restoreSessionToken } from "@/lib/session-token";
 import { MotionConfig } from "framer-motion";
 import { Toaster } from "sonner";
@@ -13,7 +14,15 @@ restoreSessionToken();
 
 const APP_NAME = "Pulse";
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 12_000, retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 15 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  },
 });
 
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
@@ -22,7 +31,6 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
     const u = await getSessionUser();
     return u ? { id: u.id, email: u.email } : null;
   } catch {
-    // Auth/DB blips must never 500 the document — the client session fetch retries.
     return null;
   }
 });
@@ -36,6 +44,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       { name: "description", content: "Pulse — entrena, registra y progresa. Tu ritmo. Tu progreso." },
       { name: "theme-color", content: "#000000" },
+      { name: "color-scheme", content: "dark" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Pulse" },
@@ -48,10 +57,6 @@ export const Route = createRootRoute({
       { rel: "apple-touch-icon", href: "/icons/pulse-180.png", sizes: "180x180" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
-      },
     ],
   }),
   component: Root,
@@ -62,13 +67,16 @@ function Root() {
     <html lang="es" className="dark antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <style dangerouslySetInnerHTML={{ __html: PULSE_SPLASH_CSS }} />
       </head>
       <body>
+        <div id="pulse-splash" data-splash-root="1" aria-hidden="true" dangerouslySetInnerHTML={{ __html: PULSE_SPLASH_HTML }} />
         <PreviewHostBridge />
         <NoMobileZoom />
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <MotionConfig reducedMotion="user">
+              <SplashController />
               <Outlet />
               <Toaster
                 theme="dark"

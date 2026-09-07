@@ -31,12 +31,14 @@ function ActivityPage() {
     queryFn: ({ pageParam }) => getActivityFeed({ data: { cursor: pageParam } }),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
+    staleTime: 30_000,
   });
   const discover = useInfiniteQuery({
     queryKey: ["discover-feed"],
     queryFn: ({ pageParam }) => getDiscoverFeed({ data: { cursor: pageParam } }),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
+    staleTime: 30_000,
   });
   const items = (feed.data?.pages.flatMap((p) => p.items) ?? []).filter((p) => p.kind === "workout");
   const discoverItems = (discover.data?.pages.flatMap((p) => p.items) ?? []).filter((p) => p.kind === "workout");

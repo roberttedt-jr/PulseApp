@@ -32,10 +32,10 @@
   --color-ring: #ff2d55;
   --color-ios-fill: #2c2c2e;
   --color-ios-elevated: #3a3a3c;
-  --color-glass: rgb(30 30 34 / 0.72);
-  --color-glass-solid: rgb(24 24 28 / 0.96);
-  --color-glass-border: rgb(255 255 255 / 0.14);
-  --color-glass-highlight: rgb(255 255 255 / 0.08);
+  --color-glass: rgb(18 18 22 / 0.65);
+  --color-glass-solid: rgb(18 18 22 / 0.96);
+  --color-glass-border: rgb(255 255 255 / 0.15);
+  --color-glass-highlight: rgb(255 255 255 / 0.2);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Inter", "Segoe UI", system-ui, sans-serif;
@@ -54,7 +54,11 @@
   --shadow-card: 0 8px 30px rgb(0 0 0 / 0.35);
   --shadow-float: 0 12px 40px rgb(0 0 0 / 0.45);
   --shadow-ring: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 28px rgb(0 0 0 / 0.4);
-  --shadow-glass: 0 12px 32px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --shadow-glass:
+    0 16px 40px rgb(0 0 0 / 0.5),
+    inset 0 1px 1px rgb(255 255 255 / 0.2),
+    inset 0 -1px 1px rgb(0 0 0 / 0.3);
+
 
   --spacing-touch: 2.75rem;
 
@@ -211,6 +215,18 @@
 .page-header {
   margin-top: calc(var(--safe-top) * -1);
   padding-top: max(0.7rem, var(--safe-top));
+  background: rgb(0 0 0 / 0.42);
+  border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.16),
+    inset 0 -1px 1px rgb(0 0 0 / 0.28);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .page-header {
+    background: rgb(8 8 10 / 0.55);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+  }
 }
 
 @layer utilities {
@@ -222,8 +238,8 @@
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
       background: var(--color-glass);
-      backdrop-filter: blur(24px) saturate(145%);
-      -webkit-backdrop-filter: blur(24px) saturate(145%);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
     }
   }
 
@@ -341,19 +357,29 @@
   max-width: 32rem;
   margin-inline: auto;
   border-radius: 28px;
-  background: var(--color-glass-solid);
-  border: 1px solid var(--color-glass-border);
-  box-shadow: var(--shadow-glass);
+  background: rgb(18 18 22 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  box-shadow:
+    0 16px 40px rgb(0 0 0 / 0.5),
+    inset 0 1px 1px rgb(255 255 255 / 0.2),
+    inset 0 -1px 1px rgb(0 0 0 / 0.3);
   transition:
     transform 220ms var(--ease-out-ios),
     opacity 220ms var(--ease-out-ios);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .pulse-tabbar {
-    background: var(--color-glass);
-    backdrop-filter: blur(24px) saturate(145%);
-    -webkit-backdrop-filter: blur(24px) saturate(145%);
+    background: rgb(18 18 22 / 0.65);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
   }
+}
+.pulse-tabbar-pill {
+  background: rgb(255 45 85 / 0.18);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 45 85 / 0.3),
+    0 0 18px rgb(255 45 85 / 0.16);
+  will-change: transform;
 }
 .pulse-tabbar.is-collapsed {
   transform: translate3d(0, calc(100% + 24px), 0);

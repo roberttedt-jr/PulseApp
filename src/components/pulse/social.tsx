@@ -18,7 +18,7 @@ import {
   UserX,
   X,
 } from "lucide-react";
-import { useState, type ReactNode, useEffect, useRef } from "react";
+import { useState, type ReactNode, useEffect, useRef, memo } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -413,7 +413,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
   post,
   units = "metric",
   onChanged,
@@ -800,7 +800,7 @@ export function PostCard({
       </Dialog>
     </article>
   );
-}
+});
 
 function CommentsSheet({
   open,

@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
-import { VolumeBars, WeightLine } from "@/components/charts";
 import { ChartCard, LoadingBlock } from "@/components/pulse/cards";
 import { ConsistencyHeatmap } from "@/components/pulse/consistency";
 import { EmptyState } from "@/components/pulse/empty-state";
@@ -18,6 +17,13 @@ import { Activity } from "lucide-react";
 import { toast } from "sonner";
 
 type Search = { muscle?: string };
+
+const WeightLine = lazy(() =>
+  import("@/components/charts").then((m) => ({ default: m.WeightLine })),
+);
+const VolumeBars = lazy(() =>
+  import("@/components/charts").then((m) => ({ default: m.VolumeBars })),
+);
 
 const PERIOD_LABEL = {
   week: "Esta semana",
@@ -131,7 +137,9 @@ function ProgressPage() {
           {(data?.weight.length ?? 0) === 0 ? (
             <EmptyState icon={Activity} title="Sin registros" hint="Añade tu peso para ver la evolución." className="py-6" />
           ) : (
-            <WeightLine data={data?.weight ?? []} />
+            <Suspense fallback={<div className="h-44 rounded-2xl bg-muted/40" aria-hidden />}>
+              <WeightLine data={data?.weight ?? []} />
+            </Suspense>
           )}
           <form
             className="mt-3 flex gap-2"
@@ -219,7 +227,9 @@ function ProgressPage() {
           ) : (
             <>
               {cmpText && <p className="mb-3 text-sm text-muted-foreground">{cmpText}</p>}
-              <VolumeBars data={data?.volumeMonth ?? []} />
+              <Suspense fallback={<div className="h-44 rounded-2xl bg-muted/40" aria-hidden />}>
+                <VolumeBars data={data?.volumeMonth ?? []} />
+              </Suspense>
             </>
           )}
         </ChartCard>

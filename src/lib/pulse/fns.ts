@@ -87,13 +87,6 @@ function mapProfile(r: AnyRow): Profile {
 }
 async function ensureProfile(sql: Sql, userId: string) {
   await ensureCatalog(sql);
-  await ensurePulseV2(sql);
-  await ensurePulseV3(sql);
-  await ensurePulseV4(sql);
-  await ensurePulseV5(sql);
-  await ensurePulseV6(sql);
-  await ensurePulseV7(sql);
-  await ensurePulseV8(sql);
   const rows = await sql<AnyRow>`select * from profiles where user_id = ${userId}`;
   if (rows[0]) return mapProfile(rows[0]);
   await sql<AnyRow>`
@@ -157,7 +150,23 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
   const sql = await getSql();
   const profile = await ensureProfile(sql, context.userId);
   const week = startOfWeek().toISOString();
-  const weekStats = await sql<AnyRow>`
+  const [
+    weekStats,
+    volumeByDay,
+    muscles,
+    prs,
+    streak,
+    planToday,
+    lastRoutine,
+    active,
+    lastMuscles,
+    heatmap,
+    muscleLoad,
+    secondary,
+    lifetime,
+    lastSessionRows,
+  ] = await Promise.all([
+    sql<AnyRow>`
       select
         count(distinct w.id)::int as workouts,
         coalesce(sum(case when s.completed then s.weight * s.reps else 0 end),0) as volume,
@@ -166,16 +175,16 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       from workouts w
       left join workout_sets s on s.workout_id = w.id
       where w.user_id = ${context.userId} and w.status = 'completed' and w.started_at >= ${week}
-    `;
-  const volumeByDay = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select extract(dow from w.started_at)::int as day,
              coalesce(sum(s.weight * s.reps),0) as volume
       from workouts w
       join workout_sets s on s.workout_id = w.id and s.completed = true
       where w.user_id = ${context.userId} and w.status = 'completed' and w.started_at >= ${week}
       group by 1
-    `;
-  const muscles = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select e.muscle, coalesce(sum(s.weight * s.reps),0) as volume
       from workout_sets s
       join workouts w on w.id = s.workout_id
@@ -183,42 +192,35 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       where w.user_id = ${context.userId} and w.status = 'completed' and w.started_at >= ${week} and s.completed = true
       group by e.muscle
       order by volume desc
-    `;
-  const prs = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select distinct on (pr.exercise_id)
         pr.id, pr.exercise_id, e.name, e.muscle, pr.one_rep_max, pr.weight, pr.reps, pr.recorded_at
       from personal_records pr
       join exercises e on e.id = pr.exercise_id
       where pr.user_id = ${context.userId}
       order by pr.exercise_id, pr.recorded_at desc, pr.one_rep_max desc
-    `;
-  const streak = await computeStreak(sql, context.userId);
-  const ws = weekStats[0];
-  const score = pulseScore({
-    workoutsThisWeek: ws?.workouts ?? 0,
-    weeklyGoal: profile.weeklyGoal,
-    volumeThisWeek: num(ws?.volume),
-    streakDays: streak
-  });
-  const planToday = await sql<AnyRow>`
+    `,
+    computeStreak(sql, context.userId),
+    sql<AnyRow>`
       select wp.routine_id, r.name, r.icon, r.color
       from weekly_plan wp
       left join routines r on r.id = wp.routine_id
       where wp.user_id = ${context.userId} and wp.weekday = ${((new Date()).getDay() + 6) % 7}
-    `;
-  const lastRoutine = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select r.id, r.name, r.icon, r.color
       from workouts w
       join routines r on r.id = w.routine_id
       where w.user_id = ${context.userId} and w.status = 'completed'
       order by w.started_at desc
       limit 1
-    `;
-  const active = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select id from workouts where user_id = ${context.userId} and status in ('in_progress','paused')
       order by started_at desc limit 1
-    `;
-  const lastMuscles = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select e.muscle, max(w.started_at) as last
       from workout_sets s
       join workouts w on w.id = s.workout_id
@@ -226,36 +228,15 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       where w.user_id = ${context.userId} and w.status = 'completed'
       group by e.muscle
       order by last asc
-    `;
-  const suggestion = lastMuscles[0]
-    ? `Hace días que ${lastMuscles[0].muscle.toLowerCase()} espera su turno.`
-    : null;
-  const heatmap = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select started_at::date as d, count(*)::int as n
       from workouts
       where user_id = ${context.userId} and status = 'completed'
         and started_at >= ${(new Date(Date.now() - 29376e5)).toISOString()}
       group by 1
-    `;
-  const todayId = planToday[0]?.routine_id ?? lastRoutine[0]?.id ?? null;
-  const todayMeta = todayId ? await sql<AnyRow>`
-          select count(*)::int as n, coalesce(sum(rest_seconds),0)::int as rest
-          from routine_exercises where routine_id = ${todayId}
-        ` : [];
-  const lastOfToday = todayId ? await sql<AnyRow>`
-          select started_at, duration_seconds from workouts
-          where user_id = ${context.userId} and routine_id = ${todayId} and status = 'completed'
-          order by started_at desc limit 1
-        ` : [];
-  const todayExercises = todayId ? await sql<AnyRow>`
-          select e.name
-          from routine_exercises re
-          join exercises e on e.id = re.exercise_id
-          where re.routine_id = ${todayId}
-          order by re.sort_order
-          limit 6
-        ` : [];
-  const muscleLoad = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select e.muscle, count(*)::int as sets, coalesce(sum(s.weight * s.reps),0) as volume
       from workout_sets s
       join workouts w on w.id = s.workout_id
@@ -263,8 +244,8 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
         and w.started_at >= ${week}
       group by e.muscle
-    `;
-  const secondary = await sql<AnyRow>`
+    `,
+    sql<AnyRow>`
       select e.secondary_muscles, count(*)::int as n
       from workout_sets s
       join workouts w on w.id = s.workout_id
@@ -272,7 +253,54 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       where w.user_id = ${context.userId} and w.status = 'completed' and s.completed = true
         and w.started_at >= ${week} and e.secondary_muscles is not null and e.secondary_muscles <> ''
       group by e.secondary_muscles
-    `;
+    `,
+    sql<AnyRow>`
+      select count(*)::int as n from workouts
+      where user_id = ${context.userId} and status = 'completed'
+    `,
+    sql<AnyRow>`
+      select w.id, w.title, w.started_at, w.duration_seconds,
+        coalesce(sum(case when s.completed then s.weight * s.reps else 0 end), 0) as volume
+      from workouts w
+      left join workout_sets s on s.workout_id = w.id
+      where w.user_id = ${context.userId} and w.status = 'completed'
+      group by w.id
+      order by w.started_at desc
+      limit 1
+    `,
+  ]);
+  const ws = weekStats[0];
+  const score = pulseScore({
+    workoutsThisWeek: ws?.workouts ?? 0,
+    weeklyGoal: profile.weeklyGoal,
+    volumeThisWeek: num(ws?.volume),
+    streakDays: streak
+  });
+  const suggestion = lastMuscles[0]
+    ? `Hace días que ${lastMuscles[0].muscle.toLowerCase()} espera su turno.`
+    : null;
+  const todayId = planToday[0]?.routine_id ?? lastRoutine[0]?.id ?? null;
+  const [todayMeta, lastOfToday, todayExercises] = todayId
+    ? await Promise.all([
+        sql<AnyRow>`
+          select count(*)::int as n, coalesce(sum(rest_seconds),0)::int as rest
+          from routine_exercises where routine_id = ${todayId}
+        `,
+        sql<AnyRow>`
+          select started_at, duration_seconds from workouts
+          where user_id = ${context.userId} and routine_id = ${todayId} and status = 'completed'
+          order by started_at desc limit 1
+        `,
+        sql<AnyRow>`
+          select e.name
+          from routine_exercises re
+          join exercises e on e.id = re.exercise_id
+          where re.routine_id = ${todayId}
+          order by re.sort_order
+          limit 6
+        `,
+      ])
+    : [[], [], []];
   const loadMap = new Map<string, { sets: number; volume: number }>();
   for (const m of muscleLoad) {
     const key = String(normalizeMuscle(m.muscle));
@@ -296,20 +324,6 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       volume: cur.volume
     });
   }
-  const lifetime = await sql<AnyRow>`
-      select count(*)::int as n from workouts
-      where user_id = ${context.userId} and status = 'completed'
-    `;
-  const lastSessionRows = await sql<AnyRow>`
-      select w.id, w.title, w.started_at, w.duration_seconds,
-        coalesce(sum(case when s.completed then s.weight * s.reps else 0 end), 0) as volume
-      from workouts w
-      left join workout_sets s on s.workout_id = w.id
-      where w.user_id = ${context.userId} and w.status = 'completed'
-      group by w.id
-      order by w.started_at desc
-      limit 1
-    `;
   const last = lastSessionRows[0];
   return {
     profile,

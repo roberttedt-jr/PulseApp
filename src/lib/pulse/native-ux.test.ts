@@ -62,7 +62,11 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(widget, /IntersectionObserver/);
     assert.match(widget, /requestAnimationFrame/);
     assert.match(widget, /pulse-ring-progress/);
+    assert.match(widget, /pulse-score-num/);
+    assert.doesNotMatch(widget, /text-\[32px\]/);
     assert.match(css, /blur\(32px\) saturate\(190%\)/);
+    assert.match(css, /\.pulse-score-num/);
+    assert.match(css, /\.tab-swipe/);
     assert.match(formulas, /volumePrev3WeeksAvg/);
     assert.match(formulas, /restDaysThisWeek/);
   });
@@ -83,6 +87,18 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(pager, /onTouchEnd/);
     assert.match(pager, /scrollSnapType/);
     assert.match(pager, /pan-x pan-y/);
+  });
+
+  it("swipes between main tabs from the app shell", () => {
+    const app = src("../../components/layout/app-shell.tsx");
+    const swipe = src("../../components/pulse/tab-swipe.tsx");
+    assert.match(app, /TabSwipe/);
+    assert.match(swipe, /TAB_PATHS/);
+    assert.match(swipe, /snapPageIndex/);
+    assert.match(swipe, /data-tab-swipe/);
+    assert.match(swipe, /setPointerCapture/);
+    assert.match(swipe, /onTouchStart|touchstart/);
+    assert.match(swipe, /touchmove/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {

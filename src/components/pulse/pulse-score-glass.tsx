@@ -160,7 +160,7 @@ export function PulseScoreGlass({
             ))}
           </svg>
           <span className="pointer-events-none absolute inset-0 grid place-items-center">
-            <span className="tabular text-[32px] leading-none font-semibold tracking-tight">{shownScore}</span>
+            <span className="pulse-score-num">{shownScore}</span>
           </span>
         </div>
         <div className="min-w-0 flex-1">

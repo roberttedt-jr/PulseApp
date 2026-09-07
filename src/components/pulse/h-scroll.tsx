@@ -55,6 +55,7 @@ export function HScroll({
     >
       <div
         ref={ref}
+        data-h-scroll="1"
         className={cn(
           "h-scroll no-scrollbar",
           snap === "proximity" && "h-scroll-proximity",

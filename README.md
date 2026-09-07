@@ -1,5 +1,3 @@
-
-
 # Pulse
 
 > **Tu ritmo. Tu progreso.**
@@ -12,9 +10,11 @@ Pulse es una aplicación web y móvil de fitness de alto rendimiento orientada a
 
 ### Vídeo de la aplicación
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/b489c60d-0cdb-4cd0-9261-298d53310757" controls width="330" style="max-width: 100%; border-radius: 14px;"></video>
-</p>
+<div align="center">
+
+https://github.com/user-attachments/assets/b489c60d-0cdb-4cd0-9261-298d53310757
+
+</div>
 
 ---
 
@@ -22,11 +22,11 @@ Pulse es una aplicación web y móvil de fitness de alto rendimiento orientada a
 
 | Dashboard & Inicio | Planificador de Rutinas | Progreso & Récords (PRs) |
 |:---:|:---:|:---:|
-| <img src="./IMG_8920.png" width="230" alt="Dashboard e Inicio" style="border-radius: 12px;" /> | <img src="./IMG_8922.png" width="230" alt="Entrenamiento y Rutinas" style="border-radius: 12px;" /> | <img src="./IMG_892.png" width="230" alt="Progreso y Récords" style="border-radius: 12px;" /> |
+| ![Dashboard e Inicio](./IMG_8920.PNG) | ![Entrenamiento y Rutinas](./IMG_8922.PNG) | ![Progreso y Récords](./IMG_8923.PNG) |
 
 | Feed Social & Comunidad | Biblioteca de Ejercicios |
 |:---:|:---:|
-| <img src="./IMG_8921.png" width="230" alt="Feed Social y Actividad" style="border-radius: 12px;" /> | <img src="./IMG_8924.png" width="230" alt="Buscador de Ejercicios" style="border-radius: 12px;" /> |
+| ![Feed Social y Actividad](./IMG_8921.PNG) | ![Buscador de Ejercicios](./IMG_8924.PNG) |
 
 ---
 
@@ -126,8 +126,6 @@ La aplicación está lista para desplegarse en **Vercel** enlazada a **Neon Post
 1. Vincula tu repositorio de GitHub en Vercel.
 2. Añade las variables de entorno (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`) en la configuración de Vercel.
 3. Ejecuta las migraciones de esquema en tu base de datos de Neon.
-
-
 4. Completa el despliegue automático.
 
 ---

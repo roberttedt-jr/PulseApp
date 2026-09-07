@@ -214,11 +214,11 @@ function Dashboard() {
       </section>
 
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/progress" className="rounded-3xl bg-card px-4 py-4 hairline">
+        <Link to="/progress" className="rounded-3xl bg-card px-4 py-4 hairline pressable-feedback">
           <p className="text-xs text-muted-foreground">Progreso</p>
           <p className="mt-1 text-sm font-medium">Ver marcas y volumen</p>
         </Link>
-        <Link to="/plan" className="rounded-3xl bg-card px-4 py-4 hairline">
+        <Link to="/plan" className="rounded-3xl bg-card px-4 py-4 hairline pressable-feedback">
           <p className="text-xs text-muted-foreground">Plan</p>
           <p className="mt-1 text-sm font-medium">Semana y rutinas</p>
         </Link>

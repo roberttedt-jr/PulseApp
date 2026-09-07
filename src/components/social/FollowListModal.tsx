@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SearchInput } from "@/components/pulse/search-input";
-import { FollowButton } from "@/components/pulse/social";
+import { FollowButton, FollowingToggle } from "@/components/pulse/social";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -75,14 +75,16 @@ export function FollowListModal({
     void qc.invalidateQueries({ queryKey: ["follow-list"] });
   }
 
+  const title = tab === "followers" ? "Seguidores" : "Siguiendo";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent fullScreen className="flex flex-col px-4 pt-3">
-        <SheetTitle className="sr-only">{tab === "followers" ? "Seguidores" : "Siguiendo"}</SheetTitle>
-        <div className="pr-12">
+      <SheetContent fullScreen className="flex flex-col overflow-hidden px-4 pt-2">
+        <header className="shrink-0 pr-12">
+          <SheetTitle>{title}</SheetTitle>
           <Segmented
             ariaLabel="Listas sociales"
-            className="flex w-full"
+            className="mt-3 flex w-full"
             value={tab}
             options={[
               { value: "followers", label: "Seguidores" },
@@ -90,13 +92,15 @@ export function FollowListModal({
             ]}
             onChange={setTab}
           />
-        </div>
-        <div className="mt-3">
+        </header>
+        <div className="mt-3 shrink-0">
           <SearchInput
             id="filter_social_list"
             name="filter_social_list"
             type="search"
             autoComplete="one-time-code"
+            autoCorrect="off"
+            spellCheck={false}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre o @usuario"
@@ -195,9 +199,7 @@ function UserRowItem({
         Eliminar
       </Button>
     ) : (
-      <Button size="sm" variant="secondary" className="shrink-0" disabled={busy} onClick={() => void unfollow()}>
-        Siguiendo
-      </Button>
+      <FollowingToggle disabled={busy} onClick={() => void unfollow()} />
     )
   ) : (
     <FollowButton person={person} onChange={onFollowChange} />

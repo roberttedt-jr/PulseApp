@@ -70,6 +70,29 @@ function bustSocial(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["feed-post"] });
 }
 
+export function FollowingToggle({
+  onClick,
+  disabled,
+  size = "sm",
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  size?: "sm" | "default";
+}) {
+  return (
+    <Button
+      size={size}
+      variant="secondary"
+      disabled={disabled}
+      onClick={onClick}
+      className="unfollow-toggle shrink-0 min-w-[6.75rem]"
+    >
+      <span className="unfollow-idle">Siguiendo</span>
+      <span className="unfollow-armed">Dejar de seguir</span>
+    </Button>
+  );
+}
+
 export function FollowButton({
   person,
   onChange,
@@ -95,14 +118,11 @@ export function FollowButton({
   }
   if (person.followStatus === "accepted") {
     return (
-      <Button
+      <FollowingToggle
         size={size}
-        variant="secondary"
         disabled={pending}
         onClick={() => void run(() => unfollowUser({ data: { userId: person.userId } }), "Has dejado de seguir")}
-      >
-        Siguiendo
-      </Button>
+      />
     );
   }
   if (person.followStatus === "pending") {
@@ -646,7 +666,7 @@ export const PostCard = memo(function PostCard({
         </button>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm text-muted-foreground"
+          className="inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm text-muted-foreground pressable-feedback"
           aria-label="Comentarios"
           onClick={() => setCommentsOpen(true)}
         >

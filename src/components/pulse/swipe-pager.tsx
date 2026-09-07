@@ -44,8 +44,8 @@ export function SwipePager({
   );
 
   useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
     function onPointerDown(e: PointerEvent) {
       const target = e.target as HTMLElement | null;
@@ -62,7 +62,7 @@ export function SwipePager({
       st.moved = false;
       setSnapping(false);
       try {
-        el.setPointerCapture(e.pointerId);
+        viewportRef.current?.setPointerCapture(e.pointerId);
       } catch {
         /* some browsers reject capture on synthetic events */
       }
@@ -102,15 +102,15 @@ export function SwipePager({
       st.axis = "none";
     }
 
-    el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointermove", onPointerMove, { passive: false });
-    el.addEventListener("pointerup", onPointerUp);
-    el.addEventListener("pointercancel", onPointerUp);
+    viewport.addEventListener("pointerdown", onPointerDown);
+    viewport.addEventListener("pointermove", onPointerMove, { passive: false });
+    viewport.addEventListener("pointerup", onPointerUp);
+    viewport.addEventListener("pointercancel", onPointerUp);
     return () => {
-      el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", onPointerUp);
-      el.removeEventListener("pointercancel", onPointerUp);
+      viewport.removeEventListener("pointerdown", onPointerDown);
+      viewport.removeEventListener("pointermove", onPointerMove);
+      viewport.removeEventListener("pointerup", onPointerUp);
+      viewport.removeEventListener("pointercancel", onPointerUp);
     };
   }, [count, finish, index]);
 

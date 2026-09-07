@@ -310,6 +310,22 @@
     opacity: 0.88;
   }
 
+  .unfollow-toggle .unfollow-armed {
+    display: none;
+  }
+  .unfollow-toggle:hover:not(:disabled),
+  .unfollow-toggle:active:not(:disabled) {
+    color: var(--color-destructive);
+  }
+  .unfollow-toggle:hover:not(:disabled) .unfollow-idle,
+  .unfollow-toggle:active:not(:disabled) .unfollow-idle {
+    display: none;
+  }
+  .unfollow-toggle:hover:not(:disabled) .unfollow-armed,
+  .unfollow-toggle:active:not(:disabled) .unfollow-armed {
+    display: inline;
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }

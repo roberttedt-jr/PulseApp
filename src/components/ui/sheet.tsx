@@ -40,7 +40,7 @@ export function SheetContent({
           "fixed z-50 flex flex-col overflow-hidden bg-card text-card-foreground shadow-float outline-none",
           side === "bottom" &&
             (fullScreen
-              ? "inset-x-0 bottom-0 mx-auto h-[min(96dvh,920px)] w-full max-w-lg rounded-t-[28px] border-t border-white/12"
+              ? "inset-x-0 bottom-0 mx-auto h-[100dvh] w-full max-w-lg rounded-t-[20px] border-t border-white/12"
               : "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(90dvh,760px)] rounded-t-[28px] border-t border-white/12"),
           side === "right" && "inset-y-0 right-0 h-full w-[min(100%,420px)] max-w-full rounded-l-3xl border-l border-white/12",
         )}
@@ -50,7 +50,8 @@ export function SheetContent({
         <div
           data-sheet-scroll="1"
           className={cn(
-            "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]",
+            "min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]",
+            fullScreen ? "overflow-hidden" : "overflow-y-auto",
             className,
           )}
         >

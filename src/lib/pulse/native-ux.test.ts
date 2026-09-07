@@ -9,6 +9,7 @@ describe("Pulse 3.6 native UX contracts", () => {
     const profile = src("../../components/pulse/athlete-profile.tsx");
     const modal = src("../../components/social/FollowListModal.tsx");
     const social = src("./social-fns.ts");
+    const socialUi = src("../../components/pulse/social.tsx");
     assert.match(profile, /FollowListModal/);
     assert.match(profile, /openList\("followers"\)/);
     assert.match(profile, /openList\("following"\)/);
@@ -16,8 +17,12 @@ describe("Pulse 3.6 native UX contracts", () => {
     assert.match(modal, /type="search"/);
     assert.match(modal, /autoComplete="one-time-code"/);
     assert.match(modal, /Eliminar/);
+    assert.match(modal, /FollowingToggle/);
     assert.match(modal, /unfollowUser/);
     assert.match(modal, /onRemoved\(\)/);
+    assert.match(modal, /SheetTitle/);
+    assert.match(socialUi, /Dejar de seguir/);
+    assert.match(socialUi, /Solicitado/);
     assert.match(social, /export const listFollowing/);
     assert.doesNotMatch(social, /Solo los perfiles privados pueden eliminar seguidores/);
   });

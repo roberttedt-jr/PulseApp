@@ -20,11 +20,11 @@ https://github.com/user-attachments/assets/b489c60d-0cdb-4cd0-9261-298d53310757
 
 ### Módulos principales de la aplicación
 
-| Dashboard & Inicio | Planificador de Rutinas | Progreso & Récords (PRs) |
+| Dashboard & Inicio | Feed Social & Actividad | Progreso & Récords (PRs) |
 |:---:|:---:|:---:|
 | ![Dashboard e Inicio](./IMG_8920.PNG) | ![Feed Social y Actividad](./IMG_8922.PNG) | ![Progreso y Récords](./IMG_8923.PNG) |
 
-| Feed Social & Comunidad | Biblioteca de Ejercicios |
+| Entrenamiento y Rutinas | Perfil de Usuarios |
 |:---:|:---:|
 | ![Entrenamiento y Rutinas](./IMG_8921.PNG) | ![Perfil de Usuario](./IMG_8924.PNG) |
 

@@ -19,12 +19,22 @@ describe("Pulse 3.6 identity", () => {
 
   it("hides linear loaders and uses a heartbeat splash", () => {
     const splash = readFileSync(new URL("../../components/pulse/splash.tsx", import.meta.url), "utf8");
-    assert.match(splash, /pulse-beat/);
+    assert.match(splash, /pulse-splash-logo/);
+    assert.match(splash, /@keyframes heartbeat/);
+    assert.match(splash, /pulse-icon\.png/);
     assert.match(splash, /1\.35s/);
     assert.match(splash, /scale\(1\.06\)/);
     assert.match(splash, /#nprogress/);
     assert.match(splash, /display:none!important/);
     assert.doesNotMatch(splash, /linear-gradient\([^)]*#nprogress/);
+    assert.doesNotMatch(splash, /<svg/);
+  });
+
+  it("preloads the official Pulse PNG on first paint", () => {
+    const root = readFileSync(new URL("../../routes/__root.tsx", import.meta.url), "utf8");
+    assert.match(root, /rel="preload"/);
+    assert.match(root, /as="image"/);
+    assert.match(root, /href="\/pulse-icon\.png"/);
   });
 
   it("parallelizes bootstrap queries", () => {

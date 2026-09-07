@@ -51,7 +51,6 @@ export const Route = createRootRoute({
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
       { rel: "icon", type: "image/png", sizes: "192x192", href: "/icons/pulse-192.png" },
       { rel: "apple-touch-icon", href: "/icons/pulse-180.png", sizes: "180x180" },
@@ -66,6 +65,7 @@ function Root() {
   return (
     <html lang="es" className="dark antialiased" suppressHydrationWarning>
       <head>
+        <link rel="preload" as="image" href="/pulse-icon.png" />
         <HeadContent />
         <style dangerouslySetInnerHTML={{ __html: PULSE_SPLASH_CSS }} />
       </head>

@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
 
+/** Official Pulse mark — splash, welcome, login and PWA icons. */
+export const PULSE_LOGO_SRC = "/pulse-icon.png";
+
 export function PulseLogo({
   className,
   animated = false,
@@ -13,7 +16,7 @@ export function PulseLogo({
 }) {
   return (
     <img
-      src="/pulse-icon.png"
+      src={PULSE_LOGO_SRC}
       alt={alt}
       width={size}
       height={size}

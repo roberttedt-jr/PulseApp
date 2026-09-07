@@ -26,17 +26,17 @@ export function PageTransition({ children }: { children: ReactNode }) {
     return <div className="pulse-page min-h-full">{children}</div>;
   }
 
-  const dx = reduced || sameTab ? 0 : dir.current * MOTION.tabSlidePx;
-  const dy = reduced || !sameTab ? 0 : 8;
+  const slide = typeof window !== "undefined" ? Math.round(window.innerWidth * 0.28) : MOTION.tabSlidePx;
+  const dx = reduced || sameTab ? 0 : dir.current * slide;
 
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       <motion.div
         key={pathname}
         className="pulse-page min-h-full will-change-transform"
-        initial={{ opacity: 0, x: dx, y: dy }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        exit={{ opacity: 0, x: reduced || sameTab ? 0 : -dx * 0.5, y: 0 }}
+        initial={{ x: dx }}
+        animate={{ x: 0 }}
+        exit={{ x: reduced || sameTab ? 0 : -dx }}
         transition={{
           duration: (reduced ? MOTION.reducedMs : MOTION.tabMs) / 1000,
           ease: EASE_IOS,

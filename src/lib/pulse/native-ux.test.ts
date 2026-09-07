@@ -94,11 +94,13 @@ describe("Pulse 3.7 native UX contracts", () => {
     const swipe = src("../../components/pulse/tab-swipe.tsx");
     assert.match(app, /TabSwipe/);
     assert.match(swipe, /TAB_PATHS/);
-    assert.match(swipe, /snapPageIndex/);
+    assert.match(swipe, /commitIndex/);
     assert.match(swipe, /data-tab-swipe/);
     assert.match(swipe, /setPointerCapture/);
     assert.match(swipe, /onTouchStart|touchstart/);
     assert.match(swipe, /touchmove/);
+    assert.match(swipe, /viewTransition: false/);
+    assert.match(swipe, /cubic-bezier\(0\.22, 1, 0\.36, 1\)/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {

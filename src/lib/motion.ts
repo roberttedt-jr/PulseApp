@@ -2,9 +2,9 @@
 export const TAB_PATHS = ["/", "/routines", "/feed", "/progress", "/settings"] as const;
 
 export const MOTION = {
-  tabMs: 200,
-  tabMsOut: 180,
-  tabSlidePx: 12,
+  tabMs: 360,
+  tabMsOut: 360,
+  tabSlidePx: 96,
   pressMs: 120,
   pressScale: 0.98,
   sheetInMs: 320,

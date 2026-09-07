@@ -7,7 +7,7 @@ export function Badge({
   ...props
 }: HTMLAttributes<HTMLSpanElement> & { tone?: "muted" | "primary" | "blue" | "success" | "warning" }) {
   const tones = {
-    muted: "bg-muted text-muted-foreground",
+    muted: "glass-pill text-muted-foreground",
     primary: "bg-primary/15 text-primary",
     blue: "bg-accent/15 text-accent",
     success: "bg-success/15 text-success",

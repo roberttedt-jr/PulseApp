@@ -9,15 +9,27 @@ export const PULSE_SPLASH_CSS = `
 html,body{background:#000000;color-scheme:dark}
 #pulse-splash,.pulse-splash-fallback{
   position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
-  background:#000000;color:#f5f5f7;pointer-events:none;
+  background:#000000;color:#f5f5f7;pointer-events:none;overflow:visible;
 }
 #pulse-splash{transition:opacity 200ms cubic-bezier(0.22,1,0.36,1)}
 #pulse-splash.is-done{opacity:0}
+.pulse-splash-mark{
+  position:relative;width:180px;height:180px;
+  display:grid;place-items:center;overflow:visible;
+}
+.pulse-splash-halo{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,45,85,0.32) 0%,rgba(255,45,85,0.12) 38%,rgba(255,45,85,0) 70%);
+  animation:heartbeat 1.35s ease-in-out infinite;
+  will-change:transform,opacity,filter;
+  pointer-events:none;
+}
 .pulse-splash-logo{
-  width:100px;height:100px;display:block;object-fit:contain;
+  position:relative;z-index:1;width:100px;height:100px;display:block;object-fit:contain;
   border-radius:22%;
   animation:heartbeat 1.35s ease-in-out infinite;
-  will-change:transform,filter;
+  will-change:transform;
+  filter:none;
 }
 @keyframes heartbeat{
   0%{transform:scale(1);filter:drop-shadow(0 0 0px rgba(255,45,85,0))}
@@ -27,7 +39,7 @@ html,body{background:#000000;color-scheme:dark}
   70%{transform:scale(1);filter:drop-shadow(0 0 0px rgba(255,45,85,0))}
 }
 @media (prefers-reduced-motion:reduce){
-  .pulse-splash-logo{animation:none}
+  .pulse-splash-logo,.pulse-splash-halo{animation:none}
 }
 #nprogress,.nprogress,#nprogress .bar,#nprogress .spinner,
 [data-nprogress],.vite-dev-loading,[data-vite-dev-loading],
@@ -35,16 +47,18 @@ html,body{background:#000000;color-scheme:dark}
 `;
 
 export const PULSE_SPLASH_HTML = `
-<img
-  class="pulse-splash-logo"
-  src="/pulse-icon.png"
-  width="100"
-  height="100"
-  alt="Pulse"
-  decoding="async"
-  fetchpriority="high"
-  data-splash="heartbeat"
-/>
+<span class="pulse-splash-mark" data-splash="heartbeat">
+  <span class="pulse-splash-halo" aria-hidden="true"></span>
+  <img
+    class="pulse-splash-logo"
+    src="/pulse-icon.png"
+    width="100"
+    height="100"
+    alt="Pulse"
+    decoding="async"
+    fetchpriority="high"
+  />
+</span>
 `;
 
 let splashShownAt = typeof performance !== "undefined" ? performance.now() : 0;

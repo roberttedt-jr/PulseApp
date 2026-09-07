@@ -393,7 +393,7 @@ function Login() {
           : "Entrar";
 
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-x-hidden bg-background px-5 pt-[var(--safe-top)] pb-[max(1.25rem,var(--safe-bottom))]">
+    <main className="relative grid min-h-dvh place-items-center overflow-visible bg-background px-5 pt-[var(--safe-top)] pb-[max(1.25rem,var(--safe-bottom))]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(255,45,85,0.18),transparent_60%)]" />
       <div className="relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">

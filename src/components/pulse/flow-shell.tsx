@@ -32,7 +32,7 @@ export function FlowShell({
     onStepChange?.(Math.max(0, Math.min(count - 1, next)));
   }
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-x-hidden bg-background px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+    <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-visible bg-background px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="relative flex min-h-11 items-center justify-between gap-3">
         {step > 0 && onBack ? (
           <button
@@ -87,7 +87,7 @@ export function ChoiceButton({
       aria-pressed={selected}
       className={cn(
         "min-h-14 w-full rounded-2xl px-4 py-3 text-left pressable-feedback",
-        selected ? "bg-primary/12 ring-1 ring-primary" : "bg-muted",
+        selected ? "glass-pill glass-pill-on" : "glass-pill",
       )}
     >
       <p className="text-sm font-medium">{title}</p>

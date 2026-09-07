@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 
 const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
-describe("Pulse 3.6 native UX contracts", () => {
+describe("Pulse 3.7 native UX contracts", () => {
   it("opens followers and following from the athlete profile", () => {
     const profile = src("../../components/pulse/athlete-profile.tsx");
     const modal = src("../../components/social/FollowListModal.tsx");
@@ -55,6 +55,10 @@ describe("Pulse 3.6 native UX contracts", () => {
     assert.match(widget, /pulse-score-glass/);
     assert.match(widget, /¿Cómo se calcula\?/);
     assert.match(widget, /#FF2D55/);
+    assert.match(widget, /#AF52DE/);
+    assert.match(widget, /#00F0FF/);
+    assert.match(widget, /strokeDasharray/);
+    assert.match(widget, /Consistencia/);
     assert.match(css, /blur\(32px\) saturate\(190%\)/);
     assert.match(formulas, /volumePrev3WeeksAvg/);
     assert.match(formulas, /restDaysThisWeek/);
@@ -64,12 +68,18 @@ describe("Pulse 3.6 native UX contracts", () => {
     const welcome = src("../../routes/welcome.tsx");
     const tutorial = src("../../routes/tutorial.tsx");
     const shell = src("../../components/pulse/flow-shell.tsx");
+    const pager = src("../../components/pulse/swipe-pager.tsx");
     assert.match(welcome, /pages=\{screens\}/);
     assert.match(welcome, /onStepChange=\{setStep\}/);
     assert.match(tutorial, /pages=\{screens\}/);
     assert.match(shell, /SwipePager/);
     assert.match(shell, /PagerDots/);
     assert.doesNotMatch(shell, /embla/i);
+    assert.match(pager, /onTouchStart/);
+    assert.match(pager, /onTouchMove/);
+    assert.match(pager, /onTouchEnd/);
+    assert.match(pager, /scrollSnapType/);
+    assert.match(pager, /pan-x pan-y/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {
@@ -89,5 +99,8 @@ describe("Pulse 3.6 native UX contracts", () => {
     assert.match(css, /touch-action: manipulation/);
     assert.match(css, /scale\(0\.965\)/);
     assert.match(css, /\.pressable-feedback/);
+    assert.match(css, /\.glass-pill/);
+    assert.match(css, /rgba\(255, 45, 85, 0\.18\)/);
+    assert.match(css, /pulse-logo-halo/);
   });
 });

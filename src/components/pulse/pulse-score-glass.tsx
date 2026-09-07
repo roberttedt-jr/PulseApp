@@ -3,6 +3,44 @@ import { useState } from "react";
 import type { PulseScoreBreakdown } from "@/lib/pulse/formulas";
 import { cn } from "@/lib/utils";
 
+const RINGS = [
+  { key: "consistency", label: "Consistencia", color: "#FF2D55", track: "rgba(255,45,85,0.18)", r: 54, max: 40 },
+  { key: "overload", label: "Sobrecarga", color: "#AF52DE", track: "rgba(175,82,222,0.18)", r: 40, max: 40 },
+  { key: "recovery", label: "Recuperación", color: "#00F0FF", track: "rgba(0,240,255,0.18)", r: 26, max: 20 },
+] as const;
+
+function Ring({
+  r,
+  pct,
+  color,
+  track,
+}: {
+  r: number;
+  pct: number;
+  color: string;
+  track: string;
+}) {
+  const c = 2 * Math.PI * r;
+  const p = Math.min(1, Math.max(0, pct));
+  return (
+    <>
+      <circle cx="70" cy="70" r={r} fill="none" stroke={track} strokeWidth="10" />
+      <circle
+        cx="70"
+        cy="70"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - p)}
+        style={{ transition: "stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1)" }}
+      />
+    </>
+  );
+}
+
 export function PulseScoreGlass({
   score,
   breakdown,
@@ -12,52 +50,54 @@ export function PulseScoreGlass({
 }) {
   const [open, setOpen] = useState(false);
   const value = Math.min(100, Math.max(0, breakdown?.score ?? score));
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  const pct = value / 100;
+  const consistency = breakdown?.consistency ?? 0;
+  const overload = breakdown?.overload ?? 0;
+  const recovery = breakdown?.recovery ?? 0;
+  const pcts = [consistency / 40, overload / 40, recovery / 20];
 
   return (
     <section className="pulse-score-glass" data-pulse-score="1">
-      <div className="flex items-center gap-4">
-        <div className="relative grid size-[108px] shrink-0 place-items-center" aria-label={`Pulse Score ${value}`}>
-          <svg width="108" height="108" viewBox="0 0 108 108" className="-rotate-90">
-            <defs>
-              <linearGradient id="pulse-score-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FF2D55" />
-                <stop offset="100%" stopColor="#FF375F" />
-              </linearGradient>
-            </defs>
-            <circle cx="54" cy="54" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
-            <circle
-              cx="54"
-              cy="54"
-              r={r}
-              fill="none"
-              stroke="url(#pulse-score-grad)"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={c}
-              strokeDashoffset={c * (1 - pct)}
-              style={{ transition: "stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1)" }}
-            />
+      <button
+        type="button"
+        className="flex w-full items-center gap-4 text-left pressable-feedback"
+        aria-expanded={open}
+        aria-label={`Pulse Score ${value}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="relative grid size-[140px] shrink-0 place-items-center overflow-visible">
+          <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
+            {RINGS.map((ring, i) => (
+              <Ring key={ring.key} r={ring.r} pct={pcts[i] ?? 0} color={ring.color} track={ring.track} />
+            ))}
           </svg>
-          <span className="absolute tabular text-[28px] font-semibold tracking-tight">{value}</span>
+          <span className="absolute flex flex-col items-center">
+            <span className="tabular text-[28px] leading-none font-semibold tracking-tight">{value}</span>
+            <span className="mt-1 text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+              PulseScore
+            </span>
+          </span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Pulse Score</p>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             {breakdown?.copy.headline ?? "Rendimiento semanal consolidado."}
           </p>
+          <ul className="mt-3 space-y-1.5">
+            {RINGS.map((ring, i) => {
+              const pts = [consistency, overload, recovery][i] ?? 0;
+              return (
+                <li key={ring.key} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="size-2.5 rounded-full" style={{ background: ring.color }} />
+                  <span className="min-w-0 flex-1 truncate">{ring.label}</span>
+                  <span className="tabular text-foreground">
+                    {pts}/{ring.max}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      </div>
-
-      {breakdown ? (
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <Metric label="Consistencia" value={breakdown.consistency} max={40} />
-          <Metric label="Sobrecarga" value={breakdown.overload} max={40} />
-          <Metric label="Recuperación" value={breakdown.recovery} max={20} />
-        </div>
-      ) : null}
+      </button>
 
       <button
         type="button"
@@ -70,23 +110,17 @@ export function PulseScoreGlass({
       </button>
       {open && breakdown ? (
         <ul className="space-y-2 pb-1 text-sm leading-relaxed text-muted-foreground">
-          <li>{breakdown.copy.consistency}</li>
-          <li>{breakdown.copy.overload}</li>
-          <li>{breakdown.copy.recovery}</li>
+          <li>
+            <span className="font-medium text-[#FF2D55]">Consistencia.</span> {breakdown.copy.consistency}
+          </li>
+          <li>
+            <span className="font-medium text-[#AF52DE]">Sobrecarga.</span> {breakdown.copy.overload}
+          </li>
+          <li>
+            <span className="font-medium text-[#00F0FF]">Recuperación.</span> {breakdown.copy.recovery}
+          </li>
         </ul>
       ) : null}
     </section>
-  );
-}
-
-function Metric({ label, value, max }: { label: string; value: number; max: number }) {
-  return (
-    <div className="rounded-2xl bg-white/4 px-2 py-2">
-      <p className="text-[22px] font-semibold tabular tracking-tight">
-        {value}
-        <span className="text-[11px] font-medium text-muted-foreground">/{max}</span>
-      </p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
-    </div>
   );
 }

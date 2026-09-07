@@ -14,12 +14,12 @@ export function snapPageIndex(opts: {
   width: number;
   vx: number;
 }): number {
-  const { index, count, dx, width, vx } = opts;
+  const { index, count, dx, vx } = opts;
   if (count <= 1) return 0;
-  const threshold = Math.max(48, width * 0.22);
+  const threshold = 50;
   const flicked = Math.abs(vx) > 0.45 && Math.abs(dx) > 10;
   let next = index;
-  if (dx > threshold || (flicked && dx > 0)) next = index - 1;
-  else if (dx < -threshold || (flicked && dx < 0)) next = index + 1;
+  if (dx >= threshold || (flicked && dx > 0)) next = index - 1;
+  else if (dx <= -threshold || (flicked && dx < 0)) next = index + 1;
   return Math.max(0, Math.min(count - 1, next));
 }

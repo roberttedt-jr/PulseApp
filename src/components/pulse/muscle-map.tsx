@@ -132,7 +132,7 @@ export function MuscleBalance({
           )}
           {!compact && (
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex flex-1 rounded-full bg-muted p-1" role="tablist" aria-label="Ordenar">
+              <div className="flex flex-1 rounded-full glass-pill p-1" role="tablist" aria-label="Ordenar">
                 {(
                   [
                     ["most", "Más volumen"],
@@ -146,8 +146,8 @@ export function MuscleBalance({
                     aria-selected={sort === k}
                     onClick={() => setSort(k)}
                     className={cn(
-                      "h-8 flex-1 rounded-full text-[13px] font-medium transition-colors",
-                      sort === k ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                      "h-8 flex-1 rounded-full text-[13px] font-medium transition-colors pressable-feedback",
+                      sort === k ? "glass-pill-on" : "text-muted-foreground",
                     )}
                   >
                     {lab}
@@ -169,7 +169,7 @@ export function MuscleBalance({
                     type="button"
                     onClick={() => onOpenHistory?.(row.muscle)}
                     className={cn(
-                      "flex w-full min-w-0 items-center gap-3 rounded-2xl bg-muted/70 px-3 text-left pressable",
+                      "flex w-full min-w-0 items-center gap-3 rounded-2xl glass-pill px-3 text-left pressable",
                       compact ? "h-11" : "min-h-14 py-2.5",
                     )}
                   >

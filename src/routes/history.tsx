@@ -100,8 +100,8 @@ function HistoryList() {
               aria-selected={range === k}
               onClick={() => setRange(k)}
               className={cn(
-                "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
-                range === k ? "bg-primary text-primary-foreground" : "glass-lite text-muted-foreground",
+                "h-9 shrink-0 rounded-full px-3 text-sm font-medium glass-pill pressable-feedback",
+                range === k && "glass-pill-on",
               )}
             >
               {lab}
@@ -123,8 +123,8 @@ function HistoryList() {
               aria-selected={kind === k}
               onClick={() => setKind(k)}
               className={cn(
-                "h-9 shrink-0 rounded-full px-3 text-sm font-medium",
-                kind === k ? "bg-primary text-primary-foreground" : "glass-lite text-muted-foreground",
+                "h-9 shrink-0 rounded-full px-3 text-sm font-medium glass-pill pressable-feedback",
+                kind === k && "glass-pill-on",
               )}
             >
               {lab}

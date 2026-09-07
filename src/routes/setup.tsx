@@ -184,8 +184,8 @@ function SetupFlow() {
                 aria-checked={on}
                 onClick={() => setRest(sec)}
                 className={cn(
-                  "h-12 rounded-2xl text-sm font-semibold pressable",
-                  on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  "h-12 rounded-2xl text-sm font-semibold pressable glass-pill",
+                  on && "glass-pill-on",
                 )}
               >
                 {sec} s

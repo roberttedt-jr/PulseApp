@@ -234,15 +234,15 @@ function Segmented<T extends string>({
   options: { id: T; label: string }[];
 }) {
   return (
-    <div className="flex h-touch rounded-full bg-muted p-1">
+    <div className="flex h-touch rounded-full glass-pill p-1">
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
           className={cn(
-            "h-full min-w-11 rounded-full px-3 text-[13px] font-medium transition-colors",
-            value === o.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+            "h-full min-w-11 rounded-full px-3 text-[13px] font-medium transition-colors pressable-feedback",
+            value === o.id ? "glass-pill-on" : "text-muted-foreground",
           )}
         >
           {o.label}

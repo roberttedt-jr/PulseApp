@@ -17,7 +17,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn("inline-flex rounded-full glass-lite p-1", className)}
+      className={cn("inline-flex gap-1 rounded-full p-1", className)}
     >
       {options.map((opt) => {
         const on = opt.value === value;
@@ -29,8 +29,8 @@ export function Segmented<T extends string>({
             aria-checked={on}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "h-11 min-h-11 min-w-14 flex-1 rounded-full px-4 text-sm font-semibold transition-colors pressable-feedback",
-              on ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground",
+              "h-11 min-h-11 min-w-14 flex-1 rounded-full px-4 text-sm font-semibold transition-colors pressable-feedback glass-pill",
+              on ? "glass-pill-on" : "",
             )}
           >
             {opt.label}

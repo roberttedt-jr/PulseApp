@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { PULSE_TAGLINE, PULSE_VERSION, PULSE_VERSION_NAME } from "./version.ts";
 
-describe("Pulse 3.6 identity", () => {
+describe("Pulse 3.7 identity", () => {
   it("exports a single version source of truth", () => {
-    assert.equal(PULSE_VERSION, "3.6");
+    assert.equal(PULSE_VERSION, "3.7");
     assert.equal(PULSE_VERSION_NAME, "Native");
     assert.match(PULSE_TAGLINE, /Entrenamiento/);
   });
@@ -14,6 +14,11 @@ describe("Pulse 3.6 identity", () => {
     const account = readFileSync(new URL("../../routes/account.tsx", import.meta.url), "utf8");
     assert.match(account, /PULSE_VERSION/);
     assert.match(account, /PULSE_VERSION_NAME/);
+    assert.match(account, /PulseLogo/);
+    assert.match(account, /Diseñada por/);
+    assert.match(account, /Copyright/);
+    assert.doesNotMatch(account, /Comunidad de atletas/);
+    assert.doesNotMatch(account, /muro de texto/);
     assert.doesNotMatch(account, /Versión 3\.3[^\.]/);
   });
 

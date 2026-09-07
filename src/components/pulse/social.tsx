@@ -1005,7 +1005,7 @@ function CommentsSheet({
 
 function Chip({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
   return (
-    <li className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+    <li className="inline-flex items-center gap-1 rounded-full glass-pill px-2.5 py-1 text-[11px] font-medium">
       {icon}
       {children}
     </li>

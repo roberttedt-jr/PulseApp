@@ -71,7 +71,7 @@ function PlanPage() {
                         onClick={() =>
                           picking != null && mut.mutate({ weekday: picking, type: "routine", routineId: r.id })
                         }
-                        className="flex min-h-12 w-full items-center rounded-2xl bg-muted px-4 text-left text-sm font-medium pressable-feedback disabled:opacity-50"
+                        className="flex min-h-12 w-full items-center rounded-2xl glass-pill px-4 text-left text-sm font-medium pressable-feedback disabled:opacity-50"
                       >
                         {r.name}
                       </button>
@@ -93,7 +93,7 @@ function PlanPage() {
                       onClick={() =>
                         picking != null && mut.mutate({ weekday: picking, type: "template", templateKey: t.key })
                       }
-                      className="flex min-h-12 w-full flex-col items-start justify-center rounded-2xl bg-muted px-4 py-2 text-left pressable-feedback disabled:opacity-50"
+                      className="flex min-h-12 w-full flex-col items-start justify-center rounded-2xl glass-pill px-4 py-2 text-left pressable-feedback disabled:opacity-50"
                     >
                       <span className="text-sm font-medium">{t.name}</span>
                       <span className="text-[11px] text-muted-foreground">{t.description}</span>
@@ -110,7 +110,7 @@ function PlanPage() {
                 type="button"
                 disabled={mut.isPending}
                 onClick={() => picking != null && mut.mutate({ weekday: picking, type: "rest" })}
-                className="flex min-h-12 w-full items-center rounded-2xl bg-muted px-4 text-left text-sm font-medium pressable-feedback disabled:opacity-50"
+                className="flex min-h-12 w-full items-center rounded-2xl glass-pill px-4 text-left text-sm font-medium pressable-feedback disabled:opacity-50"
               >
                 Día de descanso
               </button>

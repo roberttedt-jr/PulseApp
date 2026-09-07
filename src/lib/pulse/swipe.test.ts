@@ -11,9 +11,11 @@ describe("swipe physics", () => {
 
   it("snaps with a flick or a threshold drag", () => {
     assert.equal(snapPageIndex({ index: 0, count: 4, dx: -120, width: 320, vx: 0 }), 1);
+    assert.equal(snapPageIndex({ index: 0, count: 4, dx: -50, width: 390, vx: 0 }), 1);
     assert.equal(snapPageIndex({ index: 1, count: 4, dx: 120, width: 320, vx: 0 }), 0);
     assert.equal(snapPageIndex({ index: 1, count: 4, dx: -20, width: 320, vx: -0.8 }), 2);
     assert.equal(snapPageIndex({ index: 0, count: 4, dx: 80, width: 320, vx: 0.9 }), 0);
     assert.equal(snapPageIndex({ index: 3, count: 4, dx: -200, width: 320, vx: -1 }), 3);
+    assert.equal(snapPageIndex({ index: 0, count: 4, dx: -40, width: 390, vx: 0 }), 0);
   });
 });

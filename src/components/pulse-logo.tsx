@@ -14,15 +14,34 @@ export function PulseLogo({
   size?: number;
   alt?: string;
 }) {
+  if (!animated) {
+    return (
+      <img
+        src={PULSE_LOGO_SRC}
+        alt={alt}
+        width={size}
+        height={size}
+        className={cn("rounded-[22%] object-cover", className)}
+        draggable={false}
+      />
+    );
+  }
+
   return (
-    <img
-      src={PULSE_LOGO_SRC}
-      alt={alt}
-      width={size}
-      height={size}
-      className={cn("rounded-[22%] object-cover", animated && "pulse-glow", className)}
-      draggable={false}
-    />
+    <span
+      className={cn("relative inline-grid place-items-center overflow-visible p-8", className)}
+      style={{ width: size + 64, height: size + 64 }}
+    >
+      <span className="pulse-logo-halo pointer-events-none absolute inset-0 rounded-full" aria-hidden />
+      <img
+        src={PULSE_LOGO_SRC}
+        alt={alt}
+        width={size}
+        height={size}
+        className="relative z-[1] rounded-[22%] object-cover"
+        draggable={false}
+      />
+    </span>
   );
 }
 

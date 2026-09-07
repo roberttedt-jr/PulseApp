@@ -37,8 +37,8 @@ function WelcomePage() {
   }
 
   const screens = [
-    <div key="hi" className="flex flex-1 flex-col items-center justify-center text-center">
-      <PulseLogo animated size={96} alt="" className="mb-6" />
+    <div key="hi" className="flex flex-1 flex-col items-center justify-center overflow-visible text-center">
+      <PulseLogo animated size={96} alt="" className="mb-2" />
       <p className="text-lg font-semibold tracking-tight">Pulse</p>
       <h1 className="mt-8 text-[clamp(1.85rem,8vw,2.45rem)] leading-[1.05] font-semibold tracking-tight">
         El ritmo de tu fuerza.

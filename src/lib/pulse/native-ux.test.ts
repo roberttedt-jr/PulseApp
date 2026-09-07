@@ -104,9 +104,13 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(app, /touchmove/);
     assert.match(app, /setPointerCapture/);
     assert.match(app, /viewTransition: false/);
+    assert.match(app, /createSpring/);
+    assert.match(app, /startTransition/);
     assert.match(css, /pulse-tab-item\.is-bubble/);
-    assert.match(css, /scale\(1\.38\)/);
     assert.match(css, /pulse-tab-in/);
+    const spring = src("../../lib/pulse/spring.ts");
+    assert.match(spring, /stiffness/);
+    assert.match(spring, /requestAnimationFrame/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {

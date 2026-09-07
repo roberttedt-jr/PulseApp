@@ -4,6 +4,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   createContext,
   memo,
+  startTransition,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -13,6 +14,7 @@ import {
 } from "react";
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
+import { createSpring, type Spring } from "@/lib/pulse/spring";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -87,38 +89,58 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
   const routeActive = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
   const trackRef = useRef<HTMLUListElement>(null);
   const pathRef = useRef(pathname);
+  const activeRef = useRef(routeActive);
+  const springsRef = useRef<{ pill: Spring; scale: Spring[] } | null>(null);
   pathRef.current = pathname;
+  activeRef.current = routeActive;
 
   useEffect(() => {
     const node = trackRef.current;
     if (!node) return;
     const pill = node.querySelector<HTMLElement>("[data-tabbar-pill]");
+    const marks = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-bubble]"));
     const items = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-item]"));
 
-    const drag = { on: false, last: -1 };
+    const paintPill = (index: number) => {
+      if (pill) pill.style.transform = `translate3d(${index * 100}%,0,0)`;
+    };
+    const paintBubble = (i: number, lift: number) => {
+      const mark = marks()[i];
+      if (!mark) return;
+      const y = -12 * lift;
+      const s = 1 + 0.38 * lift;
+      mark.style.transform = `translate3d(0,${y}px,0) scale(${s})`;
+    };
+
+    const pillSpring = createSpring(paintPill, { stiffness: 380, damping: 32, mass: 0.8 });
+    const scaleSprings = TABS.map((_, i) => createSpring((v) => paintBubble(i, v), { stiffness: 420, damping: 26, mass: 0.7 }));
+    springsRef.current = { pill: pillSpring, scale: scaleSprings };
+    pillSpring.set(activeRef.current);
+
+    const drag = { on: false, last: -1, width: 0, left: 0 };
 
     const indexFromX = (x: number) => {
-      const r = node.getBoundingClientRect();
-      const t = (x - r.left) / Math.max(1, r.width);
+      const t = (x - drag.left) / Math.max(1, drag.width);
       return Math.max(0, Math.min(TABS.length - 1, Math.floor(t * TABS.length)));
     };
 
-    const paint = (i: number, bubble: boolean) => {
-      if (pill) {
-        pill.style.transition = drag.on ? "none" : "";
-        pill.style.transform = `translate3d(${i * 100}%,0,0)`;
-      }
+    const hot = (i: number) => {
       items().forEach((el, idx) => {
-        el.classList.toggle("is-bubble", bubble && idx === i);
         el.classList.toggle("is-hot", idx === i);
+        el.classList.toggle("is-bubble", drag.on && idx === i);
       });
     };
 
     const start = (x: number) => {
+      const r = node.getBoundingClientRect();
       drag.on = true;
+      drag.width = r.width;
+      drag.left = r.left;
       const i = indexFromX(x);
       drag.last = i;
-      paint(i, true);
+      hot(i);
+      pillSpring.to(i);
+      scaleSprings.forEach((s, idx) => s.to(idx === i ? 1 : 0));
       haptic();
       const tab = TABS[i];
       if (tab) void router.preloadRoute({ to: tab.to });
@@ -129,8 +151,11 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       prevent();
       const i = indexFromX(x);
       if (i === drag.last) return;
+      scaleSprings[drag.last]?.to(0);
       drag.last = i;
-      paint(i, true);
+      hot(i);
+      pillSpring.to(i);
+      scaleSprings[i]?.to(1);
       haptic();
       const tab = TABS[i];
       if (tab) void router.preloadRoute({ to: tab.to });
@@ -140,15 +165,16 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       if (!drag.on) return;
       const i = drag.last;
       drag.on = false;
-      const tab = TABS[i];
+      scaleSprings.forEach((s) => s.to(0));
       items().forEach((el) => el.classList.remove("is-bubble"));
+      const tab = TABS[i];
       if (!tab || i < 0) return;
-      if (atTabRoot(pathRef.current, tab.to)) {
-        paint(i, false);
-        return;
-      }
-      paint(i, false);
-      void navigate({ to: tab.to, replace: true, viewTransition: false });
+      hot(i);
+      pillSpring.to(i);
+      if (atTabRoot(pathRef.current, tab.to)) return;
+      startTransition(() => {
+        void navigate({ to: tab.to, replace: true, viewTransition: false });
+      });
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -194,8 +220,15 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       node.removeEventListener("pointermove", onPointerMove);
       node.removeEventListener("pointerup", end);
       node.removeEventListener("pointercancel", end);
+      pillSpring.stop();
+      scaleSprings.forEach((s) => s.stop());
+      springsRef.current = null;
     };
   }, [navigate, router]);
+
+  useEffect(() => {
+    springsRef.current?.pill.to(routeActive);
+  }, [routeActive]);
 
   return (
     <nav className="pulse-tabbar md:hidden" aria-label="Principal">
@@ -204,7 +237,6 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
           aria-hidden
           data-tabbar-pill="1"
           className="pulse-tabbar-pill pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full"
-          style={{ transform: `translate3d(${routeActive * 100}%,0,0)` }}
         />
         {TABS.map((tab, i) => {
           const on = routeActive === i;
@@ -218,8 +250,8 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
                 aria-label={tab.label}
                 className={cn("pulse-tab-item relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 overflow-visible rounded-full", on && "is-on")}
               >
-                <span className="pulse-tab-bubble-mark">
-                  <Icon className="pulse-tab-icon size-5" strokeWidth={on ? 2.4 : 1.85} />
+                <span className="pulse-tab-bubble-mark" data-tab-bubble={i}>
+                  <Icon className="pulse-tab-icon size-5" strokeWidth={2} />
                 </span>
                 <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] font-semibold tracking-wide">{tab.label}</span>
               </span>
@@ -285,7 +317,7 @@ export function AppShell({
         </div>
       </div>
 
-      <div className={cn(hideNav && "hidden")}>
+      <div className={cn(hideNav && "hidden")} hidden={hideNav}>
         <BottomNavigation pathname={pathname} />
       </div>
     </div>

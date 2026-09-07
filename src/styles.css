@@ -807,6 +807,8 @@ body:has([data-vaul-drawer][data-state="open"]) {
   .demo-core,
   .pulse-glow,
   .pulse-logo-halo,
+  .pulse-ring-progress,
+  .pulse-ring-cap,
   .flame-live,
   .ekg-path,
   .check-pop,

@@ -59,6 +59,9 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(widget, /#00F0FF/);
     assert.match(widget, /strokeDasharray/);
     assert.match(widget, /Consistencia/);
+    assert.match(widget, /IntersectionObserver/);
+    assert.match(widget, /requestAnimationFrame/);
+    assert.match(widget, /pulse-ring-progress/);
     assert.match(css, /blur\(32px\) saturate\(190%\)/);
     assert.match(formulas, /volumePrev3WeeksAvg/);
     assert.match(formulas, /restDaysThisWeek/);

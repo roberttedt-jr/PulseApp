@@ -37,6 +37,12 @@ describe("Pulse 3.7 identity", () => {
     assert.doesNotMatch(splash, /<svg/);
   });
 
+  it("shows the heartbeat splash only on first launch", () => {
+    const router = readFileSync(new URL("../../router.tsx", import.meta.url), "utf8");
+    assert.doesNotMatch(router, /defaultPendingComponent/);
+    assert.doesNotMatch(router, /PulseSplashScreen/);
+  });
+
   it("preloads the official Pulse PNG on first paint", () => {
     const root = readFileSync(new URL("../../routes/__root.tsx", import.meta.url), "utf8");
     assert.match(root, /rel="preload"/);

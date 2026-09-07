@@ -13,7 +13,7 @@ Pulse es una aplicación web y móvil de fitness de alto rendimiento orientada a
 ### Vídeo de la aplicación
 
 <p align="center">
-  <video src="./ScreenRecording_09-07-2026-13-10-37_1-5.MP4" controls width="330" style="max-width: 100%; border-radius: 14px;"></video>
+  <video src="https://github.com/user-attachments/assets/b489c60d-0cdb-4cd0-9261-298d53310757" controls width="330" style="max-width: 100%; border-radius: 14px;"></video>
 </p>
 
 ---

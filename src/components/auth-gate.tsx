@@ -2,7 +2,7 @@ import { Navigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader, useHideNav } from "@/components/layout/app-shell";
 import { hasSeenPublicOnboarding, flowPath, resolveAppFlow } from "@/lib/pulse/flow";
 import { getBootstrap } from "@/lib/pulse/fns";
 
@@ -33,6 +33,7 @@ export function AppPage({
   action?: ReactNode;
   hideNav?: boolean;
 }) {
+  useHideNav(hideNav);
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const bootstrap = useQuery({
@@ -62,8 +63,9 @@ export function AppPage({
   }
 
   return (
-    <AppShell title={title} action={action} hideNav={hideNav}>
+    <>
+      <PageHeader title={title} action={action} />
       {children}
-    </AppShell>
+    </>
   );
 }

@@ -1,6 +1,16 @@
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { Activity, Dumbbell, House, UserRound, Users } from "lucide-react";
-import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import {
+  createContext,
+  memo,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
 import { cn } from "@/lib/utils";
@@ -32,18 +42,39 @@ function atTabRoot(pathname: string, to: string) {
   return to === "/" ? pathname === "/" : pathname === to;
 }
 
+function isBarePath(pathname: string) {
+  return (
+    pathname.startsWith("/welcome") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/share") ||
+    pathname.startsWith("/setup") ||
+    pathname.startsWith("/tutorial") ||
+    pathname.startsWith("/onboarding")
+  );
+}
+
 function haptic() {
   try {
-    navigator.vibrate?.(12);
+    navigator.vibrate?.(10);
   } catch {
     /* unsupported */
   }
 }
 
+const HideNavContext = createContext<(v: boolean) => void>(() => {});
+
+export function useHideNav(hide?: boolean) {
+  const set = useContext(HideNavContext);
+  useLayoutEffect(() => {
+    set(Boolean(hide));
+    return () => set(false);
+  }, [hide, set]);
+}
+
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
   if (!title && !action) return null;
   return (
-    <header className="page-header sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 px-4 pb-3 md:px-8">
+    <header className="page-header sticky top-0 z-30 -mx-4 flex min-w-0 items-center justify-between gap-3 px-4 pb-3 md:-mx-8 md:px-8">
       <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
@@ -54,18 +85,15 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
   const navigate = useNavigate();
   const router = useRouter();
   const routeActive = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
-  const [pressed, setPressed] = useState<number | null>(null);
-  const [pending, setPending] = useState<number | null>(null);
   const trackRef = useRef<HTMLUListElement>(null);
-  const visual = pressed ?? pending ?? routeActive;
-
-  useEffect(() => {
-    setPending(null);
-  }, [pathname]);
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
 
   useEffect(() => {
     const node = trackRef.current;
     if (!node) return;
+    const pill = node.querySelector<HTMLElement>("[data-tabbar-pill]");
+    const items = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-item]"));
 
     const drag = { on: false, last: -1 };
 
@@ -75,11 +103,22 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       return Math.max(0, Math.min(TABS.length - 1, Math.floor(t * TABS.length)));
     };
 
+    const paint = (i: number, bubble: boolean) => {
+      if (pill) {
+        pill.style.transition = drag.on ? "none" : "";
+        pill.style.transform = `translate3d(${i * 100}%,0,0)`;
+      }
+      items().forEach((el, idx) => {
+        el.classList.toggle("is-bubble", bubble && idx === i);
+        el.classList.toggle("is-hot", idx === i);
+      });
+    };
+
     const start = (x: number) => {
       drag.on = true;
       const i = indexFromX(x);
       drag.last = i;
-      setPressed(i);
+      paint(i, true);
       haptic();
       const tab = TABS[i];
       if (tab) void router.preloadRoute({ to: tab.to });
@@ -91,7 +130,7 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       const i = indexFromX(x);
       if (i === drag.last) return;
       drag.last = i;
-      setPressed(i);
+      paint(i, true);
       haptic();
       const tab = TABS[i];
       if (tab) void router.preloadRoute({ to: tab.to });
@@ -101,11 +140,14 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       if (!drag.on) return;
       const i = drag.last;
       drag.on = false;
-      setPressed(null);
       const tab = TABS[i];
+      items().forEach((el) => el.classList.remove("is-bubble"));
       if (!tab || i < 0) return;
-      if (atTabRoot(pathname, tab.to)) return;
-      setPending(i);
+      if (atTabRoot(pathRef.current, tab.to)) {
+        paint(i, false);
+        return;
+      }
+      paint(i, false);
       void navigate({ to: tab.to, replace: true, viewTransition: false });
     };
 
@@ -131,6 +173,7 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
     };
     const onPointerMove = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
+      if (!drag.on) return;
       move(e.clientX, () => {});
     };
 
@@ -152,37 +195,33 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       node.removeEventListener("pointerup", end);
       node.removeEventListener("pointercancel", end);
     };
-  }, [navigate, pathname, router]);
+  }, [navigate, router]);
 
   return (
     <nav className="pulse-tabbar md:hidden" aria-label="Principal">
       <ul ref={trackRef} className="relative grid grid-cols-5 px-1.5 py-1.5" role="tablist" data-tabbar-track="1">
         <span
           aria-hidden
+          data-tabbar-pill="1"
           className="pulse-tabbar-pill pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full"
-          style={{ transform: `translate3d(${visual * 100}%,0,0)` }}
+          style={{ transform: `translate3d(${routeActive * 100}%,0,0)` }}
         />
         {TABS.map((tab, i) => {
-          const on = visual === i;
-          const bubble = pressed === i;
+          const on = routeActive === i;
           const Icon = tab.icon;
           return (
-            <li key={tab.to} className="min-w-0" role="presentation">
+            <li key={tab.to} className="min-w-0 overflow-visible" role="presentation">
               <span
                 role="tab"
+                data-tab-item={i}
                 aria-selected={on}
                 aria-label={tab.label}
-                className={cn("pulse-tab-item relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-full", bubble && "is-bubble")}
+                className={cn("pulse-tab-item relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 overflow-visible rounded-full", on && "is-on")}
               >
-                <Icon
-                  className={cn("pulse-tab-icon size-5", on && "is-on")}
-                  strokeWidth={on ? 2.4 : 1.85}
-                  fill={on ? "currentColor" : "none"}
-                  fillOpacity={on ? 0.28 : 0}
-                />
-                <span className={cn("pulse-tab-label max-w-full truncate px-0.5 text-[10px] font-semibold tracking-wide", on ? "is-on" : "")}>
-                  {tab.label}
+                <span className="pulse-tab-bubble-mark">
+                  <Icon className="pulse-tab-icon size-5" strokeWidth={on ? 2.4 : 1.85} />
                 </span>
+                <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] font-semibold tracking-wide">{tab.label}</span>
               </span>
             </li>
           );
@@ -194,13 +233,9 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
 
 export function AppShell({
   children,
-  title,
-  action,
   hideNav = false,
 }: {
   children: ReactNode;
-  title?: string;
-  action?: ReactNode;
   hideNav?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -244,14 +279,27 @@ export function AppShell({
         </aside>
 
         <div className="flex min-w-0 max-w-full flex-1 flex-col">
-          <PageHeader title={title} action={action} />
           <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-[calc(6.5rem+var(--safe-bottom))] md:pb-10")}>
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
       </div>
 
-      {!hideNav && <BottomNavigation pathname={pathname} />}
+      <div className={cn(hideNav && "hidden")}>
+        <BottomNavigation pathname={pathname} />
+      </div>
     </div>
+  );
+}
+
+export function AppFrame({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useCurrentUserState();
+  const [hideNav, setHideNav] = useState(false);
+  if (isBarePath(pathname) || !user) return children;
+  return (
+    <HideNavContext.Provider value={setHideNav}>
+      <AppShell hideNav={hideNav}>{children}</AppShell>
+    </HideNavContext.Provider>
   );
 }

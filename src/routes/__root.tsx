@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { NoMobileZoom } from "@/components/no-mobile-zoom";
+import { AppFrame } from "@/components/layout/app-shell";
 import { PULSE_SPLASH_CSS, PULSE_SPLASH_HTML, SplashController } from "@/components/pulse/splash";
 import { restoreSessionToken } from "@/lib/session-token";
 import { MotionConfig } from "framer-motion";
@@ -77,7 +78,9 @@ function Root() {
           <QueryClientProvider client={queryClient}>
             <MotionConfig reducedMotion="user">
               <SplashController />
-              <Outlet />
+              <AppFrame>
+                <Outlet />
+              </AppFrame>
               <Toaster
                 theme="dark"
                 position="top-center"

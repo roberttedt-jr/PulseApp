@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
-/** Tab roots swap instantly (Strava). Nested screens keep their own sheet/push motion. */
 export function PageTransition({ children }: { children: ReactNode }) {
-  return <div className="pulse-page min-h-full">{children}</div>;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <div key={pathname} className="pulse-page min-h-full">
+      {children}
+    </div>
+  );
 }

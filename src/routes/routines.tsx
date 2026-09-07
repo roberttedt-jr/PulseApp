@@ -111,7 +111,7 @@ function RoutinesList() {
           <Zap className="size-7 opacity-90" />
         </button>
 
-        {isPending && <LoadingBlock rows={4} />}
+        {isPending && !data && <LoadingBlock rows={4} />}
         {!isPending && (data ?? []).length === 0 && (
           <EmptyState
             icon={Dumbbell}

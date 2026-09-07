@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { getBootstrap, listRoutines } from "@/lib/pulse/fns";
-import { getActivityFeed } from "@/lib/pulse/social-fns";
+import { getBootstrap, listRoutines, getProgress, getMuscleLoad } from "@/lib/pulse/fns";
+import { getActivityFeed, getSocialProfile } from "@/lib/pulse/social-fns";
 
 export const PULSE_SPLASH_CSS = `
 html,body{background:#000000;color-scheme:dark}
@@ -130,7 +130,12 @@ export function SplashController() {
     void router.preloadRoute({ to: "/" });
     void router.preloadRoute({ to: "/routines" });
     void router.preloadRoute({ to: "/feed" });
+    void router.preloadRoute({ to: "/progress" });
+    void router.preloadRoute({ to: "/settings" });
     void qc.prefetchQuery({ queryKey: ["routines"], queryFn: () => listRoutines({ data: {} }), staleTime: 60_000 });
+    void qc.prefetchQuery({ queryKey: ["progress"], queryFn: () => getProgress(), staleTime: 60_000 });
+    void qc.prefetchQuery({ queryKey: ["muscle-load", "week"], queryFn: () => getMuscleLoad({ data: { period: "week" } }), staleTime: 60_000 });
+    void qc.prefetchQuery({ queryKey: ["social-profile", "me"], queryFn: () => getSocialProfile({ data: {} }), staleTime: 60_000 });
     void qc.prefetchInfiniteQuery({
       queryKey: ["activity-feed"],
       queryFn: ({ pageParam }) => getActivityFeed({ data: { cursor: pageParam as string | null } }),

@@ -47,7 +47,7 @@ export const Route = createFileRoute("/progress")({
 function ProgressPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data, isPending } = useQuery({ queryKey: ["progress"], queryFn: () => getProgress() });
+  const { data, isPending } = useQuery({ queryKey: ["progress"], queryFn: () => getProgress(), staleTime: 60_000 });
   const profile = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const units = profile.data?.profile.units ?? "metric";
   const [weight, setWeight] = useState("");
@@ -92,7 +92,7 @@ function ProgressPage() {
       }
     >
       <div className="mx-auto max-w-3xl space-y-4 pt-4">
-        {isPending && <LoadingBlock />}
+        {isPending && !data && <LoadingBlock />}
 
         <CompareCtaCard />
         {data && (data.week.workouts > 0 || data.prevWeek.workouts > 0) && (

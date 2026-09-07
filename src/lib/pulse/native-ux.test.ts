@@ -91,10 +91,15 @@ describe("Pulse 3.7 native UX contracts", () => {
 
   it("switches main tabs from the bar without page swipe", () => {
     const app = src("../../components/layout/app-shell.tsx");
+    const css = src("../../styles.css");
     assert.doesNotMatch(app, /TabSwipe/);
-    assert.match(app, /viewTransition=\{false\}/);
-    assert.match(app, /pulse-tabbar-pill/);
-    assert.match(app, /replace/);
+    assert.match(app, /data-tabbar-track/);
+    assert.match(app, /is-bubble/);
+    assert.match(app, /touchmove/);
+    assert.match(app, /setPointerCapture/);
+    assert.match(app, /viewTransition: false/);
+    assert.match(css, /pulse-tab-item\.is-bubble/);
+    assert.match(css, /scale\(1\.34\)/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {

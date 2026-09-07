@@ -1,6 +1,6 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { Activity, Dumbbell, House, UserRound, Users } from "lucide-react";
-import { memo, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,18 @@ function isActive(pathname: string, to: string) {
   return pathname.startsWith(to) || (to === "/settings" && pathname.startsWith("/account"));
 }
 
+function atTabRoot(pathname: string, to: string) {
+  return to === "/" ? pathname === "/" : pathname === to;
+}
+
+function haptic() {
+  try {
+    navigator.vibrate?.(12);
+  } catch {
+    /* unsupported */
+  }
+}
+
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
   if (!title && !action) return null;
   return (
@@ -39,45 +51,139 @@ export function PageHeader({ title, action }: { title?: string; action?: ReactNo
 }
 
 export const BottomNavigation = memo(function BottomNavigation({ pathname }: { pathname: string }) {
-  const active = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
+  const navigate = useNavigate();
+  const router = useRouter();
+  const routeActive = Math.max(0, TABS.findIndex((t) => isActive(pathname, t.to)));
+  const [pressed, setPressed] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const trackRef = useRef<HTMLUListElement>(null);
+  const visual = pressed ?? pending ?? routeActive;
+
+  useEffect(() => {
+    setPending(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    const node = trackRef.current;
+    if (!node) return;
+
+    const drag = { on: false, last: -1 };
+
+    const indexFromX = (x: number) => {
+      const r = node.getBoundingClientRect();
+      const t = (x - r.left) / Math.max(1, r.width);
+      return Math.max(0, Math.min(TABS.length - 1, Math.floor(t * TABS.length)));
+    };
+
+    const start = (x: number) => {
+      drag.on = true;
+      const i = indexFromX(x);
+      drag.last = i;
+      setPressed(i);
+      haptic();
+      const tab = TABS[i];
+      if (tab) void router.preloadRoute({ to: tab.to });
+    };
+
+    const move = (x: number, prevent: () => void) => {
+      if (!drag.on) return;
+      prevent();
+      const i = indexFromX(x);
+      if (i === drag.last) return;
+      drag.last = i;
+      setPressed(i);
+      haptic();
+      const tab = TABS[i];
+      if (tab) void router.preloadRoute({ to: tab.to });
+    };
+
+    const end = () => {
+      if (!drag.on) return;
+      const i = drag.last;
+      drag.on = false;
+      setPressed(null);
+      const tab = TABS[i];
+      if (!tab || i < 0) return;
+      if (atTabRoot(pathname, tab.to)) return;
+      setPending(i);
+      void navigate({ to: tab.to, replace: true, viewTransition: false });
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      start(t.clientX);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      move(t.clientX, () => e.preventDefault());
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      if (e.button !== 0) return;
+      start(e.clientX);
+      try {
+        node.setPointerCapture(e.pointerId);
+      } catch {
+        /* Safari */
+      }
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      move(e.clientX, () => {});
+    };
+
+    node.addEventListener("touchstart", onTouchStart, { passive: true });
+    node.addEventListener("touchmove", onTouchMove, { passive: false });
+    node.addEventListener("touchend", end);
+    node.addEventListener("touchcancel", end);
+    node.addEventListener("pointerdown", onPointerDown);
+    node.addEventListener("pointermove", onPointerMove);
+    node.addEventListener("pointerup", end);
+    node.addEventListener("pointercancel", end);
+    return () => {
+      node.removeEventListener("touchstart", onTouchStart);
+      node.removeEventListener("touchmove", onTouchMove);
+      node.removeEventListener("touchend", end);
+      node.removeEventListener("touchcancel", end);
+      node.removeEventListener("pointerdown", onPointerDown);
+      node.removeEventListener("pointermove", onPointerMove);
+      node.removeEventListener("pointerup", end);
+      node.removeEventListener("pointercancel", end);
+    };
+  }, [navigate, pathname, router]);
+
   return (
     <nav className="pulse-tabbar md:hidden" aria-label="Principal">
-      <ul className="relative grid grid-cols-5 px-1.5 py-1.5">
+      <ul ref={trackRef} className="relative grid grid-cols-5 px-1.5 py-1.5" role="tablist" data-tabbar-track="1">
         <span
           aria-hidden
           className="pulse-tabbar-pill pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full"
-          style={{ transform: `translate3d(${active * 100}%,0,0)` }}
+          style={{ transform: `translate3d(${visual * 100}%,0,0)` }}
         />
-        {TABS.map((tab) => {
-          const on = isActive(pathname, tab.to);
+        {TABS.map((tab, i) => {
+          const on = visual === i;
+          const bubble = pressed === i;
           const Icon = tab.icon;
           return (
-            <li key={tab.to} className="min-w-0">
-              <Link
-                to={tab.to}
-                replace
-                preload="intent"
-                viewTransition={false}
-                className={cn(
-                  "pressable-feedback relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold tracking-wide",
-                  on ? "text-white" : "text-foreground-tertiary",
-                )}
-                aria-current={on ? "page" : undefined}
+            <li key={tab.to} className="min-w-0" role="presentation">
+              <span
+                role="tab"
+                aria-selected={on}
                 aria-label={tab.label}
-                onClick={(e) => {
-                  if (on && (tab.to === "/" ? pathname === "/" : pathname === tab.to)) e.preventDefault();
-                }}
+                className={cn("pulse-tab-item relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-full", bubble && "is-bubble")}
               >
                 <Icon
-                  className={cn("size-5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]", on && "scale-[1.08]")}
+                  className={cn("pulse-tab-icon size-5", on && "is-on")}
                   strokeWidth={on ? 2.4 : 1.85}
                   fill={on ? "currentColor" : "none"}
                   fillOpacity={on ? 0.28 : 0}
                 />
-                <span className={cn("max-w-full truncate px-0.5 transition-opacity duration-200", on ? "opacity-100" : "opacity-70")}>
+                <span className={cn("pulse-tab-label max-w-full truncate px-0.5 text-[10px] font-semibold tracking-wide", on ? "is-on" : "")}>
                   {tab.label}
                 </span>
-              </Link>
+              </span>
             </li>
           );
         })}

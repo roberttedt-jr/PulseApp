@@ -17,11 +17,12 @@ function OwnProfilePage() {
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["social-profile", "me"],
     queryFn: () => getSocialProfile({ data: {} }),
+    staleTime: 60_000,
   });
 
   return (
     <AppPage>
-      {isPending && (
+      {isPending && !data && (
         <div className="mx-auto max-w-xl space-y-3 pt-4" aria-busy="true">
           <Skeleton className="h-48 w-full rounded-[22px]" />
           <Skeleton className="h-28 w-full rounded-[22px]" />

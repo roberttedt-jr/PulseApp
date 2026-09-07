@@ -1,6 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
 import { AppErrorComponent } from "@/lib/error-component";
-import { viewTransitionTypes } from "@/lib/motion";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
@@ -11,6 +10,6 @@ export function getRouter() {
     defaultPendingMinMs: 0,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 30_000,
-    defaultViewTransition: { types: viewTransitionTypes },
+    defaultViewTransition: false,
   });
 }

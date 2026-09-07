@@ -41,6 +41,7 @@ describe("Pulse 3.7 identity", () => {
     const router = readFileSync(new URL("../../router.tsx", import.meta.url), "utf8");
     assert.doesNotMatch(router, /defaultPendingComponent/);
     assert.doesNotMatch(router, /PulseSplashScreen/);
+    assert.match(router, /defaultViewTransition: false/);
   });
 
   it("preloads the official Pulse PNG on first paint", () => {

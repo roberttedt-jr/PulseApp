@@ -17,6 +17,7 @@ import { AppPage } from "@/components/auth-gate";
 import { ExerciseDemo } from "@/components/pulse/exercise-demo";
 import { HScroll } from "@/components/pulse/h-scroll";
 import { NumericField } from "@/components/pulse/numeric-field";
+import { SearchInput } from "@/components/pulse/search-input";
 import { PlateStack } from "@/components/plate-calc";
 import { RestTimer } from "@/components/rest-timer";
 import { Button } from "@/components/ui/button";
@@ -769,7 +770,15 @@ function ExercisePicker({ onPick }: { onPick: (id: string) => void }) {
   });
   return (
     <div className="flex h-[70dvh] min-h-0 flex-col">
-      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="mb-3" />
+      <SearchInput
+        id="pulse_exercise_search_field"
+        name="pulse_exercise_search_field"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Buscar…"
+        className="mb-3"
+        aria-label="Buscar ejercicio"
+      />
       <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto no-scrollbar overscroll-contain pb-8">
         {(data ?? []).slice(0, 40).map((e) => (
           <li key={e.id}>

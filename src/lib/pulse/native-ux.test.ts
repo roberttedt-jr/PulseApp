@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+
+const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+
+describe("Pulse 3.6 native UX contracts", () => {
+  it("opens followers and following from the athlete profile", () => {
+    const profile = src("../../components/pulse/athlete-profile.tsx");
+    const modal = src("../../components/social/FollowListModal.tsx");
+    const social = src("./social-fns.ts");
+    assert.match(profile, /FollowListModal/);
+    assert.match(profile, /openList\("followers"\)/);
+    assert.match(profile, /openList\("following"\)/);
+    assert.match(modal, /name="filter_social_list"/);
+    assert.match(modal, /type="search"/);
+    assert.match(modal, /autoComplete="one-time-code"/);
+    assert.match(modal, /Eliminar/);
+    assert.match(modal, /unfollowUser/);
+    assert.match(modal, /onRemoved\(\)/);
+    assert.match(social, /export const listFollowing/);
+    assert.doesNotMatch(social, /Solo los perfiles privados pueden eliminar seguidores/);
+  });
+
+  it("assigns weekly plan via action sheet and named start CTA", () => {
+    const plan = src("../../routes/plan.tsx");
+    const home = src("../../routes/index.tsx");
+    const fns = src("./fns.ts");
+    const migration = readFileSync(new URL("../../../migrations/0014_weekly_plan_v2.sql", import.meta.url), "utf8");
+    assert.match(plan, /Mis rutinas/);
+    assert.match(plan, /Plantillas Pulse/);
+    assert.match(plan, /Día de descanso/);
+    assert.match(plan, /type: "template"/);
+    assert.match(home, /Empezar \$\{data\.today\.name\}/);
+    assert.match(home, /Entrenamiento libre/);
+    assert.match(home, /today\?\.isRest/);
+    assert.match(fns, /kind, template_key/);
+    assert.match(fns, /todayIsRest/);
+    assert.match(fns, /ensurePulseV10|kind === "template"/);
+    assert.match(migration, /template_key/);
+  });
+
+  it("renders PulseScore glass with a 40/40/20 breakdown", () => {
+    const home = src("../../routes/index.tsx");
+    const widget = src("../../components/pulse/pulse-score-glass.tsx");
+    const css = src("../../styles.css");
+    const formulas = src("./formulas.ts");
+    assert.match(home, /PulseScoreGlass/);
+    assert.match(home, /scoreBreakdown/);
+    assert.match(widget, /pulse-score-glass/);
+    assert.match(widget, /¿Cómo se calcula\?/);
+    assert.match(widget, /#FF2D55/);
+    assert.match(css, /blur\(32px\) saturate\(190%\)/);
+    assert.match(formulas, /volumePrev3WeeksAvg/);
+    assert.match(formulas, /restDaysThisWeek/);
+  });
+
+  it("swipes welcome and tutorial through FlowShell", () => {
+    const welcome = src("../../routes/welcome.tsx");
+    const tutorial = src("../../routes/tutorial.tsx");
+    const shell = src("../../components/pulse/flow-shell.tsx");
+    assert.match(welcome, /pages=\{screens\}/);
+    assert.match(welcome, /onStepChange=\{setStep\}/);
+    assert.match(tutorial, /pages=\{screens\}/);
+    assert.match(shell, /SwipePager/);
+    assert.match(shell, /PagerDots/);
+    assert.doesNotMatch(shell, /embla/i);
+  });
+
+  it("uses anti-autofill search and iOS input ergonomics", () => {
+    const search = src("../../routes/feed/search.tsx");
+    const input = src("../../components/pulse/search-input.tsx");
+    const numeric = src("../../components/pulse/numeric-field.tsx");
+    const train = src("../../routes/train.tsx");
+    const css = src("../../styles.css");
+    assert.match(search, /pulse_search_query_field/);
+    assert.match(input, /type="search"/);
+    assert.match(input, /autoComplete = "one-time-code"/);
+    assert.match(numeric, /inputMode=\{kind === "int" \? "numeric" : "decimal"\}/);
+    assert.match(numeric, /scrollIntoView/);
+    assert.match(train, /pulse_exercise_search_field/);
+    assert.match(css, /scroll-padding-bottom: 240px/);
+    assert.match(css, /-webkit-tap-highlight-color: transparent/);
+    assert.match(css, /touch-action: manipulation/);
+    assert.match(css, /scale\(0\.965\)/);
+    assert.match(css, /\.pressable-feedback/);
+  });
+});

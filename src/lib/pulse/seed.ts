@@ -23,6 +23,7 @@ let pulseV6Ready = false;
 let pulseV7Ready = false;
 let pulseV8Ready = false;
 let pulseV9Ready = false;
+let pulseV10Ready = false;
 
 export async function ensurePulseV5(sql: Sql): Promise<void> {
   if (pulseV5Ready) return;
@@ -183,6 +184,20 @@ export async function ensurePulseV9(sql: Sql): Promise<void> {
   pulseV9Ready = true;
 }
 
+export async function ensurePulseV10(sql: Sql): Promise<void> {
+  if (pulseV10Ready) return;
+  await ensurePulseV9(sql);
+  await sql.query(`alter table weekly_plan add column if not exists kind text`);
+  await sql.query(`alter table weekly_plan add column if not exists template_key text`);
+  await sql.query(`
+    update weekly_plan
+      set kind = case when routine_id is null then 'rest' else 'routine' end
+      where kind is null
+  `);
+  await sql.query(`create index if not exists weekly_plan_user_weekday_idx on weekly_plan (user_id, weekday)`);
+  pulseV10Ready = true;
+}
+
 export async function ensurePulseV4(sql: Sql): Promise<void> {
   if (pulseV4Ready) return;
   await sql.query(`alter table profiles add column if not exists show_rpe boolean not null default true`);
@@ -262,6 +277,7 @@ export async function ensureCatalog(sql: Sql): Promise<void> {
   await ensurePulseV7(sql);
   await ensurePulseV8(sql);
   await ensurePulseV9(sql);
+  await ensurePulseV10(sql);
   const rows = await sql<{ n: number }>`select count(*)::int as n from exercises where user_id is null`;
   if ((rows[0]?.n ?? 0) === 0) {
     for (const chunk of chunks(CATALOG, 40)) {

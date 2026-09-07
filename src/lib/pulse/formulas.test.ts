@@ -8,6 +8,7 @@ import {
   mifflinStJeor,
   platesFor,
   pulseScore,
+  pulseScoreBreakdown,
   recommendedCalories,
   sessionVolume,
 } from "./formulas.ts";
@@ -70,10 +71,35 @@ describe("sessionVolume", () => {
 
 describe("pulseScore", () => {
   it("caps at 100", () => {
-    assert.equal(pulseScore({ workoutsThisWeek: 7, weeklyGoal: 4, volumeThisWeek: 20000, streakDays: 20 }), 100);
+    assert.equal(
+      pulseScore({
+        workoutsThisWeek: 4,
+        weeklyGoal: 4,
+        volumeThisWeek: 15000,
+        volumePrev3WeeksAvg: 12000,
+        restDaysThisWeek: 3,
+      }),
+      100,
+    );
   });
   it("returns 0 when idle", () => {
     assert.equal(pulseScore({ workoutsThisWeek: 0, weeklyGoal: 4, volumeThisWeek: 0, streakDays: 0 }), 0);
+  });
+  it("splits 40/40/20 with contextual copy", () => {
+    const r = pulseScoreBreakdown({
+      workoutsThisWeek: 3,
+      weeklyGoal: 4,
+      volumeThisWeek: 9000,
+      volumePrev3WeeksAvg: 10000,
+      restDaysThisWeek: 3,
+    });
+    assert.equal(r.consistency, 30);
+    assert.equal(r.overload, 29);
+    assert.equal(r.recovery, 20);
+    assert.equal(r.score, 79);
+    assert.match(r.copy.consistency, /3 de 4/);
+    assert.match(r.copy.overload, /media de 3 semanas/);
+    assert.match(r.copy.recovery, /Descansos/);
   });
 });
 

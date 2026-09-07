@@ -201,6 +201,8 @@ function SetupFlow() {
     <FlowShell
       step={step}
       total={4}
+      pages={screens}
+      onStepChange={setStep}
       onBack={step > 0 ? () => setStep(step - 1) : undefined}
       footer={
         <FlowActions

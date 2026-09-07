@@ -65,22 +65,117 @@ export function sessionVolume(sets: { weight: number; reps: number; completed?: 
   }, 0);
 }
 
-/**
- * Weekly Pulse Score 0–100.
- * 40 pts consistency vs weekly goal, 30 pts volume vs a 12k kg weekly target,
- * 30 pts streak (capped at 14 days).
- */
-export function pulseScore(opts: {
+export type PulseScoreInput = {
   workoutsThisWeek: number;
   weeklyGoal: number;
   volumeThisWeek: number;
-  streakDays: number;
-}): number {
-  const goal = Math.max(1, opts.weeklyGoal);
-  const consistency = Math.min(40, (opts.workoutsThisWeek / goal) * 40);
-  const volume = Math.min(30, (opts.volumeThisWeek / 12000) * 30);
-  const streak = Math.min(30, (opts.streakDays / 14) * 30);
-  return Math.round(Math.min(100, consistency + volume + streak));
+  volumePrev3WeeksAvg?: number;
+  restDaysThisWeek?: number;
+  /** Kept so older callers still type-check. Unused in 3.6. */
+  streakDays?: number;
+};
+
+export type PulseScoreBreakdown = {
+  score: number;
+  consistency: number;
+  overload: number;
+  recovery: number;
+  copy: {
+    headline: string;
+    consistency: string;
+    overload: string;
+    recovery: string;
+  };
+};
+
+function clampPts(n: number, max: number) {
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(max, n);
+}
+
+/**
+ * Weekly Pulse Score 0–100.
+ * 40 consistency (sessions vs weekly goal), 40 overload (volume vs 3-week avg),
+ * 20 recovery (rest-day distribution).
+ */
+export function pulseScoreBreakdown(opts: PulseScoreInput): PulseScoreBreakdown {
+  const goal = Math.max(1, opts.weeklyGoal || 0);
+  const sessions = Math.max(0, opts.workoutsThisWeek || 0);
+  const volume = Math.max(0, opts.volumeThisWeek || 0);
+  const avg = Math.max(0, opts.volumePrev3WeeksAvg || 0);
+  const restDays = opts.restDaysThisWeek ?? Math.max(0, 7 - sessions);
+  const idealRest = Math.max(0, 7 - goal);
+
+  const consistency = clampPts((sessions / goal) * 40, 40);
+
+  let overload = 0;
+  if (volume > 0) {
+    if (avg <= 0) overload = clampPts((volume / 8000) * 32, 40);
+    else overload = clampPts((volume / avg) * 32, 40);
+  }
+
+  let recovery = 0;
+  if (idealRest === 0) {
+    recovery = sessions >= 6 ? 20 : clampPts((sessions / 7) * 20, 20);
+  } else {
+    const closeness = 1 - Math.min(1, Math.abs(restDays - idealRest) / Math.max(idealRest, 1));
+    recovery = clampPts(closeness * 20, 20);
+  }
+
+  const score = Math.round(Math.min(100, consistency + overload + recovery));
+
+  const consistencyCopy =
+    sessions >= goal
+      ? `Consistencia perfecta esta semana. ${sessions} de ${goal} sesiones completadas.`
+      : sessions === 0
+        ? `Todavía no hay sesiones esta semana. Objetivo: ${goal}.`
+        : `${sessions} de ${goal} sesiones completadas.`;
+
+  const overloadCopy =
+    volume <= 0
+      ? "Sin volumen esta semana."
+      : avg <= 0
+        ? "Primeras semanas: el volumen empieza a construir tu media."
+        : volume >= avg * 1.05
+          ? "Volumen por encima de tu media de 3 semanas."
+          : volume >= avg * 0.9
+            ? "Volumen alineado con tu media de 3 semanas."
+            : "Esta semana el volumen está por debajo de tu media.";
+
+  const recoveryCopy =
+    recovery >= 16
+      ? "Descansos bien distribuidos."
+      : restDays === 0 && idealRest > 0
+        ? "Faltan días de recuperación."
+        : restDays > idealRest + 1
+          ? "Demasiados descansos respecto a tu objetivo."
+          : "Ajusta los descansos para recuperar mejor.";
+
+  const headline =
+    score <= 0
+      ? "Completa tu primer entrenamiento para ver el Pulse Score."
+      : score >= 80
+        ? "Semana excelente. Consistencia, sobrecarga y recuperación alineadas."
+        : score >= 50
+          ? "Buen ritmo esta semana. Un poco más de volumen o consistencia sube la cifra."
+          : "Aún puedes sumar esta semana.";
+
+  return {
+    score,
+    consistency: Math.round(consistency),
+    overload: Math.round(overload),
+    recovery: Math.round(recovery),
+    copy: {
+      headline,
+      consistency: consistencyCopy,
+      overload: overloadCopy,
+      recovery: recoveryCopy,
+    },
+  };
+}
+
+export function pulseScore(opts: PulseScoreInput): number {
+  return pulseScoreBreakdown(opts).score;
 }
 
 export function round1(n: number): number {

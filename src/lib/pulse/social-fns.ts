@@ -458,9 +458,6 @@ export const removeFollower = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ready(sql);
     rateLimit(context.userId, "follow", 30);
-    const me = (await sql<AnyRow>`select profile_visibility, public_profile from profiles where user_id = ${context.userId}`)[0];
-    const isPublic = parseVisibility(me?.profile_visibility) === "public" || bool(me?.public_profile);
-    if (isPublic) throw socialError(403, "Solo los perfiles privados pueden eliminar seguidores.");
     await sql`
       delete from follows
       where follower_id = ${data.userId} and following_id = ${context.userId} and status = 'accepted'
@@ -1068,6 +1065,43 @@ export const listFollowers = createServerFn({ method: "GET" })
       from follows f
       join profiles p on p.user_id = f.follower_id
       where f.following_id = ${userId} and f.status = 'accepted'
+        and not exists (
+          select 1 from user_blocks b
+          where (b.blocker_id = ${context.userId} and b.blocked_id = p.user_id)
+             or (b.blocker_id = p.user_id and b.blocked_id = ${context.userId})
+        )
+      order by f.created_at desc
+      limit 50
+    `;
+    return { people: rows.map((r) => mapPerson(r, context.userId)), mine: userId === context.userId };
+  });
+
+export const listFollowing = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((d: { username?: string } | undefined) => d ?? {})
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    let userId = context.userId;
+    if (data.username) {
+      const u = validateUsername(data.username);
+      const row = (await sql<AnyRow>`select user_id from profiles where lower(username) = ${u}`)[0];
+      if (!row) throw socialError(404, "No se ha encontrado este perfil.");
+      userId = String(row.user_id);
+      if (userId !== context.userId) {
+        const vis = (await sql<AnyRow>`select profile_visibility, public_profile from profiles where user_id = ${userId}`)[0];
+        const isPublic = parseVisibility(vis?.profile_visibility) === "public" || bool(vis?.public_profile);
+        const follow = await getFollowRow(sql, context.userId, userId);
+        if (!isPublic && follow !== "accepted") throw socialError(403, "Este perfil es privado.");
+      }
+    }
+    const rows = await sql<AnyRow>`
+      select p.user_id, p.username, p.display_name, p.image, p.bio, p.profile_visibility, p.public_profile,
+        (select f.status from follows f where f.follower_id = ${context.userId} and f.following_id = p.user_id) as follow_status,
+        (select f.status from follows f where f.follower_id = p.user_id and f.following_id = ${context.userId}) as incoming_status
+      from follows f
+      join profiles p on p.user_id = f.following_id
+      where f.follower_id = ${userId} and f.status = 'accepted'
         and not exists (
           select 1 from user_blocks b
           where (b.blocker_id = ${context.userId} and b.blocked_id = p.user_id)

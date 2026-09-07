@@ -116,6 +116,8 @@ function TutorialFlow() {
     <FlowShell
       step={step}
       total={3}
+      pages={screens}
+      onStepChange={setStep}
       onSkip={() => void finish("app")}
       onBack={step > 0 ? () => setStep(step - 1) : undefined}
       skipLabel="Saltar"

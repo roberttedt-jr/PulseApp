@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { PULSE_TAGLINE, PULSE_VERSION, PULSE_VERSION_NAME } from "./version.ts";
 
-describe("Pulse 3.3.1 identity", () => {
+describe("Pulse 3.6 identity", () => {
   it("exports a single version source of truth", () => {
-    assert.equal(PULSE_VERSION, "3.3.1");
-    assert.equal(PULSE_VERSION_NAME, "Heartbeat");
+    assert.equal(PULSE_VERSION, "3.6");
+    assert.equal(PULSE_VERSION_NAME, "Native");
     assert.match(PULSE_TAGLINE, /Entrenamiento/);
   });
 

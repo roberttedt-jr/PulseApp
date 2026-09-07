@@ -115,6 +115,8 @@ function WelcomePage() {
     <FlowShell
       step={step}
       total={4}
+      pages={screens}
+      onStepChange={setStep}
       onSkip={() => finish("in")}
       onBack={() => setStep((s) => Math.max(0, s - 1))}
       footer={

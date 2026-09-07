@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { FollowButton, PersonRow } from "@/components/pulse/social";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/pulse/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchPeople } from "@/lib/pulse/social-fns";
 
@@ -37,15 +37,12 @@ function SearchPage() {
     >
       <div className="mx-auto max-w-xl space-y-4 pt-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
-          <Input
+          <SearchInput
+            id="pulse_search_query_field"
+            name="pulse_search_query_field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Nombre o @usuario"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            className="pl-10"
             aria-label="Buscar personas"
           />
         </div>

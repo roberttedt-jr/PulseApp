@@ -5,7 +5,7 @@ import { nid, slugify, toIso } from "@/lib/utils";
 import { ACHIEVEMENT_DEFS } from "./achievements";
 import { KEY_EXERCISES } from "./catalog";
 import { computeStreaks, localISO, restWeekdaysFromPlan } from "./consistency";
-import { epley1rm, pulseScore } from "./formulas";
+import { epley1rm, pulseScoreBreakdown } from "./formulas";
 import { normalizeMuscle } from "./exercise-meta";
 import { ensureCatalog, ensurePulseV2, ensurePulseV3, ensurePulseV4, ensurePulseV5, ensurePulseV6, ensurePulseV7, ensurePulseV8, ensureSetKind, cloneLibraryTemplate as insertLibraryTemplate, isDevToolsEnabled, isDemoUserId, listLibraryTemplates as libraryTemplates, purgeUserSeededTraining, seedDevDemoData } from "./seed";
 import { COMPARE_LABEL, compareToLast, computeCurrentPrs } from "./prs";
@@ -149,7 +149,11 @@ async function evaluateAchievements(sql: Sql, userId: string, extra?: { night?: 
 export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();
   const profile = await ensureProfile(sql, context.userId);
-  const week = startOfWeek().toISOString();
+  const weekDate = startOfWeek();
+  const week = weekDate.toISOString();
+  const prev3 = new Date(weekDate);
+  prev3.setDate(prev3.getDate() - 21);
+  const prev3Iso = prev3.toISOString();
   const [
     weekStats,
     volumeByDay,
@@ -165,6 +169,8 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
     secondary,
     lifetime,
     lastSessionRows,
+    planCount,
+    prev3Volume,
   ] = await Promise.all([
     sql<AnyRow>`
       select
@@ -203,7 +209,7 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
     `,
     computeStreak(sql, context.userId),
     sql<AnyRow>`
-      select wp.routine_id, r.name, r.icon, r.color
+      select wp.routine_id, wp.kind, wp.template_key, r.name, r.icon, r.color
       from weekly_plan wp
       left join routines r on r.id = wp.routine_id
       where wp.user_id = ${context.userId} and wp.weekday = ${((new Date()).getDay() + 6) % 7}
@@ -268,18 +274,38 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
       order by w.started_at desc
       limit 1
     `,
+    sql<AnyRow>`
+      select count(*)::int as n from weekly_plan where user_id = ${context.userId}
+    `,
+    sql<AnyRow>`
+      select coalesce(sum(case when s.completed then s.weight * s.reps else 0 end),0) as volume
+      from workouts w
+      left join workout_sets s on s.workout_id = w.id
+      where w.user_id = ${context.userId} and w.status = 'completed'
+        and w.started_at >= ${prev3Iso} and w.started_at < ${week}
+    `,
   ]);
   const ws = weekStats[0];
-  const score = pulseScore({
+  const trainedDays = new Set(volumeByDay.filter((r) => num(r.volume) > 0).map((r) => num(r.day)));
+  const restDaysThisWeek = Math.max(0, 7 - trainedDays.size);
+  const scoreBreakdown = pulseScoreBreakdown({
     workoutsThisWeek: ws?.workouts ?? 0,
     weeklyGoal: profile.weeklyGoal,
     volumeThisWeek: num(ws?.volume),
-    streakDays: streak
+    volumePrev3WeeksAvg: num(prev3Volume[0]?.volume) / 3,
+    restDaysThisWeek,
   });
+  const score = scoreBreakdown.score;
   const suggestion = lastMuscles[0]
     ? `Hace días que ${lastMuscles[0].muscle.toLowerCase()} espera su turno.`
     : null;
-  const todayId = planToday[0]?.routine_id ?? lastRoutine[0]?.id ?? null;
+  const hasWeeklyPlan = num(planCount[0]?.n) > 0;
+  const todayRow = planToday[0];
+  const todayKind = String(todayRow?.kind ?? (todayRow?.routine_id ? "routine" : "rest"));
+  const todayIsRest = hasWeeklyPlan && (!todayRow?.routine_id || todayKind === "rest");
+  const todayId = todayIsRest
+    ? null
+    : (todayRow?.routine_id ?? (!hasWeeklyPlan ? lastRoutine[0]?.id : null) ?? null);
   const [todayMeta, lastOfToday, todayExercises] = todayId
     ? await Promise.all([
         sql<AnyRow>`
@@ -354,21 +380,26 @@ export const getBootstrap = createServerFn({ method: "GET" }).middleware([authMi
     })),
     streak,
     score,
-    today: planToday[0] ? {
-      routineId: planToday[0].routine_id,
-      name: planToday[0].name,
-      icon: planToday[0].icon,
-      color: planToday[0].color,
-      exerciseCount: todayMeta[0]?.n ?? 0,
-      lastAt: toIso(lastOfToday[0]?.started_at) ?? null,
-      estimatedMinutes: Math.max(20, Math.round((todayMeta[0]?.n ?? 5) * 4 + (todayMeta[0]?.rest ?? 0) / 60)),
-      lastDuration: lastOfToday[0]?.duration_seconds ?? null,
-      exercises: todayExercises.map((e) => e.name)
-    } : lastRoutine[0] ? {
-      routineId: lastRoutine[0].id,
-      name: lastRoutine[0].name,
-      icon: lastRoutine[0].icon,
-      color: lastRoutine[0].color,
+    scoreBreakdown,
+    today: todayIsRest ? {
+      routineId: null,
+      name: "Día de descanso",
+      icon: "moon",
+      color: "#8e8e93",
+      isRest: true,
+      kind: "rest" as const,
+      exerciseCount: 0,
+      lastAt: null,
+      estimatedMinutes: 0,
+      lastDuration: null,
+      exercises: [] as string[],
+    } : todayId ? {
+      routineId: todayId,
+      name: String(todayRow?.name ?? lastRoutine[0]?.name ?? "Rutina"),
+      icon: todayRow?.icon ?? lastRoutine[0]?.icon,
+      color: todayRow?.color ?? lastRoutine[0]?.color,
+      isRest: false,
+      kind: (todayKind === "template" ? "template" : "routine") as "routine" | "template",
       exerciseCount: todayMeta[0]?.n ?? 0,
       lastAt: toIso(lastOfToday[0]?.started_at) ?? null,
       estimatedMinutes: Math.max(20, Math.round((todayMeta[0]?.n ?? 5) * 4 + (todayMeta[0]?.rest ?? 0) / 60)),
@@ -1646,29 +1677,80 @@ export const getPlan = createServerFn({ method: "GET" }).middleware([authMiddlew
   const sql = await getSql();
   await ensureProfile(sql, context.userId);
   return {
-    days: await sql<AnyRow>`
-      select wp.weekday, wp.routine_id, r.name, r.color
+    days: (await sql<AnyRow>`
+      select wp.weekday, wp.routine_id, wp.kind, wp.template_key, r.name, r.color
       from weekly_plan wp
       left join routines r on r.id = wp.routine_id
       where wp.user_id = ${context.userId}
       order by weekday
-    `,
+    `).map((d) => ({
+      weekday: num(d.weekday),
+      routine_id: d.routine_id ? String(d.routine_id) : null,
+      kind: (d.kind === "template" || d.kind === "routine" || d.kind === "rest"
+        ? d.kind
+        : d.routine_id
+          ? "routine"
+          : "rest") as "routine" | "template" | "rest",
+      template_key: d.template_key ? String(d.template_key) : null,
+      name: d.name ? String(d.name) : null,
+      color: d.color ? String(d.color) : null,
+    })),
     routines: (await sql<AnyRow>`
       select id, name, color from routines where user_id = ${context.userId} and is_archived = false
     `).map((r) => ({
-      id: r.id,
-      name: r.name,
-      color: r.color
-    }))
+      id: String(r.id),
+      name: String(r.name),
+      color: r.color ? String(r.color) : null,
+    })),
+    templates: libraryTemplates().filter((t) =>
+      ["push", "pull", "legs", "upper", "lower", "full_body"].includes(t.key),
+    ),
   };
 });
-export const setPlanDay = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: any) => d).handler(async ({ context, data }) => {
-  await (await getSql())`
-      insert into weekly_plan (id, user_id, weekday, routine_id)
-      values (${nid()}, ${context.userId}, ${data.weekday}, ${data.routineId})
-      on conflict (user_id, weekday) do update set routine_id = excluded.routine_id
+export const setPlanDay = createServerFn({ method: "POST" }).middleware([authMiddleware]).validator((d: {
+  weekday: number;
+  type: "routine" | "template" | "rest";
+  routineId?: string | null;
+  templateKey?: string | null;
+}) => d).handler(async ({ context, data }) => {
+  const sql = await getSql();
+  await ensureProfile(sql, context.userId);
+  const weekday = Number(data.weekday);
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) throw new Error("Día no válido.");
+  let kind: "routine" | "template" | "rest" = data.type;
+  let routineId: string | null = data.routineId ?? null;
+  let templateKey: string | null = data.templateKey ?? null;
+  if (kind === "rest") {
+    routineId = null;
+    templateKey = null;
+  } else if (kind === "template") {
+    const key = String(templateKey ?? "");
+    const tpl = libraryTemplates().find((t) => t.key === key);
+    if (!tpl) throw new Error("Plantilla no encontrada");
+    const existing = (await sql<AnyRow>`
+      select id from routines
+      where user_id = ${context.userId} and is_archived = false and name = ${tpl.name}
+      limit 1
+    `)[0];
+    if (existing) routineId = String(existing.id);
+    else {
+      const cloned = await insertLibraryTemplate(sql, context.userId, key);
+      routineId = cloned.id;
+    }
+    templateKey = key;
+  } else {
+    if (!routineId) throw new Error("Elige una rutina.");
+    templateKey = null;
+  }
+  await sql`
+      insert into weekly_plan (id, user_id, weekday, routine_id, kind, template_key)
+      values (${nid()}, ${context.userId}, ${weekday}, ${routineId}, ${kind}, ${templateKey})
+      on conflict (user_id, weekday) do update
+        set routine_id = excluded.routine_id,
+            kind = excluded.kind,
+            template_key = excluded.template_key
     `;
-  return { ok: true };
+  return { ok: true, routineId, kind };
 });
 export const getFeed = createServerFn({ method: "GET" }).middleware([authMiddleware]).handler(async ({ context }) => {
   const sql = await getSql();

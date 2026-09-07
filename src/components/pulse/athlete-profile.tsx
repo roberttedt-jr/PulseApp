@@ -3,6 +3,7 @@ import { Dumbbell, Lock, Settings } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { FollowButton, PostCard } from "@/components/pulse/social";
+import { FollowListModal } from "@/components/social/FollowListModal";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -49,6 +50,13 @@ export function AthleteProfile({
   onBlock?: () => void;
 }) {
   const [tab, setTab] = useState<"workouts" | "routines" | "stats">("workouts");
+  const [listTab, setListTab] = useState<"followers" | "following">("followers");
+  const [listOpen, setListOpen] = useState(false);
+
+  function openList(which: "followers" | "following") {
+    setListTab(which);
+    setListOpen(true);
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-4 pt-4">
@@ -74,12 +82,17 @@ export function AthleteProfile({
         </div>
 
         <div className="mt-4 grid grid-cols-3 text-center">
+          <Counter value={data.locked ? "—" : data.workoutCount ?? 0} label="Entrenamientos" />
           <Counter
-            value={data.locked ? "—" : data.workoutCount ?? 0}
-            label="Entrenamientos"
+            value={data.followerCount ?? 0}
+            label="Seguidores"
+            onClick={() => openList("followers")}
           />
-          <Counter value={data.followerCount ?? 0} label="Seguidores" />
-          <Counter value={data.followingCount ?? 0} label="Siguiendo" />
+          <Counter
+            value={data.followingCount ?? 0}
+            label="Siguiendo"
+            onClick={() => openList("following")}
+          />
         </div>
 
         <div className="mt-4 flex flex-col gap-2">
@@ -195,16 +208,41 @@ export function AthleteProfile({
           )}
         </>
       )}
+
+      <FollowListModal
+        open={listOpen}
+        onOpenChange={(v) => {
+          setListOpen(v);
+          if (!v) onRefresh();
+        }}
+        username={data.username}
+        mine={data.mine}
+        initialTab={listTab}
+      />
     </div>
   );
 }
 
-function Counter({ value, label }: { value: number | string; label: string }) {
-  return (
-    <div>
+function Counter({
+  value,
+  label,
+  onClick,
+}: {
+  value: number | string;
+  label: string;
+  onClick?: () => void;
+}) {
+  const inner = (
+    <>
       <p className="text-lg font-semibold tabular">{value}</p>
       <p className="text-[11px] text-muted-foreground">{label}</p>
-    </div>
+    </>
+  );
+  if (!onClick) return <div>{inner}</div>;
+  return (
+    <button type="button" onClick={onClick} className="min-h-11 rounded-xl pressable-feedback" aria-label={label}>
+      {inner}
+    </button>
   );
 }
 

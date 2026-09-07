@@ -6,12 +6,13 @@ import { Flame, Play, Trophy, Zap } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 import { AppPage, PublicEntryRedirect, ScreenSkeleton } from "@/components/auth-gate";
 import { ChartCard } from "@/components/pulse/cards";
-import { ActivityRings, WeekDots } from "@/components/pulse/activity-rings";
+import { WeekDots } from "@/components/pulse/activity-rings";
 import { ConsistencyCard } from "@/components/pulse/consistency";
 import { HScroll } from "@/components/pulse/h-scroll";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { SectionHeader } from "@/components/pulse/metric-card";
 import { MuscleMap } from "@/components/pulse/muscle-map";
+import { PulseScoreGlass } from "@/components/pulse/pulse-score-glass";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,9 +99,6 @@ function Dashboard() {
         )
       : 0;
 
-  const volumeGoal = Math.max(data.profile.weeklyGoal * 2500, 1);
-  const volumePct = data.week.volume / volumeGoal;
-  const streakPct = data.streak / 7;
   const weekdayLabels = ["L", "M", "X", "J", "V", "S", "D"];
   const weekDots = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -111,19 +109,21 @@ function Dashboard() {
     const today = i === 6;
     return { key, hit, today, label: weekdayLabels[(d.getDay() + 6) % 7]! };
   });
-  const scoreHint =
-    fresh
-      ? "Completa tu primer entrenamiento para ver el Pulse Score."
-      : data.week.workouts < data.profile.weeklyGoal
-        ? `Te faltan ${data.profile.weeklyGoal - data.week.workouts} sesiones para el objetivo.`
-        : data.score >= 80
-          ? "Semana excelente. El volumen y la racha están alineados."
-          : "Ritmo bueno. Un poco más de volumen sube la cifra.";
 
   async function startToday() {
-    const res = await startWorkout({ data: { routineId: data?.today?.routineId ?? undefined } });
+    const res = await startWorkout({
+      data: { routineId: data?.today?.isRest ? undefined : data?.today?.routineId ?? undefined },
+    });
     void navigate({ to: "/train", search: { id: res.id } });
   }
+
+  const startLabel = data.activeWorkoutId
+    ? "Reanudar entrenamiento"
+    : data.today?.isRest
+      ? "Entrenamiento libre"
+      : data.today?.name
+        ? `Empezar ${data.today.name}`
+        : "Empezar entrenamiento";
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-3">
@@ -150,11 +150,17 @@ function Dashboard() {
       >
         <div className="p-5">
           <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">Entrenamiento de hoy</p>
-          <h2 className="mt-1 text-[28px] leading-tight font-semibold tracking-tight">{data.today?.name ?? "Sesión libre"}</h2>
+          <h2 className="mt-1 text-[28px] leading-tight font-semibold tracking-tight">
+            {data.today?.isRest ? "Día de descanso" : data.today?.name ?? "Sesión libre"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {data.today?.exerciseCount ? `${data.today.exerciseCount} ejercicios` : "Elige al empezar"}
-            {data.today?.estimatedMinutes ? ` · ~${data.today.estimatedMinutes} min` : ""}
-            {data.today?.lastAt ? ` · última ${format(new Date(data.today.lastAt), "d MMM", { locale: es })}` : ""}
+            {data.today?.isRest
+              ? "Hoy toca recuperar. Puedes hacer una sesión libre si quieres."
+              : data.today?.exerciseCount
+                ? `${data.today.exerciseCount} ejercicios`
+                : "Elige al empezar"}
+            {!data.today?.isRest && data.today?.estimatedMinutes ? ` · ~${data.today.estimatedMinutes} min` : ""}
+            {!data.today?.isRest && data.today?.lastAt ? ` · última ${format(new Date(data.today.lastAt), "d MMM", { locale: es })}` : ""}
           </p>
           {data.today?.exercises && data.today.exercises.length > 0 && (
             <HScroll className="mt-3" gap="gap-1.5">
@@ -170,7 +176,7 @@ function Dashboard() {
           )}
           <Button className="mt-5 w-full" size="lg" onClick={() => void startToday()}>
             <Play className="fill-current" />
-            {data.activeWorkoutId ? "Reanudar entrenamiento" : "Empezar entrenamiento"}
+            {startLabel}
           </Button>
           <Button asChild variant="secondary" className="mt-2 w-full">
             <Link to="/routines/$routineId" params={{ routineId: "new" }}>
@@ -226,46 +232,12 @@ function Dashboard() {
           </p>
           <p className="mt-3 text-sm text-muted-foreground">Las estadísticas aparecen cuando registres tu primera sesión.</p>
         </section>
-      ) : (
+      ) : null}
+
+      <PulseScoreGlass score={data.score} breakdown={data.scoreBreakdown} />
+
+      {fresh ? null : (
         <>
-      <section className="min-w-0 overflow-x-clip rounded-[28px] bg-card px-4 py-5 hairline sm:px-5">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-          <ActivityRings
-            sessions={data.week.workouts}
-            sessionGoal={Math.max(1, data.profile.weeklyGoal)}
-            volumePct={volumePct}
-            streakPct={streakPct}
-          />
-          <div className="min-w-0 flex-1 space-y-2.5">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Pulse Score {data.score}</p>
-              <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{scoreHint}</p>
-            </div>
-            <ul className="space-y-1 text-[13px]">
-              <li className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <span className="size-2 rounded-full bg-primary" /> Sesiones
-                </span>
-                <span className="font-semibold tabular">
-                  {data.profile.weeklyGoal > 0 ? `${data.week.workouts}/${data.profile.weeklyGoal}` : data.week.workouts}
-                </span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <span className="size-2 rounded-full bg-success" /> Volumen
-                </span>
-                <span className="font-semibold tabular">{formatKg(data.week.volume, data.profile.units)}</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <span className="size-2 rounded-full bg-warning" /> Tiempo
-                </span>
-                <span className="font-semibold tabular">{formatDuration(data.week.duration)}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
 
       <section className="flex min-w-0 items-center gap-4 overflow-x-clip rounded-[24px] bg-card px-4 py-4 hairline">
         <span className="grid size-12 place-items-center rounded-2xl bg-warning/15">

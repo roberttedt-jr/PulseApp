@@ -1,30 +1,36 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import { PagerDots, SwipePager } from "@/components/pulse/swipe-pager";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/utils";
 
-const ease = [0.22, 1, 0.36, 1] as const;
-
 export function FlowShell({
   children,
+  pages,
   step,
   total,
   onSkip,
   onBack,
+  onStepChange,
   skipLabel = "Saltar",
   footer,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
+  pages?: ReactNode[];
   step: number;
   total: number;
   onSkip?: () => void;
   onBack?: () => void;
+  onStepChange?: (step: number) => void;
   skipLabel?: string;
   footer?: ReactNode;
 }) {
-  const reduced = useReducedMotion();
+  const list = pages ?? (children != null ? [children] : []);
+  const count = Math.max(total, list.length);
+  function go(next: number) {
+    onStepChange?.(Math.max(0, Math.min(count - 1, next)));
+  }
   return (
     <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-x-hidden bg-background px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="relative flex min-h-11 items-center justify-between gap-3">
@@ -33,7 +39,7 @@ export function FlowShell({
             type="button"
             onClick={onBack}
             aria-label="Atrás"
-            className="glass-control grid size-11 place-items-center rounded-full text-foreground pressable"
+            className="glass-control grid size-11 place-items-center rounded-full text-foreground pressable-feedback"
           >
             <ChevronLeft className="size-5" />
           </button>
@@ -44,7 +50,7 @@ export function FlowShell({
           <button
             type="button"
             onClick={onSkip}
-            className="glass-control h-11 rounded-full px-4 text-sm font-medium text-muted-foreground pressable"
+            className="glass-control h-11 rounded-full px-4 text-sm font-medium text-muted-foreground pressable-feedback"
           >
             {skipLabel}
           </button>
@@ -52,31 +58,13 @@ export function FlowShell({
           <span className="size-11" />
         )}
       </div>
-      <div
-        className="relative mb-6 mt-4 flex gap-1.5"
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={total}
-        aria-valuenow={step + 1}
-        aria-label={`Paso ${step + 1} de ${total}`}
-      >
-        {Array.from({ length: total }, (_, i) => (
-          <span key={i} className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-primary" : "bg-muted")} />
-        ))}
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, y: reduced ? 0 : 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: reduced ? 0 : -8 }}
-          transition={{ duration: reduced ? 0.12 : 0.22, ease }}
-          className="relative flex min-w-0 flex-1 flex-col"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
-      {footer ? <div className="relative mt-auto w-full min-w-0 space-y-2 pt-8">{footer}</div> : null}
+      {onStepChange && list.length > 1 ? (
+        <SwipePager index={step} onIndexChange={go} pages={list} className="mt-4" />
+      ) : (
+        <div className="relative mt-4 flex min-w-0 flex-1 flex-col">{list[step] ?? children}</div>
+      )}
+      <PagerDots index={step} count={count} onIndexChange={go} />
+      {footer ? <div className="relative mt-auto w-full min-w-0 space-y-2 pt-2">{footer}</div> : null}
     </main>
   );
 }
@@ -98,7 +86,7 @@ export function ChoiceButton({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "min-h-14 w-full rounded-2xl px-4 py-3 text-left pressable",
+        "min-h-14 w-full rounded-2xl px-4 py-3 text-left pressable-feedback",
         selected ? "bg-primary/12 ring-1 ring-primary" : "bg-muted",
       )}
     >

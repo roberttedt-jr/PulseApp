@@ -113,7 +113,7 @@ export function FollowButton({
         disabled={pending}
         onClick={() => void run(() => cancelFollowRequest({ data: { userId: person.userId } }), "Solicitud cancelada")}
       >
-        Solicitud enviada
+        Solicitado
       </Button>
     );
   }
@@ -488,7 +488,7 @@ export const PostCard = memo(function PostCard({
         : "¿Compartir este entrenamiento?";
 
   return (
-    <article className="rounded-[22px] bg-card p-4 hairline" data-post-kind={post.kind} data-post-id={post.id}>
+    <article className="rounded-[22px] bg-card p-4 hairline pressable-feedback" data-post-kind={post.kind} data-post-id={post.id}>
       <div className="flex items-start gap-3">
         {post.username ? (
           <Link to="/u/$username" params={{ username: post.username }} className="shrink-0">
@@ -634,7 +634,7 @@ export const PostCard = memo(function PostCard({
           type="button"
           disabled={likeBusy}
           className={cn(
-            "inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm",
+            "inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm pressable-feedback",
             liked ? "text-primary" : "text-muted-foreground",
           )}
           aria-pressed={liked}

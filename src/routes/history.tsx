@@ -67,7 +67,7 @@ function HistoryList() {
   return (
     <AppPage title="Historial">
       <div className="mx-auto max-w-xl space-y-2 pt-4">
-        <div className="mb-3 flex justify-between rounded-[22px] bg-card px-2 py-3 hairline">
+        <div className="mb-3 flex justify-between pulse-card px-2 py-3">
           {week.map((d) => (
             <div key={d.key} className="flex flex-1 flex-col items-center gap-1">
               <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{d.label}</span>
@@ -177,7 +177,7 @@ function HistoryList() {
               <Link
                 to="/history/$workoutId"
                 params={{ workoutId: w.id }}
-                className="flex items-center gap-3 rounded-[22px] bg-card px-3 py-3 hairline pressable"
+                className="flex items-center gap-3 pulse-card px-3 py-3 pressable"
               >
                 <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-muted">
                   <p className="text-lg leading-none font-semibold tabular">{format(d, "d")}</p>

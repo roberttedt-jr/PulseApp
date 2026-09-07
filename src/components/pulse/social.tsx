@@ -426,7 +426,7 @@ export function WorkoutPublishForm({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-muted/80 px-3 py-2.5 text-center">
+    <div className="rounded-2xl glass-pill px-3 py-2.5 text-center">
       <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
       <p className="mt-0.5 text-sm font-semibold tabular">{value}</p>
     </div>
@@ -508,7 +508,7 @@ export const PostCard = memo(function PostCard({
         : "¿Compartir este entrenamiento?";
 
   return (
-    <article className="rounded-[22px] bg-card p-4 hairline pressable-feedback" data-post-kind={post.kind} data-post-id={post.id}>
+    <article className="pulse-card p-4 pressable-feedback" data-post-kind={post.kind} data-post-id={post.id}>
       <div className="flex items-start gap-3">
         {post.username ? (
           <Link to="/u/$username" params={{ username: post.username }} className="shrink-0">

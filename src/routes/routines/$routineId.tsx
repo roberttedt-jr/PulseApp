@@ -216,7 +216,7 @@ function SortableRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className="rounded-2xl bg-card p-3 hairline"
+      className="pulse-card rounded-2xl p-3"
     >
       <div className="flex items-center gap-2">
         <button type="button" className="text-muted-foreground" {...attributes} {...listeners} aria-label="Reordenar">

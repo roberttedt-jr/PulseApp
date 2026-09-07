@@ -111,7 +111,7 @@ function CompareWithFriendPage() {
 
         {data && (
           <>
-            <section className="rounded-[22px] bg-card p-4 hairline">
+            <section className="pulse-card p-4">
               <ComparePersonHeader
                 youName={data.you.name}
                 youImage={data.you.image}

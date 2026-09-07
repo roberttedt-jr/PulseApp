@@ -143,7 +143,7 @@ function Dashboard() {
       </header>
 
       <section
-        className="relative overflow-hidden rounded-[28px] bg-card hairline"
+        className="relative overflow-hidden pulse-card"
         style={{
           backgroundImage: `radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, ${data.today?.color ?? "#FF2D55"} 28%, transparent), transparent 58%)`,
         }}
@@ -186,7 +186,7 @@ function Dashboard() {
         </div>
       </section>
 
-      <section className="rounded-[24px] bg-card px-4 py-4 hairline">
+      <section className="pulse-card px-4 py-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Historial</p>
@@ -200,7 +200,7 @@ function Dashboard() {
           </Link>
         </div>
         {data.lastSession ? (
-          <Link to="/history/$workoutId" params={{ workoutId: data.lastSession.id }} className="mt-3 block rounded-2xl bg-muted/60 px-3 py-3">
+          <Link to="/history/$workoutId" params={{ workoutId: data.lastSession.id }} className="mt-3 block rounded-2xl glass-pill px-3 py-3">
             <p className="text-[15px] font-semibold tracking-tight">{data.lastSession.title}</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {data.lastSession.startedAt ? format(new Date(data.lastSession.startedAt), "d MMM", { locale: es }) : ""}
@@ -214,18 +214,18 @@ function Dashboard() {
       </section>
 
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/progress" className="rounded-3xl bg-card px-4 py-4 hairline pressable-feedback">
+        <Link to="/progress" className="pulse-card px-4 py-4 pressable-feedback">
           <p className="text-xs text-muted-foreground">Progreso</p>
           <p className="mt-1 text-sm font-medium">Ver marcas y volumen</p>
         </Link>
-        <Link to="/plan" className="rounded-3xl bg-card px-4 py-4 hairline pressable-feedback">
+        <Link to="/plan" className="pulse-card px-4 py-4 pressable-feedback">
           <p className="text-xs text-muted-foreground">Plan</p>
           <p className="mt-1 text-sm font-medium">Semana y rutinas</p>
         </Link>
       </div>
 
       {fresh ? (
-        <section className="min-w-0 overflow-x-clip rounded-[28px] bg-card px-4 py-5 hairline sm:px-5">
+        <section className="min-w-0 overflow-x-clip pulse-card px-4 py-5 sm:px-5">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Resumen semanal</p>
           <p className="mt-2 text-sm text-muted-foreground">
             {data.week.workouts} sesiones · {formatKg(data.week.volume, data.profile.units)} · {formatDuration(data.week.duration)}
@@ -239,7 +239,7 @@ function Dashboard() {
       {fresh ? null : (
         <>
 
-      <section className="flex min-w-0 items-center gap-4 overflow-x-clip rounded-[24px] bg-card px-4 py-4 hairline">
+      <section className="flex min-w-0 items-center gap-4 overflow-x-clip pulse-card px-4 py-4">
         <span className="grid size-12 place-items-center rounded-2xl bg-warning/15">
           <Flame className="flame-live size-6" />
         </span>
@@ -295,7 +295,7 @@ function Dashboard() {
         ) : (
           <HScroll className="-mx-1 px-1">
             {data.prs.map((pr) => (
-              <div key={pr.id} className="w-[9.75rem] rounded-[22px] bg-card px-4 py-3 hairline">
+              <div key={pr.id} className="w-[9.75rem] pulse-card px-4 py-3">
                 <span className="grid size-8 place-items-center rounded-xl bg-warning/15 text-warning">
                   <Trophy className="size-4" />
                 </span>

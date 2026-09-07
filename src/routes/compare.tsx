@@ -28,7 +28,7 @@ function ComparePickerPage() {
   return (
     <AppPage title={COMPARE_COPY.title}>
       <div className="mx-auto max-w-xl space-y-4 pt-4" data-compare-root="picker">
-        <section className="rounded-[22px] bg-card p-4 hairline">
+        <section className="pulse-card p-4">
           <h2 className="text-[15px] font-semibold tracking-tight">{COMPARE_COPY.ctaFriends}</h2>
           <div className="mt-1">
             <CompareBanner />
@@ -37,7 +37,7 @@ function ComparePickerPage() {
         </section>
 
         {data && !data.enabled && (
-          <section className="rounded-[22px] bg-card p-4 hairline" data-compare-viewer-off="1">
+          <section className="pulse-card p-4" data-compare-viewer-off="1">
             <p className="text-sm font-medium">{COMPARE_COPY.viewerOff}</p>
             <Button asChild className="mt-3 w-full">
               <Link to="/account" hash="comparativas">

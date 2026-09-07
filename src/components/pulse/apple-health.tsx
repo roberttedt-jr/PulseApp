@@ -53,7 +53,7 @@ export function AppleHealthRow({ notify }: { notify: boolean }) {
             Tus entrenamientos, peso y PRs se siguen registrando a mano en Pulse. Nada de esto se inventa ni se
             importa desde el Apple Watch.
           </p>
-          <label className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3 hairline">
+          <label className="mt-6 flex items-center justify-between gap-3 pulse-card rounded-2xl px-4 py-3">
             <span className="text-sm">
               <span className="block font-medium">Avisarme cuando esté disponible</span>
               <span className="block text-xs text-muted-foreground">Guardamos solo esta preferencia.</span>

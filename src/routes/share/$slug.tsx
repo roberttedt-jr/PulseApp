@@ -28,7 +28,7 @@ function SharePage() {
             {data.description && <p className="mt-2 text-sm text-muted-foreground">{data.description}</p>}
             <ul className="mt-6 space-y-2">
               {data.exercises.map((e, i) => (
-                <li key={i} className="flex items-center justify-between rounded-3xl bg-card px-4 py-3 hairline">
+                <li key={i} className="flex items-center justify-between pulse-card px-4 py-3">
                   <span>
                     <span className="block text-sm font-medium">{e.name}</span>
                     <span className="text-xs text-muted-foreground">{e.muscle}</span>

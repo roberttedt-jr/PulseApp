@@ -41,7 +41,7 @@ function PlanPage() {
               key={label}
               type="button"
               onClick={() => setPicking(i)}
-              className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-3xl bg-card px-4 py-3 text-left hairline pressable-feedback"
+              className="flex min-h-14 w-full min-w-0 items-center gap-3 pulse-card px-4 py-3 text-left pressable-feedback"
             >
               <span className="w-20 shrink-0 text-sm font-medium sm:w-24">{label}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{name}</span>

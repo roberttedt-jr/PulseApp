@@ -85,7 +85,7 @@ function ActivityPage() {
         <CompareCtaCard />
 
         {meta && !meta.username && (
-          <Link to="/account" hash="perfil-social" className="block rounded-[22px] bg-card p-4 text-sm hairline">
+          <Link to="/account" hash="perfil-social" className="block pulse-card p-4 text-sm">
             <p className="font-medium">Elige tu @usuario</p>
             <p className="mt-1 text-muted-foreground">Así tus amigos pueden encontrarte en Pulse.</p>
           </Link>

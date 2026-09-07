@@ -147,7 +147,7 @@ export function PulseScoreGlass({
         onClick={() => setOpen((v) => !v)}
       >
         <div className="relative grid size-[140px] shrink-0 place-items-center overflow-visible">
-          <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
+          <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90" aria-hidden>
             {RINGS.map((ring, i) => (
               <Ring
                 key={ring.key}
@@ -159,11 +159,8 @@ export function PulseScoreGlass({
               />
             ))}
           </svg>
-          <span className="absolute flex flex-col items-center">
-            <span className="tabular text-[28px] leading-none font-semibold tracking-tight">{shownScore}</span>
-            <span className="mt-1 text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-              PulseScore
-            </span>
+          <span className="pointer-events-none absolute inset-0 grid place-items-center">
+            <span className="tabular text-[32px] leading-none font-semibold tracking-tight">{shownScore}</span>
           </span>
         </div>
         <div className="min-w-0 flex-1">

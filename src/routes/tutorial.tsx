@@ -92,7 +92,7 @@ function TutorialFlow() {
       <p className="text-[15px] leading-relaxed text-muted-foreground">
         Añade peso y repeticiones para guardar tu progreso.
       </p>
-      <div className="rounded-3xl bg-card p-4 hairline">
+      <div className="pulse-card p-4">
         <p className="text-sm font-medium">Remo con barra</p>
         <div className="mt-3 flex items-center gap-2">
           <span className="grid h-11 flex-1 place-items-center rounded-xl bg-muted text-sm font-semibold tabular">70 kg</span>
@@ -158,7 +158,7 @@ function TabPreview({ highlight }: { highlight: "Entrenar" | "Inicio" }) {
     { label: "Perfil", icon: UserRound },
   ];
   return (
-    <div className="rounded-3xl bg-card px-2 py-3 hairline">
+    <div className="pulse-card px-2 py-3">
       <div className="mx-auto max-w-sm rounded-[28px] glass px-1.5 py-1.5">
         <div className="grid grid-cols-5">
           {tabs.map((tab) => {

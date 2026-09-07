@@ -17,7 +17,7 @@ export function CompareCtaCard() {
     <Link
       to="/compare"
       data-compare-cta="1"
-      className="flex items-center gap-3 rounded-[22px] bg-card px-4 py-3 hairline pressable"
+      className="flex items-center gap-3 pulse-card px-4 py-3 pressable"
     >
       <span className="grid size-9 place-items-center rounded-full bg-primary/12 text-primary">
         <ArrowLeftRight className="size-4" />
@@ -36,7 +36,7 @@ export function FriendPickRow({ friend }: { friend: CompareFriend }) {
     <Link
       to="/compare/$username"
       params={{ username: friend.username }}
-      className="flex items-center gap-3 rounded-[22px] bg-card px-4 py-3 hairline pressable"
+      className="flex items-center gap-3 pulse-card px-4 py-3 pressable"
       data-compare-friend={friend.username}
     >
       <Avatar src={friend.image} fallback={friend.name} className="size-11" />
@@ -87,7 +87,7 @@ export function MetricPair({
   const meta = COMPARE_METRICS.find((m) => m.id === metric);
   const fmt = format ?? ((n: number) => String(Math.round(n)));
   return (
-    <section className="rounded-[22px] bg-card p-4 hairline" data-compare-metric={metric}>
+    <section className="pulse-card p-4" data-compare-metric={metric}>
       <h2 className="text-[15px] font-semibold tracking-tight">{meta?.label ?? metric}</h2>
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
@@ -121,14 +121,14 @@ export function ExerciseList({
 }) {
   if (items.length === 0) {
     return (
-      <section className="rounded-[22px] bg-card p-4 hairline" data-compare-metric="exercises">
+      <section className="pulse-card p-4" data-compare-metric="exercises">
         <h2 className="text-[15px] font-semibold tracking-tight">Progreso por ejercicio</h2>
         <p className="mt-2 text-sm text-muted-foreground">{COMPARE_COPY.noExercises}</p>
       </section>
     );
   }
   return (
-    <section className="rounded-[22px] bg-card p-4 hairline" data-compare-metric="exercises">
+    <section className="pulse-card p-4" data-compare-metric="exercises">
       <h2 className="text-[15px] font-semibold tracking-tight">Progreso por ejercicio</h2>
       <p className="mt-1 text-xs text-muted-foreground">{COMPARE_COPY.catalogOnly}</p>
       <ul className="mt-3 space-y-4">
@@ -171,14 +171,14 @@ export function PrList({
 }) {
   if (items.length === 0) {
     return (
-      <section className="rounded-[22px] bg-card p-4 hairline" data-compare-metric="prs">
+      <section className="pulse-card p-4" data-compare-metric="prs">
         <h2 className="text-[15px] font-semibold tracking-tight">Récords</h2>
         <p className="mt-2 text-sm text-muted-foreground">{COMPARE_COPY.noPrs}</p>
       </section>
     );
   }
   return (
-    <section className="rounded-[22px] bg-card p-4 hairline" data-compare-metric="prs">
+    <section className="pulse-card p-4" data-compare-metric="prs">
       <h2 className="text-[15px] font-semibold tracking-tight">Récords</h2>
       <ul className="mt-3 space-y-4">
         {items.map((pr) => (

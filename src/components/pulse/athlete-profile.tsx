@@ -60,7 +60,7 @@ export function AthleteProfile({
 
   return (
     <div className="mx-auto max-w-xl space-y-4 pt-4">
-      <section className="rounded-[22px] bg-card p-5 hairline" data-athlete-header="1">
+      <section className="pulse-card p-5" data-athlete-header="1">
         <div className="flex items-start gap-4">
           <Avatar src={data.image} fallback={data.name} className="size-20 text-xl" />
           <div className="min-w-0 flex-1">
@@ -248,7 +248,7 @@ function Counter({
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[22px] bg-card p-4 text-center hairline">
+    <div className="pulse-card p-4 text-center">
       <p className="text-xl font-semibold tabular">{value}</p>
       <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
     </div>
@@ -266,7 +266,7 @@ function PublicRoutineCard({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <article className="rounded-[22px] bg-card p-4 hairline">
+    <article className="pulse-card p-4">
       <p className="font-semibold tracking-tight">{routine.name}</p>
       <p className="mt-1 text-xs text-muted-foreground">
         {routine.exerciseCount} {routine.exerciseCount === 1 ? "ejercicio" : "ejercicios"}

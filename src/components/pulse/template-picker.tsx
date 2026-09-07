@@ -36,7 +36,7 @@ export function TemplatePicker({ onCloned }: { onCloned?: () => void }) {
             type="button"
             disabled={clone.isPending}
             onClick={() => clone.mutate(t.key)}
-            className="flex w-full items-center gap-3 rounded-[22px] bg-card px-4 py-3 text-left hairline pressable disabled:opacity-50"
+            className="flex w-full items-center gap-3 pulse-card px-4 py-3 text-left pressable disabled:opacity-50"
             style={{
               backgroundImage: `linear-gradient(120deg, color-mix(in srgb, ${t.color} 22%, var(--color-card)) 0%, var(--color-card) 62%)`,
             }}

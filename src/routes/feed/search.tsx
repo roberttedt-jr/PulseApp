@@ -73,7 +73,7 @@ function SearchPage() {
         )}
         <ul className="space-y-3">
           {people.map((p) => (
-            <li key={p.userId} className="rounded-[22px] bg-card px-3 py-3 hairline">
+            <li key={p.userId} className="pulse-card px-3 py-3">
               <PersonRow person={p} action={<FollowButton person={p} onChange={() => void result.refetch()} />} />
             </li>
           ))}

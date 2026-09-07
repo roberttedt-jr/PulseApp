@@ -27,7 +27,7 @@ function StatsPage() {
             className="py-6"
           />
         )}
-        <div className="rounded-3xl bg-card p-4 text-sm hairline">
+        <div className="pulse-card p-4 text-sm">
           <Row k="Ejercicio más trabajado" v={(data?.workouts ?? 0) > 0 ? (data?.topExercise ?? "—") : "Aún no hay datos"} />
           <Row k="Grupo muscular" v={(data?.workouts ?? 0) > 0 ? (data?.topMuscle ?? "—") : "Aún no hay datos"} />
           <Row k="Día favorito" v={(data?.workouts ?? 0) > 0 ? (data?.favoriteDay ?? "—") : "Aún no hay datos"} />
@@ -39,7 +39,7 @@ function StatsPage() {
           {(data?.achievements ?? []).map((a) => (
             <li
               key={a.key}
-              className={`rounded-3xl p-4 hairline ${a.unlockedAt ? "bg-card" : "bg-muted/40 opacity-60"}`}
+              className={`pulse-card p-4 ${a.unlockedAt ? "" : "opacity-60"}`}
             >
               <div className="flex items-center gap-3">
                 <span
@@ -64,7 +64,7 @@ function StatsPage() {
 
 function Tile({ icon: Icon, k, v }: { icon: typeof Flame; k: string; v: string }) {
   return (
-    <div className="rounded-3xl bg-card px-4 py-4 hairline">
+    <div className="pulse-card px-4 py-4">
       <Icon className="mb-2 size-4 text-primary" />
       <p className="text-[11px] text-muted-foreground">{k}</p>
       <p className="mt-1 text-xl font-semibold tabular">{v}</p>

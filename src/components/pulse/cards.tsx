@@ -16,7 +16,7 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <section className={cn("min-w-0 max-w-full overflow-x-clip rounded-3xl bg-card p-4 hairline sm:p-5", className)}>
+    <section className={cn("pulse-card min-w-0 max-w-full overflow-x-clip p-4 sm:p-5", className)}>
       {(title || action) && (
         <div className="mb-3 flex items-end justify-between gap-3">
           {title ? <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2> : <span />}
@@ -124,7 +124,7 @@ export function ExerciseCard({
     </>
   );
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-card px-2.5 py-2 hairline">
+    <div className="flex items-center gap-2 pulse-card rounded-2xl px-2.5 py-2">
       {href ? (
         <a href={href} className="flex min-w-0 flex-1 items-center gap-3">
           {body}

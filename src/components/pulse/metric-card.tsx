@@ -18,7 +18,7 @@ export function MetricCard({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-3xl bg-card px-4 py-4 hairline", className)}>
+    <div className={cn("pulse-card px-4 py-4", className)}>
       <p className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
         {Icon ? <Icon className="size-3.5" /> : null}
         {label}
@@ -33,7 +33,7 @@ export function StatPill({ children, className }: { children: ReactNode; classNa
   return (
     <span
       className={cn(
-        "inline-flex h-8 items-center rounded-full bg-muted px-3 text-xs font-medium text-muted-foreground",
+        "inline-flex h-8 items-center rounded-full glass-pill px-3 text-xs font-medium",
         className,
       )}
     >

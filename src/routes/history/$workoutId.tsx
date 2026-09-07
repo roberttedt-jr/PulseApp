@@ -108,12 +108,12 @@ function WorkoutDetail() {
           <Tile k="Series" v={String(data.setCount)} />
           <Tile k="Ejercicios" v={String(data.exerciseCount)} />
         </div>
-        {data.notes && <p className="rounded-3xl bg-card p-4 text-sm hairline">{data.notes}</p>}
+        {data.notes && <p className="pulse-card p-4 text-sm">{data.notes}</p>}
         {data.photoData && (
           <img src={data.photoData} alt="Foto post-entreno" className="w-full rounded-3xl object-cover" />
         )}
         {data.blocks.map((b) => (
-          <section key={b.exerciseId} className="rounded-3xl bg-card p-4 hairline">
+          <section key={b.exerciseId} className="pulse-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <Link
@@ -346,7 +346,7 @@ function EditWorkout({
         </div>
 
         {blocks.map((b, bi) => (
-          <section key={b.exerciseId + bi} className="rounded-3xl bg-card p-3 hairline">
+          <section key={b.exerciseId + bi} className="pulse-card p-3">
             <div className="mb-2 flex items-center gap-2">
               <p className="min-w-0 flex-1 truncate font-medium">{b.name}</p>
               <button type="button" className="grid size-9 place-items-center" aria-label="Subir" onClick={() => moveBlock(bi, -1)}>
@@ -540,7 +540,7 @@ function EditWorkout({
 
 function Tile({ k, v }: { k: string; v: string }) {
   return (
-    <div className="rounded-3xl bg-card px-3 py-4 text-center hairline">
+    <div className="pulse-card px-3 py-4 text-center">
       <p className="text-[11px] text-muted-foreground">{k}</p>
       <p className="mt-1 font-semibold">{v}</p>
     </div>

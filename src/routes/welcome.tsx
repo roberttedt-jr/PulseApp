@@ -54,7 +54,7 @@ function WelcomePage() {
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
         Crea rutinas, series, peso y repeticiones en tiempo real.
       </p>
-      <div className="mt-8 rounded-3xl bg-card p-4 hairline">
+      <div className="mt-8 pulse-card p-4">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">Press de banca</p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] text-muted-foreground">
           <span>Serie</span>
@@ -78,12 +78,12 @@ function WelcomePage() {
         Sigue a tus amigos, comparte tus sesiones terminadas, celebra sus récords y motívate día a día.
       </p>
       <div className="mt-8 space-y-3">
-        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+        <div className="pulse-card px-4 py-3">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Actividad</p>
           <p className="mt-2 text-sm font-medium">Leo ha terminado Empuje</p>
           <p className="text-xs text-muted-foreground">48 min · 5 ejercicios · PR en press</p>
         </div>
-        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+        <div className="pulse-card px-4 py-3">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Siguiendo</p>
           <p className="mt-2 text-sm font-medium">Nia ha compartido una sesión</p>
           <p className="text-xs text-muted-foreground">Solo ves lo que tus amigos deciden publicar</p>
@@ -98,12 +98,12 @@ function WelcomePage() {
         Historial completo, récords personales (PRs) y balance muscular.
       </p>
       <div className="mt-8 space-y-3">
-        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+        <div className="pulse-card px-4 py-3">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Historial</p>
           <p className="mt-2 text-sm font-medium">Cada sesión queda guardada</p>
           <p className="text-xs text-muted-foreground">Duración, series y volumen reales</p>
         </div>
-        <div className="rounded-3xl bg-card px-4 py-3 hairline">
+        <div className="pulse-card px-4 py-3">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-warning uppercase">Mejor marca</p>
           <p className="mt-1 text-sm font-medium">Cuando superas tu mejor serie, Pulse la guarda</p>
         </div>

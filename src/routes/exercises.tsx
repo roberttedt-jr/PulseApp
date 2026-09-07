@@ -99,7 +99,7 @@ function ExercisesPage() {
         </HScroll>
         <ul className="space-y-1.5">
           {(data ?? []).map((e) => (
-            <li key={e.id} className="flex items-center gap-2 rounded-2xl bg-card px-2 py-2 hairline">
+            <li key={e.id} className="flex items-center gap-2 pulse-card rounded-2xl px-2 py-2">
               <Link to="/exercises/$exerciseId" params={{ exerciseId: e.id }} className="flex min-w-0 flex-1 items-center gap-3">
                 <ExerciseDemo name={e.name} muscle={e.muscle} type={e.type} gifUrl={e.gifUrl} compact />
                 <span className="min-w-0">

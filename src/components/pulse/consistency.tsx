@@ -288,7 +288,7 @@ export function ConsistencyCard() {
 
   if (isPending && !data) {
     return (
-      <section className="rounded-3xl bg-card p-4 hairline sm:p-5">
+      <section className="pulse-card p-4 sm:p-5">
         <h2 className="text-[15px] font-semibold tracking-tight">Consistencia</h2>
         <div className="mt-4 h-28 animate-pulse rounded-2xl bg-muted" />
       </section>
@@ -296,7 +296,7 @@ export function ConsistencyCard() {
   }
 
   return (
-    <section className="min-w-0 overflow-x-clip rounded-3xl bg-card p-4 hairline sm:p-5">
+    <section className="min-w-0 overflow-x-clip pulse-card p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[15px] font-semibold tracking-tight">Consistencia</h2>
         <Segmented
@@ -515,7 +515,7 @@ export function ConsistencyHeatmap() {
   const todayKey = localISO(ctx.today);
 
   return (
-    <section className="min-w-0 overflow-x-clip rounded-3xl bg-card p-4 hairline sm:p-5">
+    <section className="min-w-0 overflow-x-clip pulse-card p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">Consistencia</h2>

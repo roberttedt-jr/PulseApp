@@ -71,14 +71,14 @@ function SettingsPage() {
       }
     >
       <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
-        <div className="rounded-3xl bg-card p-5 text-center hairline">
+        <div className="pulse-card p-5 text-center">
           <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
           <p className="mt-3 font-semibold">{display}</p>
           <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-3xl bg-card p-4 hairline">
+          <div className="pulse-card p-4">
             <p className="text-xs text-muted-foreground">IMC</p>
             {hasBody ? (
               <>
@@ -89,7 +89,7 @@ function SettingsPage() {
               <p className="mt-1 text-sm text-muted-foreground">Añade peso y altura para calcularlo.</p>
             )}
           </div>
-          <div className="rounded-3xl bg-card p-4 hairline">
+          <div className="pulse-card p-4">
             <p className="text-xs text-muted-foreground">kcal / día</p>
             {kcal ? (
               <p className="text-xl font-semibold tabular">{kcal}</p>
@@ -99,7 +99,7 @@ function SettingsPage() {
           </div>
         </div>
 
-        <section className="space-y-3 rounded-3xl bg-card p-4 hairline">
+        <section className="space-y-3 pulse-card p-4">
           <div className="space-y-1.5">
             <Label htmlFor="display-name">Nombre</Label>
             <Input
@@ -145,7 +145,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="space-y-3 rounded-3xl bg-card p-4 hairline">
+        <section className="space-y-3 pulse-card p-4">
           <p className="flex items-center gap-2 text-sm font-medium">
             <KeyRound className="size-4" /> ¿Has olvidado la contraseña?
           </p>
@@ -181,7 +181,7 @@ function SettingsPage() {
           </Button>
         </section>
 
-        <section className="divide-y divide-border rounded-3xl bg-card hairline">
+        <section className="divide-y divide-border pulse-card">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Unidades</p>
@@ -266,14 +266,14 @@ function SettingsPage() {
 
         {p && <CompareSection profile={p} />}
 
-        <section className="overflow-hidden rounded-3xl bg-card hairline">
+        <section className="overflow-hidden pulse-card">
           <p className="flex items-center gap-2 px-4 pt-4 pb-2 text-sm font-medium">
             <HeartPulse className="size-4 text-primary" /> Integraciones
           </p>
           <AppleHealthRow notify={p?.healthkitNotify ?? false} />
         </section>
 
-        <nav className="overflow-hidden rounded-3xl bg-card hairline">
+        <nav className="overflow-hidden pulse-card">
           <Go to="/plan" icon={Calendar} label="Plan semanal" />
           <Go to="/stats" icon={Trophy} label="Estadísticas y logros" />
           <Link
@@ -338,7 +338,7 @@ function SettingsPage() {
           </Button>
         </div>
 
-        <div className="rounded-3xl bg-card p-5 text-center hairline" data-about-pulse="1">
+        <div className="pulse-card p-5 text-center" data-about-pulse="1">
           <PulseLogo size={56} alt="" className="mx-auto" />
           <p className="mt-3 text-base font-semibold tracking-tight text-foreground">Pulse</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -445,7 +445,7 @@ function SocialSection({ profile }: { profile: Profile }) {
   }
 
   return (
-    <section id="perfil-social" className="space-y-3 rounded-3xl bg-card p-4 hairline scroll-mt-20">
+    <section id="perfil-social" className="space-y-3 pulse-card p-4 scroll-mt-20">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Perfil social</p>
         {profile.username && (
@@ -563,7 +563,7 @@ function CompareSection({ profile }: { profile: Profile }) {
     save.mutate({ [id]: value });
   }
   return (
-    <section id="comparativas" className="overflow-hidden rounded-3xl bg-card hairline scroll-mt-20">
+    <section id="comparativas" className="overflow-hidden pulse-card scroll-mt-20">
       <div className="px-4 pt-4 pb-2">
         <p className="flex items-center gap-2 text-sm font-medium">
           <Shield className="size-4 text-primary" /> Comparativas

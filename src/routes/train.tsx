@@ -413,7 +413,7 @@ function ExerciseBlock({
   let workN = 0;
 
   return (
-    <section className="min-w-0 overflow-x-clip rounded-3xl bg-card p-3 hairline sm:p-4">
+    <section className="min-w-0 overflow-x-clip pulse-card p-3 sm:p-4">
       <div className="mb-3 flex items-start justify-between gap-3 px-1">
         <button type="button" className="min-w-0 text-left" onClick={() => setDemo(true)}>
           <h3 className="font-semibold">{block.name}</h3>

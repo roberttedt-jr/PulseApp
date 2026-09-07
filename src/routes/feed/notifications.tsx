@@ -100,7 +100,7 @@ function NotificationsPage() {
         {items.map((n) => (
           <div
             key={n.id}
-            className="rounded-[22px] bg-card p-3 hairline"
+            className="pulse-card p-3"
             data-notification={n.type}
             data-notification-unread={n.read ? "0" : "1"}
           >

@@ -66,7 +66,7 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.doesNotMatch(widget, /text-\[32px\]/);
     assert.match(css, /blur\(32px\) saturate\(190%\)/);
     assert.match(css, /\.pulse-score-num/);
-    assert.match(css, /\.tab-swipe/);
+    assert.doesNotMatch(css, /\.tab-swipe/);
     assert.match(formulas, /volumePrev3WeeksAvg/);
     assert.match(formulas, /restDaysThisWeek/);
   });
@@ -89,18 +89,12 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(pager, /pan-x pan-y/);
   });
 
-  it("swipes between main tabs from the app shell", () => {
+  it("switches main tabs from the bar without page swipe", () => {
     const app = src("../../components/layout/app-shell.tsx");
-    const swipe = src("../../components/pulse/tab-swipe.tsx");
-    assert.match(app, /TabSwipe/);
-    assert.match(swipe, /TAB_PATHS/);
-    assert.match(swipe, /commitIndex/);
-    assert.match(swipe, /data-tab-swipe/);
-    assert.match(swipe, /setPointerCapture/);
-    assert.match(swipe, /onTouchStart|touchstart/);
-    assert.match(swipe, /touchmove/);
-    assert.match(swipe, /viewTransition: true/);
-    assert.doesNotMatch(swipe, /translate3d/);
+    assert.doesNotMatch(app, /TabSwipe/);
+    assert.match(app, /viewTransition=\{false\}/);
+    assert.match(app, /pulse-tabbar-pill/);
+    assert.match(app, /replace/);
   });
 
   it("uses anti-autofill search and iOS input ergonomics", () => {

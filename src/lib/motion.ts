@@ -2,9 +2,9 @@
 export const TAB_PATHS = ["/", "/routines", "/feed", "/progress", "/settings"] as const;
 
 export const MOTION = {
-  tabMs: 360,
-  tabMsOut: 360,
-  tabSlidePx: 96,
+  tabMs: 280,
+  tabMsOut: 200,
+  tabSlidePx: 0,
   pressMs: 120,
   pressScale: 0.98,
   sheetInMs: 320,
@@ -40,8 +40,8 @@ export function viewTransitionTypes(info: {
 }): string[] {
   const from = tabIndex(info.fromLocation?.pathname ?? "");
   const to = tabIndex(info.toLocation.pathname);
-  if (from < 0 || to < 0 || from === to) return ["pulse-fade"];
-  return to > from ? ["pulse-tab-forward"] : ["pulse-tab-back"];
+  if (from >= 0 && to >= 0) return ["pulse-tab-instant"];
+  return ["pulse-fade"];
 }
 
 export function supportsViewTransitions(): boolean {

@@ -316,12 +316,6 @@
     filter: drop-shadow(0 2px 8px rgba(255, 45, 85, 0.4));
   }
 
-  .tab-swipe {
-    touch-action: pan-y;
-    overflow-x: clip;
-    transform: none;
-  }
-
   .pressable,
   .pressable-feedback {
     transition:
@@ -485,12 +479,13 @@
   box-shadow:
     inset 0 0 0 1px rgb(255 45 85 / 0.3),
     0 0 18px rgb(255 45 85 / 0.16);
+  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
 }
-.pulse-tabbar.is-collapsed {
-  transform: translate3d(0, calc(100% + 24px), 0);
-  opacity: 0;
-  pointer-events: none;
+@media (prefers-reduced-motion: reduce) {
+  .pulse-tabbar-pill {
+    transition-duration: 0.01ms;
+  }
 }
 
 .pulse-sidebar {
@@ -907,13 +902,19 @@ body:has([data-vaul-drawer][data-state="open"]) {
   object-position: 0 0;
   backface-visibility: hidden;
 }
+html:active-view-transition-type(pulse-tab-instant) ::view-transition-old(pulse-page),
+html:active-view-transition-type(pulse-tab-instant) ::view-transition-new(pulse-page),
+html:active-view-transition-type(pulse-tab-instant) ::view-transition-old(root),
+html:active-view-transition-type(pulse-tab-instant) ::view-transition-new(root) {
+  animation: none !important;
+}
 html:active-view-transition-type(pulse-tab-forward) ::view-transition-old(pulse-page),
 html:active-view-transition-type(pulse-tab-back) ::view-transition-old(pulse-page) {
-  animation: pulse-page-out 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: none;
 }
 html:active-view-transition-type(pulse-tab-forward) ::view-transition-new(pulse-page),
 html:active-view-transition-type(pulse-tab-back) ::view-transition-new(pulse-page) {
-  animation: pulse-page-in 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: none;
 }
 html:active-view-transition-type(pulse-fade) ::view-transition-old(pulse-page) {
   animation: pulse-fade 140ms ease both reverse;

@@ -156,10 +156,14 @@ export function AppShell({
         </aside>
 
         <div className="flex min-w-0 max-w-full flex-1 flex-col">
-          <PageHeader title={title} action={action} />
           <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-[calc(6.5rem+var(--safe-bottom))] md:pb-10")}>
             <TabSwipe enabled={!hideNav}>
-              <PageTransition>{children}</PageTransition>
+              <PageTransition>
+                <>
+                  <PageHeader title={title} action={action} />
+                  {children}
+                </>
+              </PageTransition>
             </TabSwipe>
           </main>
         </div>

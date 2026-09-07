@@ -1,7 +1,6 @@
 import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, type ReactNode } from "react";
 import { TAB_PATHS, tabIndex } from "@/lib/motion";
-import { rubberBand } from "@/lib/pulse/swipe";
 
 function ignoreFrom(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
@@ -13,18 +12,12 @@ function ignoreFrom(target: EventTarget | null) {
 }
 
 function commitIndex(index: number, count: number, dx: number, width: number, vx: number) {
-  const flicked = Math.abs(vx) > 0.42 && Math.abs(dx) > 16;
-  const crossed = Math.abs(dx) >= Math.max(64, width * 0.18);
+  const flicked = Math.abs(vx) > 0.5 && Math.abs(dx) > 20;
+  const crossed = Math.abs(dx) >= Math.max(72, width * 0.22);
   let next = index;
-  if (dx > 0 && (crossed || (flicked && dx > 0))) next = index - 1;
-  else if (dx < 0 && (crossed || (flicked && dx < 0))) next = index + 1;
+  if (dx > 0 && (crossed || flicked)) next = index - 1;
+  else if (dx < 0 && (crossed || flicked)) next = index + 1;
   return Math.max(0, Math.min(count - 1, next));
-}
-
-function durationMs(dx: number, vx: number, width: number) {
-  const remaining = Math.max(80, width - Math.abs(dx));
-  const fromSpeed = remaining / Math.max(Math.abs(vx), 0.7);
-  return Math.round(Math.min(420, Math.max(280, fromSpeed)));
 }
 
 export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: boolean }) {
@@ -50,44 +43,6 @@ export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: 
       peeked: false,
     };
 
-    const setX = (x: number, animate = false, ms = 340) => {
-      node.style.transition = animate ? `transform ${ms}ms cubic-bezier(0.22, 1, 0.36, 1)` : "none";
-      node.style.transform = x ? `translate3d(${x}px,0,0)` : "";
-      node.style.willChange = x ? "transform" : "";
-    };
-
-    const finish = (dx: number, vx: number) => {
-      const width = node.clientWidth || 1;
-      const next = commitIndex(idx, TAB_PATHS.length, dx, width, vx);
-      if (next === idx) {
-        setX(0, true, 340);
-        return;
-      }
-      const to = TAB_PATHS[next];
-      if (!to) {
-        setX(0, true, 340);
-        return;
-      }
-      const ms = durationMs(dx, vx, width);
-      const outMs = Math.round(Math.min(280, Math.max(160, ms * 0.55)));
-      const inMs = Math.round(Math.min(340, Math.max(220, ms * 0.85)));
-      const goingRight = next < idx;
-      node.dataset.tabSwiped = "1";
-      window.setTimeout(() => {
-        delete node.dataset.tabSwiped;
-      }, outMs + inMs + 40);
-      setX(goingRight ? width : -width, true, outMs);
-      window.setTimeout(() => {
-        node.style.transition = "none";
-        node.style.transform = goingRight ? `translate3d(${-width}px,0,0)` : `translate3d(${width}px,0,0)`;
-        void navigate({ to, viewTransition: false }).then(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => setX(0, true, inMs));
-          });
-        });
-      }, outMs);
-    };
-
     const start = (x: number, y: number, t: number, target: EventTarget | null) => {
       if (ignoreFrom(target)) return false;
       drag.active = true;
@@ -105,8 +60,8 @@ export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: 
       const dx = x - drag.x0;
       const dy = y - drag.y0;
       if (drag.axis === "none") {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        drag.axis = Math.abs(dx) > Math.abs(dy) * 1.05 ? "x" : "y";
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        drag.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
       }
       if (drag.axis !== "x") return;
       prevent();
@@ -114,10 +69,6 @@ export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: 
       drag.vx = (x - drag.lastX) / dt;
       drag.lastX = x;
       drag.lastT = t;
-      const width = node.clientWidth || 1;
-      const atStart = idx <= 0 && dx > 0;
-      const atEnd = idx >= TAB_PATHS.length - 1 && dx < 0;
-      setX(atStart || atEnd ? rubberBand(dx, width) : dx);
       if (!drag.peeked) {
         drag.peeked = true;
         const peek = dx < 0 ? idx + 1 : idx - 1;
@@ -132,8 +83,16 @@ export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: 
       const axis = drag.axis;
       drag.active = false;
       drag.axis = "none";
-      if (axis === "x") finish(dx, drag.vx);
-      else setX(0);
+      if (axis !== "x") return;
+      const width = node.clientWidth || 1;
+      const next = commitIndex(idx, TAB_PATHS.length, dx, width, drag.vx);
+      const to = TAB_PATHS[next];
+      if (next === idx || !to) return;
+      node.dataset.tabSwiped = "1";
+      window.setTimeout(() => {
+        delete node.dataset.tabSwiped;
+      }, 420);
+      void navigate({ to, viewTransition: true });
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -186,7 +145,6 @@ export function TabSwipe({ children, enabled }: { children: ReactNode; enabled: 
       node.removeEventListener("pointerup", end);
       node.removeEventListener("pointercancel", end);
       node.removeEventListener("click", onClick, true);
-      setX(0);
     };
   }, [enabled, idx, navigate, router]);
 

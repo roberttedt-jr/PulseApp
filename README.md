@@ -212,6 +212,6 @@ Pulse está diseñado para desplegarse de forma continua en [Vercel](https://ver
 
 ## 📜 Licencia y Autor
 
-© 2026 **Pulse**. Desarrollado y mantenido por [Roberto Tedt](https://github.com/roberttedt-jr).
+© 2026 **Pulse**. Desarrollado y mantenido por [Roberto](https://github.com/roberttedt-jr).
 
 Distribuido bajo la licencia [MIT](LICENSE).

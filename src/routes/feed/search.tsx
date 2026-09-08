@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { FollowButton, PersonRow } from "@/components/pulse/social";
 import { SearchInput } from "@/components/pulse/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { personMatchesSearch, rankPersonSearch } from "@/lib/pulse/social";
 import { searchPeople } from "@/lib/pulse/social-fns";
 
 export const Route = createFileRoute("/feed/search")({ component: SearchPage });
@@ -25,8 +26,19 @@ function SearchPage() {
     enabled: debounced.length > 0,
     placeholderData: (prev) => prev,
   });
-  const people = result.data?.people ?? [];
-  const showPending = debounced && result.isPending && !result.data;
+  const people = useMemo(() => {
+    const raw = result.data?.people ?? [];
+    if (!debounced) return [];
+    return raw
+      .filter((p) => personMatchesSearch(debounced, p))
+      .sort((a, b) => {
+        const ra = rankPersonSearch(debounced, a);
+        const rb = rankPersonSearch(debounced, b);
+        if (ra.rank !== rb.rank) return ra.rank - rb.rank;
+        return (a.name || a.handle).localeCompare(b.name || b.handle, "es");
+      });
+  }, [result.data?.people, debounced]);
+  const showPending = Boolean(debounced && result.isPending && !result.data);
 
   return (
     <AppPage

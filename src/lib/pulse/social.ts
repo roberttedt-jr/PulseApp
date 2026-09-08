@@ -35,6 +35,8 @@ export const RESERVED_USERNAMES = new Set([
   "user",
   "users",
   "u",
+  "handle",
+  "native",
   "compare",
   "comparar",
   "comparativa",
@@ -51,20 +53,41 @@ export function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@+/, "").toLowerCase();
 }
 
-export function validateUsername(raw: string): string {
+export function inspectUsername(raw: string): {
+  username: string;
+  code: "empty" | "short" | "long" | "format" | "reserved" | "ok";
+  message: string;
+} {
   const username = normalizeUsername(raw);
-  if (!username) throw new Error("El @usuario no puede estar vacío.");
-  if (username.length < 3) throw new Error("El @usuario debe tener al menos 3 caracteres.");
-  if (username.length > 20) throw new Error("El @usuario no puede superar 20 caracteres.");
-  if (/\s/.test(raw.trim().replace(/^@+/, ""))) throw new Error("El @usuario no puede contener espacios.");
-  if (username.includes("@") || username.includes(".")) {
-    throw new Error("El @usuario no puede parecer un email.");
+  const stripped = raw.trim().replace(/^@+/, "");
+  if (!username) {
+    return { username, code: "empty", message: "Elige entre 3 y 20 caracteres" };
   }
-  if (!/^[a-z0-9_]+$/.test(username)) {
-    throw new Error("Usa solo letras, números y guion bajo.");
+  if (username.length < 3 || username.length > 20) {
+    return { username, code: username.length < 3 ? "short" : "long", message: "Elige entre 3 y 20 caracteres" };
   }
-  if (RESERVED_USERNAMES.has(username)) throw new Error("Ese @usuario no está disponible.");
-  return username;
+  if (/\s/.test(stripped)) {
+    return { username, code: "format", message: "Sin espacios. Solo letras, números y _." };
+  }
+  if (stripped.includes("@") || stripped.includes(".")) {
+    return { username, code: "format", message: "Sin puntos ni @. Solo letras, números y _." };
+  }
+  if (/^_/.test(username)) {
+    return { username, code: "format", message: "Debe empezar por letra o número." };
+  }
+  if (!/^[a-z0-9][a-z0-9_]*$/.test(username)) {
+    return { username, code: "format", message: "Solo minúsculas, números y guion bajo." };
+  }
+  if (RESERVED_USERNAMES.has(username)) {
+    return { username, code: "reserved", message: "Este usuario ya está en uso" };
+  }
+  return { username, code: "ok", message: "" };
+}
+
+export function validateUsername(raw: string): string {
+  const inspected = inspectUsername(raw);
+  if (inspected.code !== "ok") throw new Error(inspected.message);
+  return inspected.username;
 }
 
 export function validateDisplayName(raw: string): string {

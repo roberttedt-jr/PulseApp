@@ -72,21 +72,21 @@ function WelcomePage() {
     </div>,
     <div key="community" className="flex flex-1 flex-col">
       <h1 className="text-[clamp(1.7rem,7vw,2.1rem)] leading-tight font-semibold tracking-tight">
-        Entrena con tu comunidad.
+        Entrena. Progresa. Comparte.
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Sigue a tus amigos, comparte tus sesiones terminadas, celebra sus récords y motívate día a día.
+        Sigue a atletas, comparte sesiones completadas y descubre el progreso real de tu círculo.
       </p>
       <div className="mt-8 space-y-3">
         <div className="pulse-card px-4 py-3">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Actividad</p>
-          <p className="mt-2 text-sm font-medium">Leo ha terminado Empuje</p>
-          <p className="text-xs text-muted-foreground">48 min · 5 ejercicios · PR en press</p>
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Sigue</p>
+          <p className="mt-2 text-sm font-medium">Encuentra perfiles y síguelos</p>
+          <p className="text-xs text-muted-foreground">Tu círculo, no un muro infinito</p>
         </div>
         <div className="pulse-card px-4 py-3">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Siguiendo</p>
-          <p className="mt-2 text-sm font-medium">Nia ha compartido una sesión</p>
-          <p className="text-xs text-muted-foreground">Solo ves lo que tus amigos deciden publicar</p>
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Comparte</p>
+          <p className="mt-2 text-sm font-medium">Las sesiones completadas pueden publicarse</p>
+          <p className="text-xs text-muted-foreground">Tú eliges si el perfil es público o privado</p>
         </div>
       </div>
     </div>,

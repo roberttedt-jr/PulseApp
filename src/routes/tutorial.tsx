@@ -7,7 +7,8 @@ import { FlowActions, FlowShell } from "@/components/pulse/flow-shell";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { flowPath, resolveAppFlow } from "@/lib/pulse/flow";
-import { completeTutorial, getBootstrap, startWorkout } from "@/lib/pulse/fns";
+import { completeTutorial, getBootstrap } from "@/lib/pulse/fns";
+import { useStartWorkout } from "@/components/pulse/start-countdown";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -27,16 +28,13 @@ function TutorialFlow() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const session = useStartWorkout();
 
   useEffect(() => {
     if (!data?.profile || ready) return;
     const flow = resolveAppFlow(data.profile);
-    if (flow === "setup") {
-      void navigate({ to: "/setup" });
-      return;
-    }
-    if (flow === "app") {
-      void navigate({ to: "/" });
+    if (flow !== "tutorial") {
+      void navigate({ to: flowPath(flow) });
       return;
     }
     setReady(true);
@@ -68,8 +66,7 @@ function TutorialFlow() {
         return;
       }
       if (next === "free") {
-        const res = await startWorkout({ data: {} });
-        await navigate({ to: "/train", search: { id: res.id } });
+        session.start("Entrenamiento libre", {});
         return;
       }
       await navigate({ to: "/" });
@@ -113,6 +110,8 @@ function TutorialFlow() {
   ];
 
   return (
+    <>
+      {session.overlay}
     <FlowShell
       step={step}
       total={3}
@@ -129,7 +128,7 @@ function TutorialFlow() {
             <Button className="w-full" size="lg" disabled={busy} loading={busy} loadingText="Abriendo…" onClick={() => void finish("routine")}>
               Crear mi primera rutina
             </Button>
-            <Button className="w-full" variant="secondary" disabled={busy} onClick={() => void finish("free")}>
+            <Button className="w-full" variant="secondary" disabled={busy || session.busy} onClick={() => void finish("free")}>
               Empezar entrenamiento libre
             </Button>
             <button
@@ -146,6 +145,7 @@ function TutorialFlow() {
     >
       {screens[step]}
     </FlowShell>
+    </>
   );
 }
 

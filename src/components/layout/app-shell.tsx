@@ -50,6 +50,7 @@ function isBarePath(pathname: string) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/share") ||
     pathname.startsWith("/setup") ||
+    pathname.startsWith("/handle") ||
     pathname.startsWith("/tutorial") ||
     pathname.startsWith("/onboarding")
   );

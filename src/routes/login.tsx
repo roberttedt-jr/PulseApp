@@ -3,12 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { PulseLogo } from "@/components/pulse-logo";
+import { UsernameField, type UsernameStatus } from "@/components/pulse/username-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { persistSessionToken, readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { issueRecoveryCode, resetWithRecovery } from "@/lib/pulse/password-reset";
 import { hasSeenPublicOnboarding } from "@/lib/pulse/flow";
+import { inspectUsername } from "@/lib/pulse/social";
+import { saveSocialProfile } from "@/lib/pulse/social-fns";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -141,6 +144,9 @@ function Login() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("empty");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [recoveryCode, setRecoveryCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -148,6 +154,7 @@ function Login() {
   const submittingRef = useRef(false);
   const enteredRef = useRef(false);
   const userCancelRef = useRef(false);
+  const claimingRef = useRef(false);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const slowTimerRef = useRef<number | null>(null);
@@ -164,7 +171,7 @@ function Login() {
   }, []);
 
   useEffect(() => {
-    if (enteredRef.current) return;
+    if (enteredRef.current || claimingRef.current) return;
     if (!isPending && user && !submittingRef.current) {
       void navigate({ to: "/" });
     }
@@ -308,6 +315,31 @@ function Login() {
       }
 
       if (mode === "up") {
+        const inspected = inspectUsername(username);
+        if (inspected.code !== "ok" || usernameStatus !== "available") {
+          submittingRef.current = false;
+          const msg =
+            usernameStatus === "checking"
+              ? "Espera a que se compruebe el usuario."
+              : usernameStatus === "taken"
+                ? "Este usuario ya está en uso"
+                : inspected.message;
+          setUsernameError(msg);
+          toast.error(msg);
+          return;
+        }
+        if (claimingRef.current) {
+          try {
+            await saveSocialProfile({ data: { username: inspected.username } });
+            await enterApp(null, trimmed);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Este usuario ya está en uso";
+            setUsernameError(message);
+            setUsernameStatus("taken");
+            toast.error(message);
+          }
+          return;
+        }
         const { data, error } = await authClient.signUp.email({
           email: trimmed,
           password: pwd,
@@ -331,6 +363,16 @@ function Login() {
         if (!data?.user) {
           setFormError(CONNECT_MSG);
           toast.error(CONNECT_MSG);
+          return;
+        }
+        try {
+          await saveSocialProfile({ data: { username: inspected.username } });
+        } catch (err) {
+          claimingRef.current = true;
+          const message = err instanceof Error ? err.message : "Este usuario ya está en uso";
+          setUsernameError(message);
+          setUsernameStatus("taken");
+          toast.error(message);
           return;
         }
         await enterApp(data.token, trimmed);
@@ -406,7 +448,7 @@ function Login() {
           <div className="space-y-3">
             <p className="pb-1 text-center text-[13px] leading-relaxed text-muted-foreground">
               {mode === "up"
-                ? "Crea tu cuenta con email para guardar tus entrenamientos."
+                ? "Crea tu cuenta, elige un @usuario y guarda tus entrenamientos."
                 : mode === "forgot"
                   ? "Introduce tu email, una nueva contraseña y el código de recuperación."
                   : "Entra con el email de tu cuenta."}
@@ -436,6 +478,18 @@ function Login() {
                     disabled={busy}
                   />
                 </div>
+              )}
+              {mode === "up" && (
+                <UsernameField
+                  value={username}
+                  onChange={(v) => {
+                    setUsername(v);
+                    setUsernameError(null);
+                  }}
+                  onStatus={(s) => setUsernameStatus(s)}
+                  error={usernameError}
+                  disabled={busy}
+                />
               )}
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -519,7 +573,13 @@ function Login() {
                   </button>
                 </div>
               ) : null}
-              <Button type="submit" className="w-full" disabled={busy} loading={busy} loadingText={submitLabel}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={busy || (mode === "up" && usernameStatus !== "available")}
+                loading={busy}
+                loadingText={submitLabel}
+              >
                 {submitLabel}
               </Button>
             </form>

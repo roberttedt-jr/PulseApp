@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ExercisesRouteImport } from './routes/exercises'
 import { Route as FeedRouteImport } from './routes/feed'
+import { Route as HandleRouteImport } from './routes/handle'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -62,6 +63,11 @@ const ExercisesRoute = ExercisesRouteImport.update({
 const FeedRoute = FeedRouteImport.update({
   id: '/feed',
   path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HandleRoute = HandleRouteImport.update({
+  id: '/handle',
+  path: '/handle',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
+  '/handle': typeof HandleRoute
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByTo {
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
+  '/handle': typeof HandleRoute
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/compare': typeof CompareRouteWithChildren
   '/exercises': typeof ExercisesRouteWithChildren
   '/feed': typeof FeedRouteWithChildren
+  '/handle': typeof HandleRoute
   '/history': typeof HistoryRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -287,6 +296,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/exercises'
     | '/feed'
+    | '/handle'
     | '/history'
     | '/login'
     | '/onboarding'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/exercises'
     | '/feed'
+    | '/handle'
     | '/history'
     | '/login'
     | '/onboarding'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/exercises'
     | '/feed'
+    | '/handle'
     | '/history'
     | '/login'
     | '/onboarding'
@@ -381,6 +393,7 @@ export interface RootRouteChildren {
   CompareRoute: typeof CompareRouteWithChildren
   ExercisesRoute: typeof ExercisesRouteWithChildren
   FeedRoute: typeof FeedRouteWithChildren
+  HandleRoute: typeof HandleRoute
   HistoryRoute: typeof HistoryRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       path: '/feed'
       fullPath: '/feed'
       preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/handle': {
+      id: '/handle'
+      path: '/handle'
+      fullPath: '/handle'
+      preLoaderRoute: typeof HandleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -675,6 +695,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareRoute: CompareRouteWithChildren,
   ExercisesRoute: ExercisesRouteWithChildren,
   FeedRoute: FeedRouteWithChildren,
+  HandleRoute: HandleRoute,
   HistoryRoute: HistoryRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,

@@ -22,7 +22,6 @@ import { PlateStack } from "@/components/plate-calc";
 import { RestTimer } from "@/components/rest-timer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { WorkoutPublishForm } from "@/components/pulse/social";
@@ -306,15 +305,11 @@ function Live({ id }: { id: string }) {
       <Sheet open={plates} onOpenChange={setPlates}>
         <SheetContent className="px-4 pt-4">
           <SheetTitle className="mb-3">Discos</SheetTitle>
-          <Input
-            type="text"
-            inputMode="decimal"
-            pattern="[0-9]*[.,]?[0-9]*"
-            enterKeyHint="done"
-            autoComplete="off"
+          <NumericField
+            kind="decimal"
+            className="mb-4 h-12 rounded-2xl border border-border bg-muted px-4 text-left text-base"
             value={plateKg}
-            onChange={(e) => setPlateKg(e.target.value.replace(",", ".").replace(/[^\d.]/g, ""))}
-            className="mb-4 text-base"
+            onValueChange={setPlateKg}
             aria-label="Peso total"
           />
           <PlateStack weight={Number(plateKg) || 0} />
@@ -360,7 +355,8 @@ function ExerciseBlock({
   onPr: (name: string, orm: number) => void;
 }) {
   const qc = useQueryClient();
-  const [restSec, setRestSec] = useState(block.restSeconds);
+  const [restSec, setRestSec] = useState(String(block.restSeconds));
+  const restSeconds = Math.max(0, Number(restSec) || 0);
   const [demo, setDemo] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState(block.notes ?? "");
@@ -499,7 +495,7 @@ function ExerciseBlock({
                 const reps = s.reps || last?.reps || 0;
                 await patch(s.id, { completed: on, weight, reps });
                 if (on) {
-                  onRest(restSec);
+                  onRest(restSeconds);
                   const orm = epley1rm(weight, reps);
                   if (block.pr && orm > block.pr + 0.4) onPr(block.name, orm);
                 }
@@ -565,18 +561,21 @@ function ExerciseBlock({
             +rep
           </button>
         </HScroll>
-        <button
-          type="button"
-          className="shrink-0 text-[11px] tabular text-muted-foreground"
-          onClick={() => {
-            const cycle = [60, 90, 120, 180];
-            const i = cycle.indexOf(restSec);
-            setRestSec(cycle[(i + 1) % cycle.length]!);
-          }}
-          aria-label="Descanso entre series"
-        >
-          {formatKg(volume, units)} · {restSec}s
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="text-[11px] tabular text-muted-foreground">{formatKg(volume, units)}</span>
+          <NumericField
+            kind="int"
+            className="h-10 w-14 rounded-xl bg-muted text-xs"
+            value={restSec}
+            onValueChange={setRestSec}
+            onCommit={(n) => {
+              if (n == null) return;
+              setRestSec(String(Math.min(600, Math.max(0, Math.round(n)))));
+            }}
+            aria-label="Descanso entre series"
+          />
+          <span className="text-[11px] text-muted-foreground">s</span>
+        </div>
       </div>
 
       <Sheet open={demo} onOpenChange={setDemo}>

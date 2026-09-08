@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { flowPath, resolveAppFlow } from "@/lib/pulse/flow";
-import { getBootstrap, startWorkout } from "@/lib/pulse/fns";
+import { getBootstrap } from "@/lib/pulse/fns";
+import { useStartWorkout } from "@/components/pulse/start-countdown";
 import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } from "@/lib/pulse/formulas";
 import { formatDuration, formatKg, greetingForHour } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ function Home() {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const session = useStartWorkout();
   const { data, isPending, error } = useQuery({
     queryKey: ["bootstrap"],
     queryFn: () => getBootstrap(),
@@ -101,11 +103,16 @@ function Dashboard() {
     return { key, hit, today, label: weekdayLabels[(d.getDay() + 6) % 7]! };
   });
 
-  async function startToday() {
-    const res = await startWorkout({
-      data: { routineId: data?.today?.isRest ? undefined : data?.today?.routineId ?? undefined },
+  function startToday() {
+    if (session.busy || !data) return;
+    const title = data.activeWorkoutId
+      ? data.today?.name ?? "Entrenamiento"
+      : data.today?.isRest
+        ? "Entrenamiento libre"
+        : data.today?.name ?? "Entrenamiento libre";
+    session.start(title, {
+      routineId: data?.today?.isRest ? undefined : data?.today?.routineId ?? undefined,
     });
-    void navigate({ to: "/train", search: { id: res.id } });
   }
 
   const startLabel = data.activeWorkoutId
@@ -118,6 +125,7 @@ function Dashboard() {
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-3">
+      {session.overlay}
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[13px] font-medium tracking-wide text-foreground-tertiary uppercase">
@@ -165,7 +173,7 @@ function Dashboard() {
               ))}
             </HScroll>
           )}
-          <Button className="mt-5 w-full" size="lg" onClick={() => void startToday()}>
+          <Button className="mt-5 w-full" size="lg" disabled={session.busy} loading={session.busy} onClick={() => startToday()}>
             <Play className="fill-current" />
             {startLabel}
           </Button>

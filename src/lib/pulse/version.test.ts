@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { PULSE_TAGLINE, PULSE_VERSION, PULSE_VERSION_NAME } from "./version.ts";
 
-describe("Pulse 3.7 identity", () => {
+describe("Pulse 3.8 identity", () => {
   it("exports a single version source of truth", () => {
-    assert.equal(PULSE_VERSION, "3.7");
+    assert.equal(PULSE_VERSION, "3.8");
     assert.equal(PULSE_VERSION_NAME, "Native");
     assert.match(PULSE_TAGLINE, /Entrenamiento/);
   });

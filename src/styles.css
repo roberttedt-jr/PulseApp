@@ -68,6 +68,8 @@
   --text-body: 0.9375rem;
   --text-caption: 0.75rem;
   --text-metric: 1.75rem;
+  --text-countdown: 4.5rem;
+  --text-countdown-go: 2rem;
 
   --ease-out-ios: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
@@ -999,6 +1001,31 @@ body[data-scroll-locked] {
   padding-right: 0 !important;
 }
 
+@keyframes pulse-countdown-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--ring-len);
+  }
+}
+@keyframes pulse-countdown-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.pulse-countdown-ring {
+  animation: pulse-countdown-drain 1s linear forwards;
+}
+.pulse-countdown-num {
+  animation: pulse-countdown-pop 280ms var(--ease-out-ios) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(pulse-page),
   ::view-transition-new(pulse-page),
@@ -1008,5 +1035,9 @@ body[data-scroll-locked] {
   }
   .pulse-dialog[data-state="open"] {
     animation: pulse-fade 120ms ease both;
+  }
+  .pulse-countdown-ring,
+  .pulse-countdown-num {
+    animation: none;
   }
 }

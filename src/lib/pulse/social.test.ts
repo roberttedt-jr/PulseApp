@@ -7,6 +7,7 @@ import {
   decodeCursor,
   encodeCursor,
   formatHandle,
+  inspectUsername,
   looksLikeEmail,
   normalizeUsername,
   parseFeedKind,
@@ -28,15 +29,18 @@ describe("username", () => {
     assert.equal(formatHandle("Roberto"), "@roberto");
   });
   it("rejects empty, short, spaces, emails and reserved words", () => {
-    assert.throws(() => validateUsername(""), /vacío/);
-    assert.throws(() => validateUsername("ab"), /al menos 3/);
-    assert.throws(() => validateUsername("ro berto"), /espacios/);
-    assert.throws(() => validateUsername("ada@email.com"), /email/);
-    assert.throws(() => validateUsername("admin"), /no está disponible/);
-    assert.throws(() => validateUsername("compare"), /no está disponible/);
+    assert.equal(inspectUsername("").code, "empty");
+    assert.equal(inspectUsername("ab").message, "Elige entre 3 y 20 caracteres");
+    assert.equal(inspectUsername("ro berto").code, "format");
+    assert.equal(inspectUsername("ada@email.com").code, "format");
+    assert.equal(inspectUsername("admin").message, "Este usuario ya está en uso");
+    assert.equal(inspectUsername("compare").code, "reserved");
+    assert.equal(inspectUsername("_rob").code, "format");
+    assert.throws(() => validateUsername("ab"), /3 y 20/);
   });
   it("accepts a safe handle", () => {
     assert.equal(validateUsername("@roberto_1"), "roberto_1");
+    assert.equal(validateUsername("1lift"), "1lift");
   });
 });
 

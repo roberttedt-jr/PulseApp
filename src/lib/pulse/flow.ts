@@ -1,6 +1,6 @@
 export const PUBLIC_ONBOARDING_KEY = "pulse_public_onboarding_seen";
 
-export type AppFlow = "setup" | "tutorial" | "app";
+export type AppFlow = "handle" | "setup" | "tutorial" | "app";
 
 export function hasSeenPublicOnboarding(): boolean {
   if (typeof window === "undefined") return false;
@@ -28,15 +28,18 @@ export function clearPublicOnboardingSeen(): void {
 }
 
 export function resolveAppFlow(profile: {
+  username?: string | null;
   setupCompletedAt?: string | null;
   tutorialCompletedAt?: string | null;
 }): AppFlow {
+  if (!profile.username) return "handle";
   if (!profile.setupCompletedAt) return "setup";
   if (!profile.tutorialCompletedAt) return "tutorial";
   return "app";
 }
 
-export function flowPath(flow: AppFlow): "/setup" | "/tutorial" | "/" {
+export function flowPath(flow: AppFlow): "/handle" | "/setup" | "/tutorial" | "/" {
+  if (flow === "handle") return "/handle";
   if (flow === "setup") return "/setup";
   if (flow === "tutorial") return "/tutorial";
   return "/";

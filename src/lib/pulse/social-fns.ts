@@ -11,6 +11,7 @@ import {
   decodeCursor,
   encodeCursor,
   formatHandle,
+  inspectUsername,
   isUniqueViolation,
   normalizeUsername,
   notificationCopy,
@@ -300,7 +301,7 @@ export const saveSocialProfile = createServerFn({ method: "POST" })
         where user_id = ${context.userId}
       `;
     } catch (err) {
-      if (isUniqueViolation(err)) throw socialError(409, "Ese @usuario ya está en uso.");
+      if (isUniqueViolation(err)) throw socialError(409, "Este usuario ya está en uso");
       throw err;
     }
     const row = (await sql<AnyRow>`select * from profiles where user_id = ${context.userId}`)[0];
@@ -314,6 +315,41 @@ export const saveSocialProfile = createServerFn({ method: "POST" })
       shareVolume: bool(row?.share_volume),
       sharePrs: bool(row?.share_prs),
       image: row?.image ? String(row.image) : null,
+    };
+  });
+
+export const checkUsernameAvailable = createServerFn({ method: "GET" })
+  .validator((d: { username: string; current?: string | null }) => d)
+  .handler(async ({ data }) => {
+    const inspected = inspectUsername(data.username);
+    if (inspected.code !== "ok") {
+      return {
+        available: false,
+        username: inspected.username,
+        message: inspected.message,
+        reason: inspected.code,
+      };
+    }
+    if (data.current && inspectUsername(data.current).username === inspected.username) {
+      return {
+        available: true,
+        username: inspected.username,
+        message: `@${inspected.username} está disponible`,
+        reason: "ok" as const,
+      };
+    }
+    rateLimit("public", "username-check", 40);
+    const sql = await getSql();
+    await ready(sql);
+    const row = (
+      await sql<AnyRow>`select 1 from profiles where lower(username) = ${inspected.username} limit 1`
+    )[0];
+    const available = !row;
+    return {
+      available,
+      username: inspected.username,
+      message: available ? `@${inspected.username} está disponible` : "Este usuario ya está en uso",
+      reason: available ? ("ok" as const) : ("taken" as const),
     };
   });
 

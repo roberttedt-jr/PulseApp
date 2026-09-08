@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 
 const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
-describe("Pulse 3.7 native UX contracts", () => {
+describe("Pulse 3.8 native UX contracts", () => {
   it("opens followers and following from the athlete profile", () => {
     const profile = src("../../components/pulse/athlete-profile.tsx");
     const modal = src("../../components/social/FollowListModal.tsx");
@@ -122,7 +122,9 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(search, /pulse_search_query_field/);
     assert.match(input, /type="search"/);
     assert.match(input, /autoComplete = "one-time-code"/);
-    assert.match(numeric, /inputMode=\{kind === "int" \? "numeric" : "decimal"\}/);
+    assert.match(numeric, /autoComplete="one-time-code"/);
+    assert.match(numeric, /selectAll/);
+    assert.match(numeric, /onMouseUp/);
     assert.match(numeric, /scrollIntoView/);
     assert.match(train, /pulse_exercise_search_field/);
     assert.match(css, /scroll-padding-bottom: 240px/);
@@ -133,5 +135,35 @@ describe("Pulse 3.7 native UX contracts", () => {
     assert.match(css, /\.glass-pill/);
     assert.match(css, /rgba\(255, 45, 85, 0\.18\)/);
     assert.match(css, /pulse-logo-halo/);
+  });
+
+  it("requires a unique handle and a start countdown", () => {
+    const login = src("../../routes/login.tsx");
+    const handle = src("../../routes/handle.tsx");
+    const welcome = src("../../routes/welcome.tsx");
+    const account = src("../../routes/account.tsx");
+    const countdown = src("../../components/pulse/start-countdown.tsx");
+    const home = src("../../routes/index.tsx");
+    const social = src("./social.ts");
+    const fns = src("./social-fns.ts");
+    const flow = src("./flow.ts");
+    assert.match(login, /UsernameField/);
+    assert.match(login, /usernameStatus !== "available"/);
+    assert.match(handle, /Elige tu @usuario/);
+    assert.match(welcome, /Entrena\. Progresa\. Comparte\./);
+    assert.match(welcome, /Sigue a atletas, comparte sesiones completadas/);
+    assert.doesNotMatch(welcome, /Comunidad de atletas/);
+    assert.match(account, /data-social-profile-row/);
+    assert.match(account, /Usuario, privacidad y visibilidad/);
+    assert.match(account, /formatHandle\(p\.username\)/);
+    assert.match(countdown, /¡Vamos!/);
+    assert.match(countdown, /prefers-reduced-motion/);
+    assert.match(countdown, /Preparando tu sesión/);
+    assert.match(home, /useStartWorkout/);
+    assert.match(social, /inspectUsername/);
+    assert.match(social, /Debe empezar por letra o número/);
+    assert.match(fns, /checkUsernameAvailable/);
+    assert.match(fns, /profiles_username_lower_idx|lower\(username\)/);
+    assert.match(flow, /"handle"/);
   });
 });

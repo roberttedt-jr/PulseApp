@@ -23,7 +23,8 @@ import { TemplatePicker } from "@/components/pulse/template-picker";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { archiveRoutine, duplicateRoutine, listRoutines, shareRoutine, startWorkout } from "@/lib/pulse/fns";
+import { archiveRoutine, duplicateRoutine, listRoutines, shareRoutine } from "@/lib/pulse/fns";
+import { useStartWorkout } from "@/components/pulse/start-countdown";
 import { shareRoutineToFeed } from "@/lib/pulse/social-fns";
 import { ShareSheet } from "@/components/pulse/social";
 import type { WorkoutVisibility } from "@/lib/pulse/social";
@@ -67,14 +68,15 @@ function RoutinesList() {
   const [picker, setPicker] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
+  const session = useStartWorkout();
 
   useEffect(() => {
     if (templates) setPicker(true);
   }, [templates]);
 
-  async function start(id?: string) {
-    const res = await startWorkout({ data: { routineId: id } });
-    void navigate({ to: "/train", search: { id: res.id } });
+  function start(id?: string, title = "Entrenamiento libre") {
+    if (session.busy) return;
+    session.start(title, { routineId: id });
   }
 
   return (
@@ -87,6 +89,7 @@ function RoutinesList() {
       }
     >
       <div className="mx-auto max-w-2xl space-y-3 pt-4">
+        {session.overlay}
         <HScroll gap="gap-2">
           <Link to="/routines" className="h-8 rounded-full bg-primary px-3 text-xs font-medium leading-8 text-primary-foreground">
             Rutinas
@@ -100,8 +103,9 @@ function RoutinesList() {
         </HScroll>
         <button
           type="button"
-          onClick={() => void start()}
-          className="flex w-full items-center justify-between overflow-hidden rounded-[24px] bg-primary px-5 py-5 text-left text-primary-foreground pressable shadow-[0_10px_28px_rgb(255_45_85/0.28)]"
+          onClick={() => start()}
+          disabled={session.busy}
+          className="flex w-full items-center justify-between overflow-hidden rounded-[24px] bg-primary px-5 py-5 text-left text-primary-foreground pressable shadow-[0_10px_28px_rgb(255_45_85/0.28)] disabled:opacity-70"
         >
           <div>
             <p className="text-[11px] font-semibold tracking-[0.14em] uppercase opacity-80">Ahora</p>
@@ -145,7 +149,7 @@ function RoutinesList() {
               }
               color={r.color}
               icon={Icon}
-              onStart={() => void start(r.id)}
+              onStart={() => start(r.id, r.name)}
               menu={
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

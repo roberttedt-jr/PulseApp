@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, ChevronRight, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound } from "lucide-react";
-import { useState } from "react";
+import { Calendar, ChevronRight, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { AppleHealthRow } from "@/components/pulse/apple-health";
 import { ProfileAvatar } from "@/components/pulse/avatar-editor";
+import { UsernameField } from "@/components/pulse/username-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,14 @@ function SettingsPage() {
   const [minting, setMinting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [socialOpen, setSocialOpen] = useState(false);
   const display = p?.displayName ?? user?.displayName ?? "Atleta";
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#perfil-social") {
+      setSocialOpen(true);
+    }
+  }, []);
 
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof updateProfile>[0]["data"]) => updateProfile({ data: patch }),
@@ -74,8 +82,27 @@ function SettingsPage() {
         <div className="pulse-card p-5 text-center">
           <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
           <p className="mt-3 font-semibold">{display}</p>
+          <p className="mt-0.5 text-sm font-medium text-primary">
+            {p?.username ? formatHandle(p.username) : "Sin @usuario"}
+          </p>
           <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setSocialOpen(true)}
+          className="flex w-full items-center gap-3 glass px-4 py-3.5 text-left pressable"
+          data-social-profile-row="1"
+        >
+          <span className="grid size-10 place-items-center rounded-2xl bg-primary/12 text-primary">
+            <Users className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">Perfil social</span>
+            <span className="block text-xs text-muted-foreground">Usuario, privacidad y visibilidad</span>
+          </span>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </button>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="pulse-card p-4">
@@ -247,8 +274,6 @@ function SettingsPage() {
           />
         </section>
 
-        {p && <SocialSection profile={p} />}
-
         {p && <CompareSection profile={p} />}
 
         <section className="overflow-hidden pulse-card">
@@ -336,6 +361,13 @@ function SettingsPage() {
         </div>
       </div>
       <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />
+      <Sheet open={socialOpen} onOpenChange={setSocialOpen}>
+        <SheetContent className="px-4 pt-3 pb-8">
+          <SheetTitle>Perfil social</SheetTitle>
+          <SheetDescription>Usuario, privacidad y visibilidad</SheetDescription>
+          {p ? <SocialSection profile={p} /> : null}
+        </SheetContent>
+      </Sheet>
     </AppPage>
   );
 }
@@ -403,62 +435,70 @@ function SocialSection({ profile }: { profile: Profile }) {
   const qc = useQueryClient();
   const [username, setUsername] = useState(profile.username ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
-  const [usernameError, setUsernameError] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<"empty" | "invalid" | "checking" | "available" | "taken">(
+    profile.username ? "available" : "empty",
+  );
   const save = useMutation({
     mutationFn: (patch: Parameters<typeof saveSocialProfile>[0]["data"]) => saveSocialProfile({ data: patch }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["bootstrap"] });
       toast.success("Perfil social guardado");
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      setUsernameError(e.message);
+      toast.error(e.message);
+    },
   });
 
   function commitUsername() {
     const raw = username.trim();
-    if (!raw) {
-      setUsernameError("");
+    if (!raw || raw === profile.username) {
+      setUsernameError(null);
+      return;
+    }
+    if (usernameStatus !== "available") {
+      setUsernameError(usernameStatus === "taken" ? "Este usuario ya está en uso" : "Elige un usuario válido.");
       return;
     }
     try {
       const next = validateUsername(raw);
-      setUsernameError("");
+      setUsernameError(null);
       setUsername(next);
-      if (next !== profile.username) save.mutate({ username: next });
+      save.mutate({ username: next });
     } catch (e) {
       setUsernameError(e instanceof Error ? e.message : "Usuario no válido.");
     }
   }
 
   return (
-    <section id="perfil-social" className="space-y-3 pulse-card p-4 scroll-mt-20">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">Perfil social</p>
+    <section id="perfil-social" className="mt-4 space-y-3 scroll-mt-20">
+      <div className="flex items-center justify-end">
         {profile.username && (
           <Link to="/u/$username" params={{ username: profile.username }} className="text-xs font-medium text-primary">
             Ver perfil
           </Link>
         )}
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="social-username">@usuario</Label>
-        <Input
-          id="social-username"
-          value={username}
-          onChange={(e) => {
-            setUsername(e.target.value);
-            setUsernameError("");
-          }}
-          onBlur={commitUsername}
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="roberto"
-          maxLength={20}
-          aria-invalid={Boolean(usernameError)}
-        />
-        <p className={`text-xs ${usernameError ? "text-destructive" : "text-muted-foreground"}`}>
-          {usernameError || (profile.username ? formatHandle(profile.username) : "3–20 caracteres. Letras, números y _.")}
-        </p>
+      <UsernameField
+        value={username}
+        current={profile.username}
+        onChange={(v) => {
+          setUsername(v);
+          setUsernameError(null);
+        }}
+        onStatus={(s) => setUsernameStatus(s)}
+        error={usernameError}
+      />
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={save.isPending || usernameStatus !== "available" || username === (profile.username ?? "")}
+          onClick={commitUsername}
+        >
+          Guardar usuario
+        </Button>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="social-bio">Bio</Label>

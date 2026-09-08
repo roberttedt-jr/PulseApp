@@ -16,15 +16,17 @@ function SearchPage() {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
-    const t = window.setTimeout(() => setDebounced(q.trim()), 280);
+    const t = window.setTimeout(() => setDebounced(q.trim()), 160);
     return () => window.clearTimeout(t);
   }, [q]);
   const result = useQuery({
     queryKey: ["people-search", debounced],
     queryFn: () => searchPeople({ data: { q: debounced } }),
     enabled: debounced.length > 0,
+    placeholderData: (prev) => prev,
   });
   const people = result.data?.people ?? [];
+  const showPending = debounced && result.isPending && !result.data;
 
   return (
     <AppPage
@@ -36,25 +38,24 @@ function SearchPage() {
       }
     >
       <div className="mx-auto max-w-xl space-y-4 pt-4">
-        <div className="relative">
-          <SearchInput
-            id="pulse_search_query_field"
-            name="pulse_search_query_field"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Nombre o @usuario"
-            aria-label="Buscar personas"
-          />
-        </div>
+        <SearchInput
+          id="pulse_search_query_field"
+          name="pulse_search_query_field"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Nombre o @usuario"
+          aria-label="Buscar personas"
+          autoFocus
+        />
         {!debounced && (
           <EmptyState
             icon={Users}
             title="Encuentra a tus amigos."
-            hint="Busca por nombre visible o @usuario. Nunca por correo."
+            hint="Empieza a escribir. Las sugerencias aparecen desde la primera letra."
             className="py-8"
           />
         )}
-        {debounced && result.isPending && (
+        {showPending && (
           <div className="space-y-3" aria-busy="true">
             <Skeleton className="h-16 w-full rounded-2xl" />
             <Skeleton className="h-16 w-full rounded-2xl" />
@@ -67,17 +68,28 @@ function SearchPage() {
           <EmptyState
             icon={Search}
             title="Sin resultados."
-            hint="Prueba con otro nombre o @usuario."
+            hint="Prueba con las primeras letras del nombre o del @usuario."
             className="py-8"
           />
         )}
-        <ul className="space-y-3">
-          {people.map((p) => (
-            <li key={p.userId} className="pulse-card px-3 py-3">
-              <PersonRow person={p} action={<FollowButton person={p} onChange={() => void result.refetch()} />} />
-            </li>
-          ))}
-        </ul>
+        {people.length > 0 && (
+          <div>
+            <p className="mb-2 px-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+              Sugerencias
+            </p>
+            <ul className="space-y-2">
+              {people.map((p) => (
+                <li key={p.userId} className="pulse-card px-3 py-3">
+                  <PersonRow
+                    person={p}
+                    query={debounced}
+                    action={<FollowButton person={p} onChange={() => void result.refetch()} />}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </AppPage>
   );

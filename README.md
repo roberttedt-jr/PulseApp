@@ -1,14 +1,35 @@
-# Pulse
+# ⚡ Pulse — Fitness & Progressive Overload Tracker
 
-> **Tu ritmo. Tu progreso.**
+<div align="center">
 
-Pulse es una aplicación web y móvil de fitness de alto rendimiento orientada a la progresión muscular, el registro inteligente de entrenamientos en tiempo real y el análisis visual de métricas. Diseñada bajo una interfaz móvil con estética *dark mode* premium, combina simplicidad operativa durante la sesión con un ecosistema completo de rutinas, métricas avanzadas y comunidad social.
+### **Tu ritmo. Tu progreso.**
+
+[![React 18](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![PostgreSQL Neon](https://img.shields.io/badge/Neon_Postgres-00E599?style=for-the-badge&logo=postgresql&logoColor=black)](https://neon.tech/)
+[![Better Auth](https://img.shields.io/badge/Better_Auth-1.6-black?style=for-the-badge&logo=auth0&logoColor=white)](https://www.better-auth.com/)
+[![TanStack Router](https://img.shields.io/badge/TanStack_Router-1.170-FF4154?style=for-the-badge&logo=react-router&logoColor=white)](https://tanstack.com/router)
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-black?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
+
+[Demostración y Capturas](#-demostración-y-capturas) • [Características](#-funcionalidades-principales) • [Arquitectura Técnica](#-arquitectura-técnica) • [Instalación Local](#-instalación-y-ejecución-local) • [Estructura del Proyecto](#-estructura-del-proyecto)
+
+</div>
 
 ---
 
-## 📱 Demostración y capturas
+## 📖 Sobre Pulse
 
-### Vídeo de la aplicación
+**Pulse** es una aplicación web y móvil de fitness de alto rendimiento orientada a la **sobrecarga progresiva**, el registro inteligente de entrenamientos en tiempo real y el análisis visual de métricas corporales y de fuerza. 
+
+Diseñada bajo una interfaz móvil con estética *Dark Mode* premium, combina simplicidad y ergonomía táctil durante la sesión con un ecosistema avanzado de cálculo de 1RM, detección automática de récords personales (PRs), planificador semanal y feed social con comparador entre atletas.
+
+---
+
+## 📱 Demostración y Capturas
+
+### Vídeo de la Aplicación en Funcionamiento
 
 <div align="center">
 
@@ -18,118 +39,179 @@ https://github.com/user-attachments/assets/b489c60d-0cdb-4cd0-9261-298d53310757
 
 ---
 
-### Módulos principales de la aplicación
+### Módulos Principales de la Interfaz
 
 | Dashboard & Inicio | Feed Social & Actividad | Progreso & Récords (PRs) |
 |:---:|:---:|:---:|
 | ![Dashboard e Inicio](./IMG_8920.PNG) | ![Feed Social y Actividad](./IMG_8922.PNG) | ![Progreso y Récords](./IMG_8923.PNG) |
 
-| Entrenamiento & Rutinas | Perfil de Usuarios |
+| Entrenamiento & Rutinas | Perfil de Atleta |
 |:---:|:---:|
 | ![Entrenamiento y Rutinas](./IMG_8921.PNG) | ![Perfil de Usuario](./IMG_8924.PNG) |
 
 ---
 
-## Funcionalidades implementadas
+## ✨ Funcionalidades Principales
 
-### 1. Panel de control y Dashboard diario
-- **Smart Recommendations:** Detección de grupos musculares descansados y avisos contextuales de recuperación.
-- **Acceso rápido a sesión libre:** Inicio directo de entrenamientos sin necesidad de plantilla previa.
-- **Historial reciente:** Registro visual de la última sesión con métricas de tiempo, volumen acumulado y series.
-- **Pulse Score:** Puntuación global del estado y constancia semanal.
+### 1. Panel de Control y Dashboard Diario
+- **Smart Recommendations:** Detección contextual de grupos musculares descansados y avisos inteligentes de recuperación biológica.
+- **Sesión Rápida Libre:** Inicio de entrenamientos sin plantilla previa en un solo toque con selector dinámico de ejercicios.
+- **Pulse Score:** Algoritmo que puntúa la constancia, volumen e intensidad semanal.
+- **Historial Reciente:** Resumen visual de la última sesión con métricas de tiempo transcurrido, tonelaje total y series efectivas.
 
-### 2. Gestión de entrenamientos y rutinas
-- **Modo entrenamiento en vivo:** Registro interactivo de repeticiones, kilos y series efectivas en directo.
-- **Plantillas preconfiguradas y personalizadas:** Soporte para rutinas populares (PPL, Upper/Lower, Full Body) y creación desde cero.
-- **Planificador semanal:** Asignación de rutinas o días de descanso por cada día de la semana.
+### 2. Gestión de Entrenamientos y Rutinas
+- **Modo Entrenamiento en Vivo:** Registro interactivo de repeticiones, kilos, RPE y series efectivas con temporizador de descanso integrado.
+- **Plantillas Preconfiguradas & Custom:** Soporte nativo para rutinas populares (*Push-Pull-Legs*, *Upper-Lower*, *Full Body*, *Torso-Pierna*) y creador libre con ordenación drag-and-drop mediante `@dnd-kit`.
+- **Planificador Semanal:** Asignación visual de rutinas o días de descanso activo para cada día de la semana.
 
-### 3. Biblioteca de ejercicios y categorización
-- **Buscador interactivo:** Filtrado rápido de ejercicios por nombre.
-- **Clasificación por grupo muscular:** Pecho, espalda, hombros, bíceps, tríceps, piernas y core.
-- **Clasificación por tipo y equipamiento:** Compuesto, aislamiento, cardio, barra, mancuernas, poleas, máquinas y peso corporal.
-- **Sistema de favoritos:** Marcado de ejercicios habituales para acceso inmediato.
+### 3. Biblioteca Completa de Ejercicios
+- **Buscador Reactivo:** Búsqueda en tiempo real por nombre, grupo muscular y variantes.
+- **Clasificación por Grupo Muscular:** Pecho, espalda, hombros, bíceps, tríceps, cuádriceps, femorales, glúteos y core.
+- **Filtro por Equipamiento:** Barra olímpica, mancuernas, poleas ajustables, máquinas de placas, peso corporal y cardio.
+- **Colección de Favoritos:** Acceso prioritario a los ejercicios más utilizados por el usuario.
 
-### 4. Analítica de progreso y récords personales (PRs)
-- **Cálculo de 1RM estimado:** Estimación automática de repetición máxima en base al rendimiento de las series.
-- **Detección automática de PRs:** Registro de hitos por peso máximo alcanzado, repeticiones logradas y mayor volumen en una sesión.
-- **Resumen semanal:** Conteo de sesiones semanales (objetivo vs realizado), número total de series y tonelaje/volumen levantado.
-- **Racha activa:** Medición de días consecutivos y constancia.
+### 4. Analítica de Progreso y Récords Personales (PRs)
+- **Cálculo de 1RM Estimado:** Estimación automática en base a las fórmulas de Epley, Brzycki y Lander.
+- **Detección Automática de Hitos:** Registro inmediato de récords por peso máximo levantado, mayor repetición por carga y mayor volumen de sesión.
+- **Analítica Semanal y Racha Activa:** Gráficos de tonelaje acumulado, número de series por grupo muscular y contador de días consecutivos.
 
-### 5. Feed social y perfil de usuario
-- **Perfil público interactivo:** Métricas del atleta, recuento de entrenamientos finalizados, seguidores y seguidos.
-- **Publicación automática de sesiones:** Compartición de entrenamientos con desglose de duración, volumen y récords batidos.
-- **Comparador con amigos:** Espacio para contrastar marcas y estadísticas respetando la privacidad seleccionada por cada usuario.
-- **Interacciones:** Sistema de likes y comentarios en entrenamientos de la comunidad.
-
----
-
-## Arquitectura técnica
-
-| Capa / Servicio | Tecnología | Propósito |
-|---|---|---|
-| **Frontend** | React 18, Vite, TypeScript | SPA de alto rendimiento optimizada para pantallas táctiles y viewport móvil. |
-| **Estilos & UI** | Tailwind CSS | Sistema de diseño dark mode con paleta de acentos neón y contrastes accesibles. |
-| **Autenticación** | Better Auth | Flujo seguro de email/contraseña con cookies blindadas en servidor. |
-| **Base de datos** | Neon Postgres | Base de datos relacional *serverless* con escalado automático. |
-| **Despliegue** | Vercel | Hosting continuo y CI/CD de producción. |
+### 5. Feed Social y Perfil de Usuario
+- **Perfil de Atleta:** Métricas acumuladas, total de entrenamientos finalizados, seguidores y seguidos.
+- **Publicación Automática:** Compartición de sesiones al finalizar el entrenamiento con desglose de series y nuevos récords conseguidos.
+- **Comparador con Amigos:** Contraste de marcas y estadísticas de fuerza respetando los ajustes de privacidad seleccionados.
+- **Interacciones:** Sistema de likes y comentarios en tiempo real.
 
 ---
 
-## Seguridad y gestión de sesiones
+## 🏗️ Arquitectura Técnica
 
-Pulse delega la seguridad en Better Auth con una arquitectura *session-first*:
-
-- **Cookies HttpOnly y Secure:** Las credenciales de sesión viajan protegidas con `SameSite=Lax` y prefijo `__Host-`, evitando ataques XSS.
-- **Persistencia en servidor:** No se exponen tokens JWT de larga duración en `localStorage`.
-- **Protección contra fuerza bruta:** Rate-limiting por dirección IP en endpoints de login y registro.
-- **Manejo de errores seguro:** Mensajes diferenciados ante errores de red, correos duplicados o credenciales incorrectas sin fuga de información interna.
-
----
-
-## Instalación y ejecución local
-
-### Requisitos previos
-- Node.js 20 o superior
-- Instancia de PostgreSQL (Neon o local)
-
-### Pasos
-
-1. Clona el repositorio:
-   ```bash
-   git clone <URL_DE_TU_REPOSITORIO>
-   cd pulse
-   ```
-
-2. Instala las dependencias:
-   ```bash
-   npm install
-   ```
-
-3. Crea un archivo `.env.local` en la raíz del proyecto:
-   ```env
-   DATABASE_URL=postgresql://usuario:password@endpoint.neon.tech/pulse?sslmode=require
-   BETTER_AUTH_SECRET=un_secreto_seguro_y_aleatorio
-   BETTER_AUTH_URL=http://localhost:5173
-   ```
-
-4. Ejecuta el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Pulse Frontend                       │
+│    React 18 + Vite + TypeScript + Tailwind CSS v4       │
+│    • TanStack Router (Navegación tipo App Nativa)       │
+│    • TanStack Query (Caché y sincronización reactiva)   │
+│    • Radix UI Primitives + Lucide Icons + dnd-kit       │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            │  HTTPS / JSON API
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Capa de Seguridad & API                 │
+│    Better Auth (Session-first, Cookies HttpOnly Secure) │
+│    • Rate Limiting por IP contra fuerza bruta           │
+│    • Sin exposición de JWTs en localStorage             │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            │  PostgreSQL Connection Pool
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Almacenamiento & BD                   │
+│    • Neon PostgreSQL (Base de datos relacional Cloud)   │
+│    • PGlite (ElectricSQL para persistencia en cliente)  │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Despliegue en producción
+## 🔒 Seguridad y Gestión de Sesiones
 
-La aplicación está lista para desplegarse en **Vercel** enlazada a **Neon Postgres**:
+Pulse delega la seguridad en **Better Auth** implementando una arquitectura *session-first*:
 
-1. Vincula tu repositorio de GitHub en Vercel.
-2. Añade las variables de entorno (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`) en la configuración de Vercel.
-3. Ejecuta las migraciones de esquema en tu base de datos de Neon.
-4. Completa el despliegue automático.
+- **Cookies HttpOnly y Secure:** Las credenciales y tokens de sesión viajan protegidas con directivas `SameSite=Lax` y prefijo `__Host-`, neutralizando vectores de ataque XSS y robo de tokens.
+- **Sin JWTs en LocalStorage:** Toda validación se resuelve contra el servidor de sesión o réplica autorizada.
+- **Rate-Limiting Robusto:** Mitigación activa contra ataques de fuerza bruta en endpoints de autenticación y registro.
+- **Sanitización de Datos:** Prevención de fugas de información interna en respuestas de error de base de datos.
 
 ---
 
-## Autor
+## 📁 Estructura del Proyecto
 
-Desarrollado por **Roberto**.
+```text
+pulse/
+├── migrations/               # Scripts de migración SQL para PostgreSQL
+├── public/                   # Activos estáticos, manifest y fuentes
+├── scripts/                  # Scripts de utilidades, entorno y migración de BD
+├── server/                   # Lógica de servidor y endpoints Better Auth
+├── src/
+│   ├── components/           # Componentes UI (modales, selector de ejercicios, tarjetas)
+│   ├── hooks/                # Hooks personalizados de React (entrenamientos, temporizador)
+│   ├── lib/
+│   │   ├── auth/             # Configuración y guardas de autenticación
+│   │   ├── pulse/            # Fórmulas de 1RM, PRs, métricas y HealthKit
+│   │   └── db/               # Conexión con PostgreSQL / PGlite
+│   ├── routes/               # Rutas de la aplicación (TanStack Router)
+│   └── styles/               # Tokens de diseño y utilidades de Tailwind CSS
+├── vite.config.ts            # Configuración de Vite y plugins de TanStack
+├── tsconfig.json             # Configuración de TypeScript
+└── package.json              # Dependencias y scripts de ejecución
+```
+
+---
+
+## 🚀 Instalación y Ejecución Local
+
+### 1. Prerrequisitos
+- [Node.js](https://nodejs.org/) v20 o superior.
+- Instancia de PostgreSQL (recomendado: [Neon](https://neon.tech/) o PostgreSQL local).
+
+### 2. Clonar el Repositorio
+```bash
+git clone https://github.com/roberttedt-jr/pulse.git
+cd pulse
+```
+
+### 3. Instalar Dependencias
+```bash
+npm install
+```
+
+### 4. Configurar Variables de Entorno
+Crea un archivo `.env.local` en la raíz del proyecto:
+
+```env
+DATABASE_URL="postgresql://usuario:password@ep-ejemplo.neon.tech/pulse?sslmode=require"
+BETTER_AUTH_SECRET="genera_una_clave_secreta_segura_de_32_caracteres"
+BETTER_AUTH_URL="http://localhost:8080"
+```
+
+### 5. Ejecutar Migraciones de Base de Datos
+```bash
+npm run db:migrate
+```
+
+### 6. Iniciar Servidor de Desarrollo
+```bash
+npm run dev
+```
+Accede a [http://localhost:8080](http://localhost:8080) en tu navegador.
+
+### 7. Comprobación de Tipos y Tests
+```bash
+# Validar tipado TypeScript
+npm run typecheck
+
+# Ejecutar suite de pruebas unitarias
+npm test
+
+# Compilar para producción
+npm run build
+```
+
+---
+
+## 🌐 Despliegue en Producción
+
+Pulse está diseñado para desplegarse de forma continua en [Vercel](https://vercel.com/) con base de datos en [Neon](https://neon.tech/):
+
+1. Conecta el repositorio de GitHub en el panel de Vercel.
+2. Configura las variables de entorno (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`).
+3. Vercel ejecutará automáticamente la compilación (`npm run build`) y el despliegue a la red Edge global.
+
+---
+
+## 📜 Licencia y Autor
+
+© 2026 **Pulse**. Desarrollado y mantenido por [Roberto Tedt](https://github.com/roberttedt-jr).
+
+Distribuido bajo la licencia [MIT](LICENSE).

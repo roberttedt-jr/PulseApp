@@ -152,6 +152,71 @@ export function sanitizeSearchQuery(raw: string): string {
   return q.replace(/^@+/, "").trim();
 }
 
+export function foldSearchText(raw: string): string {
+  return raw.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+}
+
+export type SearchMatchKind =
+  | "exact_username"
+  | "username_prefix"
+  | "name_prefix"
+  | "username_contains"
+  | "name_contains"
+  | "none";
+
+export function rankPersonSearch(
+  query: string,
+  person: { username?: string | null; displayName?: string | null; name?: string | null },
+): { rank: number; kind: SearchMatchKind } {
+  const q = foldSearchText(query.replace(/^@+/, ""));
+  if (!q) return { rank: 99, kind: "none" };
+  const username = foldSearchText(person.username ?? "");
+  const name = foldSearchText(person.displayName ?? person.name ?? "");
+  const tokens = name.split(/[\s._-]+/).filter(Boolean);
+  if (username && username === q) return { rank: 0, kind: "exact_username" };
+  if (username && username.startsWith(q)) return { rank: 1, kind: "username_prefix" };
+  if (name.startsWith(q) || tokens.some((t) => t.startsWith(q))) return { rank: 2, kind: "name_prefix" };
+  if (username.includes(q)) return { rank: 3, kind: "username_contains" };
+  if (name.includes(q)) return { rank: 4, kind: "name_contains" };
+  return { rank: 99, kind: "none" };
+}
+
+export function personMatchesSearch(
+  query: string,
+  person: { username?: string | null; displayName?: string | null; name?: string | null },
+): boolean {
+  const q = foldSearchText(query.replace(/^@+/, ""));
+  const { kind } = rankPersonSearch(q, person);
+  if (kind === "none") return false;
+  if (q.length < 2 && (kind === "username_contains" || kind === "name_contains")) return false;
+  return true;
+}
+
+export function splitSearchHighlight(
+  text: string,
+  query: string,
+): { before: string; hit: string; rest: string } | null {
+  const raw = text ?? "";
+  const q = foldSearchText(query.replace(/^@+/, ""));
+  if (!raw || !q) return null;
+  const folded = foldSearchText(raw);
+  let start = folded.startsWith(q) ? 0 : -1;
+  if (start < 0) {
+    const tokens = raw.split(/(\s+)/);
+    let offset = 0;
+    for (const token of tokens) {
+      if (foldSearchText(token).startsWith(q)) {
+        start = offset;
+        break;
+      }
+      offset += token.length;
+    }
+  }
+  if (start < 0) return null;
+  const hit = raw.slice(start, start + q.length);
+  return { before: raw.slice(0, start), hit, rest: raw.slice(start + hit.length) };
+}
+
 export function sanitizeSocialText(raw: string, max: number): string {
   let t = String(raw ?? "");
   t = t.replace(/<[^>]*>/g, "");

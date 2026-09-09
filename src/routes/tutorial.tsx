@@ -103,9 +103,13 @@ function TutorialFlow() {
     <div key="log" className="space-y-5">
       <h1 className="text-[clamp(1.6rem,7vw,2rem)] leading-tight font-semibold tracking-tight">Todo queda registrado</h1>
       <p className="text-[15px] leading-relaxed text-muted-foreground">
-        Consulta tus entrenamientos y mejora sesión a sesión.
+        Consulta el historial y mejora sesión a sesión.
       </p>
-      <TabPreview highlight="Inicio" />
+      <div className="pulse-card px-4 py-3">
+        <p className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Historial</p>
+        <p className="mt-2 text-sm font-medium">Cada sesión queda guardada</p>
+        <p className="text-xs text-muted-foreground">Duración, series y volumen reales</p>
+      </div>
     </div>,
   ];
 

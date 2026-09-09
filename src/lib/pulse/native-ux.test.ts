@@ -78,6 +78,13 @@ describe("Pulse 3.8 native UX contracts", () => {
     const pager = src("../../components/pulse/swipe-pager.tsx");
     assert.match(welcome, /pages=\{screens\}/);
     assert.match(welcome, /onStepChange=\{setStep\}/);
+    assert.match(welcome, /total=\{3\}/);
+    assert.match(welcome, /Registra tus entrenamientos y sigue tu progreso/);
+    assert.match(welcome, /Crear cuenta/);
+    assert.match(welcome, /Ya tengo cuenta/);
+    assert.doesNotMatch(welcome, /total=\{4\}/);
+    assert.doesNotMatch(welcome, /siente cada descanso/);
+    assert.doesNotMatch(welcome, /Entrena\. Progresa\. Comparte/);
     assert.match(tutorial, /pages=\{screens\}/);
     assert.match(shell, /SwipePager/);
     assert.match(shell, /PagerDots/);
@@ -150,8 +157,10 @@ describe("Pulse 3.8 native UX contracts", () => {
     assert.match(login, /UsernameField/);
     assert.match(login, /usernameStatus !== "available"/);
     assert.match(handle, /Elige tu @usuario/);
-    assert.match(welcome, /Entrena\. Progresa\. Comparte\./);
-    assert.match(welcome, /Sigue a atletas, comparte sesiones completadas/);
+    assert.match(welcome, /El ritmo de tu fuerza/);
+    assert.match(welcome, /Haz visible tu progreso/);
+    assert.match(welcome, /Crear cuenta/);
+    assert.doesNotMatch(welcome, /Entrena\. Progresa\. Comparte/);
     assert.doesNotMatch(welcome, /Comunidad de atletas/);
     assert.match(account, /data-social-profile-row/);
     assert.match(account, /Usuario, privacidad y visibilidad/);
@@ -164,6 +173,7 @@ describe("Pulse 3.8 native UX contracts", () => {
     assert.match(social, /Debe empezar por letra o número/);
     assert.match(fns, /checkUsernameAvailable/);
     assert.match(fns, /profiles_username_lower_idx|lower\(username\)/);
+    assert.match(fns, /insert into profiles/);
     assert.match(flow, /"handle"/);
   });
 });

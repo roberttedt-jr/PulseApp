@@ -44,7 +44,7 @@ function WelcomePage() {
         El ritmo de tu fuerza.
       </h1>
       <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-        Registra tus entrenamientos y siente cada descanso.
+        Registra tus entrenamientos y sigue tu progreso.
       </p>
     </div>,
     <div key="train" className="flex flex-1 flex-col">
@@ -52,7 +52,7 @@ function WelcomePage() {
         Todo tu entrenamiento, en un sitio.
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Crea rutinas, series, peso y repeticiones en tiempo real.
+        Crea rutinas, registra series, peso y repeticiones.
       </p>
       <div className="mt-8 pulse-card p-4">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">Press de banca</p>
@@ -70,32 +70,12 @@ function WelcomePage() {
         ))}
       </div>
     </div>,
-    <div key="community" className="flex flex-1 flex-col">
-      <h1 className="text-[clamp(1.7rem,7vw,2.1rem)] leading-tight font-semibold tracking-tight">
-        Entrena. Progresa. Comparte.
-      </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Sigue a atletas, comparte sesiones completadas y descubre el progreso real de tu círculo.
-      </p>
-      <div className="mt-8 space-y-3">
-        <div className="pulse-card px-4 py-3">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Sigue</p>
-          <p className="mt-2 text-sm font-medium">Encuentra perfiles y síguelos</p>
-          <p className="text-xs text-muted-foreground">Tu círculo, no un muro infinito</p>
-        </div>
-        <div className="pulse-card px-4 py-3">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase">Comparte</p>
-          <p className="mt-2 text-sm font-medium">Las sesiones completadas pueden publicarse</p>
-          <p className="text-xs text-muted-foreground">Tú eliges si el perfil es público o privado</p>
-        </div>
-      </div>
-    </div>,
     <div key="progress" className="flex flex-1 flex-col">
       <h1 className="text-[clamp(1.7rem,7vw,2.1rem)] leading-tight font-semibold tracking-tight">
         Haz visible tu progreso.
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-        Historial completo, récords personales (PRs) y balance muscular.
+        Historial completo, récords personales y balance muscular.
       </p>
       <div className="mt-8 space-y-3">
         <div className="pulse-card px-4 py-3">
@@ -114,21 +94,21 @@ function WelcomePage() {
   return (
     <FlowShell
       step={step}
-      total={4}
+      total={3}
       pages={screens}
       onStepChange={setStep}
-      onSkip={() => finish("in")}
-      onBack={() => setStep((s) => Math.max(0, s - 1))}
+      onSkip={step < 2 ? () => setStep(2) : undefined}
+      onBack={step > 0 ? () => setStep((s) => Math.max(0, s - 1)) : undefined}
       footer={
-        step < 3 ? (
+        step < 2 ? (
           <FlowActions primary={() => setStep(step + 1)} primaryLabel={step === 0 ? "Continuar" : "Siguiente"} />
         ) : (
           <>
             <Button className="w-full" size="lg" onClick={() => finish("up")}>
-              Empezar
+              Crear cuenta
             </Button>
             <Button className="w-full" variant="secondary" onClick={() => finish("in")}>
-              Ya tengo una cuenta
+              Ya tengo cuenta
             </Button>
           </>
         )

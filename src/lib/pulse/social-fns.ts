@@ -288,6 +288,10 @@ export const saveSocialProfile = createServerFn({ method: "POST" })
     const workoutVis = data.defaultWorkoutVisibility ? parseWorkoutVisibility(data.defaultWorkoutVisibility) : null;
     try {
       await sql`
+        insert into profiles (user_id) values (${context.userId})
+        on conflict (user_id) do nothing
+      `;
+      await sql`
         update profiles set
           display_name = coalesce(${displayName}, display_name),
           username = coalesce(${username}, username),
@@ -305,6 +309,9 @@ export const saveSocialProfile = createServerFn({ method: "POST" })
       throw err;
     }
     const row = (await sql<AnyRow>`select * from profiles where user_id = ${context.userId}`)[0];
+    if (username && String(row?.username || "").toLowerCase() !== username) {
+      throw socialError(422, "No se pudo guardar el usuario");
+    }
     return {
       username: row?.username ? String(row.username) : null,
       handle: formatHandle(row?.username),
@@ -338,7 +345,7 @@ export const checkUsernameAvailable = createServerFn({ method: "GET" })
         reason: "ok" as const,
       };
     }
-    rateLimit("public", "username-check", 40);
+    rateLimit("public", "username-check", 200);
     const sql = await getSql();
     await ready(sql);
     const row = (

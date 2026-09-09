@@ -94,7 +94,7 @@ export function SwipePager({
       const t = e.touches[0];
       if (!t) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [data-no-swipe]")) return;
+      if (target?.closest("input, textarea, select, button, a, [role='radio'], [role='button'], [data-no-swipe]")) return;
       const st = dragRef.current;
       st.active = true;
       st.startX = t.clientX;
@@ -140,7 +140,7 @@ export function SwipePager({
     function onPointerDown(e: PointerEvent) {
       if (e.pointerType === "touch") return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [data-no-swipe]")) return;
+      if (target?.closest("input, textarea, select, button, a, [role='radio'], [role='button'], [data-no-swipe]")) return;
       const st = dragRef.current;
       st.active = true;
       st.startX = e.clientX;

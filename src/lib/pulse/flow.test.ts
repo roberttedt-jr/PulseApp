@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { flowPath, resolveAppFlow } from "./flow.ts";
 
@@ -46,5 +47,20 @@ describe("flowPath", () => {
     assert.equal(flowPath("setup"), "/setup");
     assert.equal(flowPath("tutorial"), "/tutorial");
     assert.equal(flowPath("app"), "/");
+  });
+});
+
+describe("public onboarding copy", () => {
+  it("keeps the welcome carousel to three screens and exact CTAs", () => {
+    const welcome = readFileSync(new URL("../../routes/welcome.tsx", import.meta.url), "utf8");
+    assert.match(welcome, /total=\{3\}/);
+    assert.match(welcome, /El ritmo de tu fuerza/);
+    assert.match(welcome, /Registra tus entrenamientos y sigue tu progreso/);
+    assert.match(welcome, /Todo tu entrenamiento, en un sitio/);
+    assert.match(welcome, /Haz visible tu progreso/);
+    assert.match(welcome, /Crear cuenta/);
+    assert.match(welcome, /Ya tengo cuenta/);
+    assert.doesNotMatch(welcome, /total=\{4\}/);
+    assert.doesNotMatch(welcome, /siente cada descanso/);
   });
 });

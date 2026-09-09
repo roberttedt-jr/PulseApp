@@ -139,7 +139,7 @@ function Login() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const [mode, setMode] = useState<Mode>(search.mode === "in" ? "in" : "up");
+  const [mode, setMode] = useState<Mode>(search.mode === "up" ? "up" : "in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -169,6 +169,10 @@ function Login() {
       if (hangTimerRef.current) window.clearTimeout(hangTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (search.mode === "in" || search.mode === "up") setMode(search.mode);
+  }, [search.mode]);
 
   useEffect(() => {
     if (enteredRef.current || claimingRef.current) return;
@@ -252,13 +256,21 @@ function Login() {
     // Password managers (especially iOS) often fill the DOM without React
     // onChange, and sometimes omit the value from FormData. Prefer the live
     // input value so signup and login submit the same characters.
-    const trimmed = String(
-      emailRef.current?.value || fd.get("email") || email || "",
-    )
-      .trim()
-      .toLowerCase();
-    const pwd = String(passwordRef.current?.value || fd.get("password") || password || "");
-    const confirmPwd = String(confirmRef.current?.value || confirm || "");
+    const liveEmail =
+      emailRef.current?.value ||
+      (typeof document !== "undefined" ? (document.getElementById("email") as HTMLInputElement | null)?.value : "") ||
+      String(fd.get("email") || email || "");
+    const trimmed = String(liveEmail).trim().toLowerCase();
+    const livePwd =
+      passwordRef.current?.value ||
+      (typeof document !== "undefined" ? (document.getElementById("password") as HTMLInputElement | null)?.value : "") ||
+      String(fd.get("password") || password || "");
+    const pwd = String(livePwd);
+    const liveConfirm =
+      confirmRef.current?.value ||
+      (typeof document !== "undefined" ? (document.getElementById("confirm") as HTMLInputElement | null)?.value : "") ||
+      confirm;
+    const confirmPwd = String(liveConfirm);
     const displayName = String(fd.get("name") || name).trim() || trimmed.split("@")[0] || "Atleta";
     setEmail(trimmed);
     setPassword(pwd);
@@ -520,7 +532,8 @@ function Login() {
                   type="password"
                   required
                   minLength={8}
-                  defaultValue=""
+                  value={password}
+                  onChange={(ev) => setPassword(ev.target.value)}
                   onInput={(ev) => setPassword(ev.currentTarget.value)}
                   placeholder="Mínimo 8 caracteres"
                   autoComplete={mode === "in" ? "current-password" : "new-password"}
@@ -537,7 +550,8 @@ function Login() {
                     type="password"
                     required
                     minLength={8}
-                    defaultValue=""
+                    value={confirm}
+                    onChange={(ev) => setConfirm(ev.target.value)}
                     onInput={(ev) => setConfirm(ev.currentTarget.value)}
                     placeholder="Confirma la contraseña"
                     autoComplete="new-password"

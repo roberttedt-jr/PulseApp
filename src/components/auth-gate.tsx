@@ -19,7 +19,8 @@ export function ScreenSkeleton() {
 
 export function PublicEntryRedirect() {
   const seen = typeof window !== "undefined" && hasSeenPublicOnboarding();
-  return <Navigate to={seen ? "/login" : "/welcome"} />;
+  if (seen) return <Navigate to="/login" search={{ mode: "in" }} />;
+  return <Navigate to="/welcome" />;
 }
 
 export function AppPage({

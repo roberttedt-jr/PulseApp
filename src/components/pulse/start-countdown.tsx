@@ -16,7 +16,7 @@ function haptic() {
   try {
     navigator.vibrate?.(12);
   } catch {
-    /* unsupported */
+    /* no soportado */
   }
 }
 
@@ -47,7 +47,7 @@ export function StartCountdown({
       .then((res) => {
         if (!alive) return;
         sessionId.current = res.id;
-        // Prefetch workout session during countdown so transition into /train is instant
+        // Precargar la sesión de entrenamiento durante la cuenta atrás para que la transición a /train sea instantánea
         void qc.prefetchQuery({
           queryKey: ["workout", res.id],
           queryFn: () => getWorkout({ data: { id: res.id } }),

@@ -13,7 +13,7 @@ export interface PullToRefreshProps {
 
 const DEFAULT_THRESHOLD = 64;
 const DEFAULT_MAX_PULL = 96;
-const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 9; // radius = 9, circumference ≈ 56.55
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 9; // radio = 9, circunferencia ≈ 56.55
 
 export function PullToRefresh({
   onRefresh,
@@ -49,7 +49,7 @@ export function PullToRefresh({
       setIsSuccess(true);
       await new Promise((resolve) => setTimeout(resolve, 250));
     } catch {
-      // Refresh error handled gracefully
+      // Error de refresco gestionado de forma silenciosa
     } finally {
       setIsSuccess(false);
       setIsRefreshing(false);
@@ -58,7 +58,7 @@ export function PullToRefresh({
     }
   }, [onRefresh, threshold]);
 
-  // Touch event handling with passive: false for preventDefault
+  // Manejo de eventos táctiles con passive: false para preventDefault
   useEffect(() => {
     const el = containerRef.current;
     if (!el || disabled) return;
@@ -83,7 +83,7 @@ export function PullToRefresh({
       const deltaY = currentY - startYRef.current;
       const deltaX = Math.abs(currentX - startXRef.current);
 
-      // If user scrolls horizontally more than vertically, abort pull-to-refresh
+      // Si el usuario desliza en horizontal más que en vertical, cancelar pull-to-refresh
       if (deltaX > deltaY && deltaY < 15) {
         canPullRef.current = false;
         return;
@@ -94,7 +94,7 @@ export function PullToRefresh({
         if (e.cancelable) {
           e.preventDefault();
         }
-        // Rubber-band resistance: linear dampening capped at maxPull
+        // Resistencia de rebote: amortiguación lineal limitada a maxPull
         const pull = Math.min(maxPull, deltaY * 0.44);
         pullDistanceRef.current = pull;
         setPullDistance(pull);
@@ -137,7 +137,7 @@ export function PullToRefresh({
     };
   }, [disabled, handleRefresh, maxPull, threshold]);
 
-  // Desktop mouse drag simulation for testing / browser use
+  // Simulación con ratón en escritorio para pruebas y navegador
   const isMouseDownRef = useRef(false);
   const handleMouseDown = (e: React.MouseEvent) => {
     if (disabled || isRefreshingRef.current) return;
@@ -180,13 +180,12 @@ export function PullToRefresh({
     }
   };
 
-  // Visual calculation
+  // Cálculo visual de progreso y transformaciones
   const progress = Math.min(1, Math.max(0, pullDistance / threshold));
   const strokeOffset = CIRCLE_CIRCUMFERENCE * (1 - progress * 0.85);
   const rotation = progress * 270;
 
-  // Indicator vertical positioning:
-  // Hidden above screen when pullDistance is 0, slides down into view during pull
+  // Posición vertical del indicador: oculto arriba al inicio, desciende al tirar
   const indicatorY = isRefreshing
     ? 44
     : pullDistance > 0
@@ -207,7 +206,7 @@ export function PullToRefresh({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Instagram-style floating circular activity indicator (ruedita) */}
+      {/* Indicador circular de actividad estilo Instagram */}
       <div
         data-pull-to-refresh-indicator="1"
         aria-hidden={pullDistance === 0 && !isRefreshing}
@@ -245,7 +244,7 @@ export function PullToRefresh({
             viewBox="0 0 24 24"
             fill="none"
           >
-            {/* Background track circle */}
+            {/* Círculo base de fondo */}
             <circle
               cx="12"
               cy="12"
@@ -254,7 +253,7 @@ export function PullToRefresh({
               strokeWidth="2.5"
               className="text-white/15"
             />
-            {/* Dynamic winding progress arc */}
+            {/* Arco de progreso dinámico */}
             <circle
               cx="12"
               cy="12"
@@ -270,7 +269,7 @@ export function PullToRefresh({
         )}
       </div>
 
-      {/* Content wrapper with gentle elastic push */}
+      {/* Contenedor de contenido con desplazamiento elástico */}
       <div
         data-pull-to-refresh-content="1"
         style={{

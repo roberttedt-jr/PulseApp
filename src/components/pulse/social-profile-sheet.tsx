@@ -26,7 +26,7 @@ export interface SocialProfileSheetProps {
 export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: SocialProfileSheetProps) {
   const qc = useQueryClient();
 
-  // Local form state
+  // Estado local del formulario
   const [username, setUsername] = useState(profile.username ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>(profile.profileVisibility ?? "private");
@@ -36,18 +36,17 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
   const [shareVolume, setShareVolume] = useState<boolean>(Boolean(profile.shareVolume));
   const [sharePrs, setSharePrs] = useState<boolean>(Boolean(profile.sharePrs));
 
-  // Username validation & availability state
+  // Estado de validación y disponibilidad del nombre de usuario
   const [usernameStatus, setUsernameStatus] = useState<"empty" | "invalid" | "checking" | "available" | "taken">("empty");
   const [usernameHint, setUsernameHint] = useState("");
   const req = useRef(0);
 
-  // Discard confirmation state
+  // Diálogo de confirmación para descartar cambios
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
-  // Virtual keyboard height tracking for mobile Safari/WebKit:
-  // When keyboard opens, visualViewport shrinks. We add paddingBottom to Drawer.Content
-  // so that the sheet remains firmly anchored to bottom: 0 (preventing background bleed),
-  // the scrollable area adapts, and the floating save bar stays accessible right above the keyboard.
+  // Control de altura del teclado virtual para WebKit/Safari móvil:
+  // Al abrirse el teclado, visualViewport se reduce. Añadimos paddingBottom a Drawer.Content
+  // para anclar el sheet al fondo (evitando sangrado visual) y mantener visible la barra de guardado.
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
     };
   }, [open]);
 
-  // Sync form state when sheet opens or profile changes
+  // Sincronizar estado al abrir el sheet o cambiar el perfil
   useEffect(() => {
     if (open) {
       const initialUsername = profile.username ?? "";
@@ -94,7 +93,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
     }
   }, [open, profile]);
 
-  // Username availability check
+  // Comprobación de disponibilidad del nombre de usuario
   useEffect(() => {
     const trimmed = username.trim();
     if (!trimmed) {
@@ -142,7 +141,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
     return () => window.clearTimeout(timer);
   }, [username, profile.username]);
 
-  // Calculate isDirty
+  // Comprobar si hay cambios pendientes
   const isDirty =
     username !== (profile.username ?? "") ||
     bio !== (profile.bio ?? "") ||
@@ -151,7 +150,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
     shareVolume !== Boolean(profile.shareVolume) ||
     sharePrs !== Boolean(profile.sharePrs);
 
-  // Close handlers
+  // Controladores de cierre
   const safeClose = () => {
     onOpenChange(false);
     setTimeout(() => {
@@ -178,7 +177,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
     safeClose();
   };
 
-  // Save mutation
+  // Mutación de guardado
   const saveMutation = useMutation({
     mutationFn: (patch: Parameters<typeof saveSocialProfile>[0]["data"]) => saveSocialProfile({ data: patch }),
     onSuccess: () => {
@@ -246,10 +245,10 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
             }}
             className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border-t border-border/40 bg-card text-card-foreground shadow-float outline-none sm:rounded-3xl sm:max-h-[85vh]"
           >
-            {/* iOS Top Drag Handle */}
+            {/* Tirador superior estilo iOS */}
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-2.5 mb-1.5 shrink-0" />
 
-            {/* Sticky Header with Blur */}
+            {/* Cabecera fija con desenfoque */}
             <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border/40 bg-card/90 px-5 pt-2 pb-3.5 backdrop-blur-md">
               <div className="min-w-0 flex-1 pr-2">
                 <Drawer.Title className="text-lg font-semibold tracking-tight text-foreground">
@@ -269,7 +268,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
               </button>
             </div>
 
-            {/* Scrollable Body: 6 Structured Sections */}
+            {/* Cuerpo desplazable: 6 secciones estructuradas */}
             <div
               data-social-profile-body="1"
               className="no-scrollbar min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-5 pb-28"
@@ -448,7 +447,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
               ) : null}
             </div>
 
-            {/* Floating Sticky Save Bar (only rendered when isDirty === true) */}
+            {/* Barra fija inferior para guardar (solo visible si isDirty) */}
             {isDirty ? (
               <div
                 data-social-save-bar="1"
@@ -476,7 +475,7 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
         </Drawer.Portal>
       </Drawer.Root>
 
-      {/* Discard Confirmation Dialog */}
+      {/* Diálogo para confirmar descarte */}
       <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
         <DialogContent className="max-w-sm p-5">
           <DialogTitle className="text-base font-semibold">¿Descartar cambios?</DialogTitle>

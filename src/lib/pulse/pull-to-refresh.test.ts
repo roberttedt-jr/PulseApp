@@ -67,4 +67,15 @@ describe("Instagram-style PullToRefresh contracts", () => {
     assert.match(feedPage, /<\/PullToRefresh>/);
     assert.match(feedPage, /activity-feed/);
   });
+
+  it("integrates PullToRefresh into Own Profile (/settings)", () => {
+    const settingsPage = src("../../routes/settings.tsx");
+
+    assert.match(settingsPage, /import \{ PullToRefresh \} from "@\/components\/ui\/pull-to-refresh"/);
+    assert.match(settingsPage, /<PullToRefresh/);
+    assert.match(settingsPage, /<\/PullToRefresh>/);
+    assert.match(settingsPage, /social-profile/);
+    assert.match(settingsPage, /refetch\(\)/);
+  });
 });
+

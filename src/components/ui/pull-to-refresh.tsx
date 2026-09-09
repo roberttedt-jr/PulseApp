@@ -201,7 +201,7 @@ export function PullToRefresh({
     <div
       ref={containerRef}
       data-pull-to-refresh="1"
-      className={cn("relative min-h-0 w-full overscroll-y-contain", className)}
+      className={cn("relative min-h-[calc(100dvh-8rem)] w-full overscroll-y-contain", className)}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -278,7 +278,7 @@ export function PullToRefresh({
           transition: isPulling ? "none" : "transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)",
           willChange: isPulling || isRefreshing ? "transform" : "auto",
         }}
-        className="w-full"
+        className="w-full min-h-full"
       >
         {children}
       </div>

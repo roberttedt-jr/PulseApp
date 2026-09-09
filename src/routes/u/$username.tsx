@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserRound } from "lucide-react";
+import { ChevronLeft, UserRound } from "lucide-react";
 import { AppPage } from "@/components/auth-gate";
 import { AthleteProfile } from "@/components/pulse/athlete-profile";
 import { EmptyState } from "@/components/pulse/empty-state";
@@ -60,7 +60,26 @@ function SocialProfilePage() {
   });
 
   return (
-    <AppPage title={data?.handle || "Perfil"}>
+    <AppPage
+      title="Perfil"
+      action={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary pressable py-1 px-1.5"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              window.history.back();
+            } else {
+              void navigate({ to: "/feed" });
+            }
+          }}
+          aria-label="Volver"
+        >
+          <ChevronLeft className="size-4 -ml-1" />
+          Atrás
+        </button>
+      }
+    >
       {isPending && (
         <div className="mx-auto max-w-xl space-y-3 pt-4" aria-busy="true">
           <Skeleton className="h-40 w-full rounded-[22px]" />

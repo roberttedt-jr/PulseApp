@@ -358,6 +358,23 @@ function SettingsPage() {
             Diseñada por <span className="font-medium text-foreground">Roberto</span>
           </p>
           <p className="mt-3 text-xs text-muted-foreground">Copyright © {new Date().getFullYear()} Pulse.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 border-t border-border/40 pt-3 text-[11px] text-muted-foreground">
+            <Link to="/legal/$doc" params={{ doc: "terms" }} className="hover:text-primary transition-colors">
+              Términos y condiciones
+            </Link>
+            <span aria-hidden>·</span>
+            <Link to="/legal/$doc" params={{ doc: "privacy" }} className="hover:text-primary transition-colors">
+              Política de privacidad
+            </Link>
+            <span aria-hidden>·</span>
+            <Link to="/legal/$doc" params={{ doc: "cookies" }} className="hover:text-primary transition-colors">
+              Cookies
+            </Link>
+            <span aria-hidden>·</span>
+            <Link to="/legal/$doc" params={{ doc: "comunidad" }} className="hover:text-primary transition-colors">
+              Normas de la comunidad
+            </Link>
+          </div>
         </div>
       </div>
       <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />

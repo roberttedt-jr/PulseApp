@@ -145,7 +145,41 @@ function Live({ id }: { id: string }) {
     },
   });
 
-  if (!data) return <p className="pt-8 text-sm text-muted-foreground">Cargando sesión…</p>;
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-lg min-w-0 space-y-4 pt-2" aria-busy="true">
+        <header className="sticky top-0 z-20 -mx-4 border-b border-border/60 bg-background/86 px-4 py-3 backdrop-blur-2xl md:mx-0 md:rounded-3xl md:border">
+          <div className="flex items-center justify-between gap-3">
+            <div className="h-6 w-36 rounded-lg bg-muted/80 animate-pulse" />
+            <div className="flex shrink-0 gap-1.5">
+              <div className="size-9 rounded-xl bg-muted/80 animate-pulse" />
+              <div className="h-9 w-20 rounded-xl bg-muted/80 animate-pulse" />
+            </div>
+          </div>
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+            <div className="h-12 rounded-2xl bg-muted/60 animate-pulse" />
+            <div className="h-12 rounded-2xl bg-muted/60 animate-pulse" />
+            <div className="h-12 rounded-2xl bg-muted/60 animate-pulse" />
+          </div>
+        </header>
+        <div className="pulse-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1.5">
+              <div className="h-5 w-40 rounded-md bg-muted/80 animate-pulse" />
+              <div className="h-3.5 w-24 rounded-md bg-muted/50 animate-pulse" />
+            </div>
+            <div className="size-8 rounded-full bg-muted/50 animate-pulse" />
+          </div>
+          <div className="space-y-2 pt-2">
+            <div className="h-11 w-full rounded-xl bg-muted/40 animate-pulse" />
+            <div className="h-11 w-full rounded-xl bg-muted/40 animate-pulse" />
+            <div className="h-11 w-full rounded-xl bg-muted/40 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (data.status === "completed" && !done) {
     return (
       <div className="mx-auto max-w-lg pt-10 text-center">

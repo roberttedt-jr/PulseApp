@@ -22,7 +22,7 @@ function SearchPage() {
   }, [q]);
   const result = useQuery({
     queryKey: ["people-search", debounced],
-    queryFn: () => searchPeople({ data: { q: debounced } }),
+    queryFn: ({ signal }) => searchPeople({ data: { q: debounced }, signal }),
     enabled: debounced.length > 0,
     placeholderData: (prev) => prev,
   });
@@ -55,7 +55,11 @@ function SearchPage() {
           name="pulse_search_query_field"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Nombre o @usuario"
+          onClear={() => {
+            setQ("");
+            setDebounced("");
+          }}
+          placeholder="Buscar personas"
           aria-label="Buscar personas"
           autoFocus
         />
@@ -94,7 +98,6 @@ function SearchPage() {
                 <li key={p.userId} className="pulse-card px-3 py-3">
                   <PersonRow
                     person={p}
-                    query={debounced}
                     action={<FollowButton person={p} onChange={() => void result.refetch()} />}
                   />
                 </li>

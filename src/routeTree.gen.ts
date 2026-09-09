@@ -34,6 +34,7 @@ import { Route as FeedNotificationsRouteImport } from './routes/feed/notificatio
 import { Route as FeedRequestsRouteImport } from './routes/feed/requests'
 import { Route as FeedSearchRouteImport } from './routes/feed/search'
 import { Route as HistoryWorkoutIdRouteImport } from './routes/history/$workoutId'
+import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as RoutinesRoutineIdRouteImport } from './routes/routines/$routineId'
 import { Route as ShareSlugRouteImport } from './routes/share/$slug'
 import { Route as UUsernameRouteImport } from './routes/u/$username'
@@ -165,6 +166,11 @@ const HistoryWorkoutIdRoute = HistoryWorkoutIdRouteImport.update({
   path: '/$workoutId',
   getParentRoute: () => HistoryRoute,
 } as any)
+const LegalDocRoute = LegalDocRouteImport.update({
+  id: '/legal/$doc',
+  path: '/legal/$doc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoutinesRoutineIdRoute = RoutinesRoutineIdRouteImport.update({
   id: '/$routineId',
   path: '/$routineId',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/feed/requests': typeof FeedRequestsRoute
   '/feed/search': typeof FeedSearchRoute
   '/history/$workoutId': typeof HistoryWorkoutIdRoute
+  '/legal/$doc': typeof LegalDocRoute
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/share/$slug': typeof ShareSlugRoute
   '/u/$username': typeof UUsernameRoute
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
+    | '/legal/$doc'
     | '/routines/$routineId'
     | '/share/$slug'
     | '/u/$username'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
+    | '/legal/$doc'
     | '/routines/$routineId'
     | '/share/$slug'
     | '/u/$username'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/feed/requests'
     | '/feed/search'
     | '/history/$workoutId'
+    | '/legal/$doc'
     | '/routines/$routineId'
     | '/share/$slug'
     | '/u/$username'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   TutorialRoute: typeof TutorialRoute
   WelcomeRoute: typeof WelcomeRoute
   ApiAuthHealthRoute: typeof ApiAuthHealthRoute
+  LegalDocRoute: typeof LegalDocRoute
   ShareSlugRoute: typeof ShareSlugRoute
   UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -589,6 +602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryWorkoutIdRouteImport
       parentRoute: typeof HistoryRoute
     }
+    '/legal/$doc': {
+      id: '/legal/$doc'
+      path: '/legal/$doc'
+      fullPath: '/legal/$doc'
+      preLoaderRoute: typeof LegalDocRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/routines/$routineId': {
       id: '/routines/$routineId'
       path: '/$routineId'
@@ -709,6 +729,7 @@ const rootRouteChildren: RootRouteChildren = {
   TutorialRoute: TutorialRoute,
   WelcomeRoute: WelcomeRoute,
   ApiAuthHealthRoute: ApiAuthHealthRoute,
+  LegalDocRoute: LegalDocRoute,
   ShareSlugRoute: ShareSlugRoute,
   UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

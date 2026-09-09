@@ -5,6 +5,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { PulseLogo } from "@/components/pulse-logo";
 import { UsernameField, type UsernameStatus } from "@/components/pulse/username-field";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { persistSessionToken, readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
@@ -148,6 +149,7 @@ function Login() {
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("empty");
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [legalConsent, setLegalConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [slowNotice, setSlowNotice] = useState(false);
@@ -327,6 +329,12 @@ function Login() {
       }
 
       if (mode === "up") {
+        if (!legalConsent) {
+          submittingRef.current = false;
+          setFormError("Debes aceptar los Términos y condiciones y la Política de privacidad.");
+          toast.error("Debes aceptar los Términos y condiciones y la Política de privacidad.");
+          return;
+        }
         const inspected = inspectUsername(username);
         if (inspected.code !== "ok" || usernameStatus !== "available") {
           submittingRef.current = false;
@@ -574,6 +582,42 @@ function Login() {
                   />
                 </div>
               ) : null}
+              {mode === "up" ? (
+                <div className="flex items-start gap-2.5 pt-1 text-left">
+                  <Checkbox
+                    id="legal-consent-check"
+                    checked={legalConsent}
+                    onCheckedChange={(c) => setLegalConsent(Boolean(c))}
+                    disabled={busy}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <Label
+                    htmlFor="legal-consent-check"
+                    className="text-xs leading-relaxed text-muted-foreground font-normal select-none cursor-pointer"
+                  >
+                    He leído y acepto los{" "}
+                    <a
+                      href="/legal/terminos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-2 hover:text-primary/80"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Términos y condiciones
+                    </a>{" "}
+                    y la{" "}
+                    <a
+                      href="/legal/privacidad"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-2 hover:text-primary/80"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Política de privacidad
+                    </a>.
+                  </Label>
+                </div>
+              ) : null}
               {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
               {busy && slowNotice && !formError ? (
                 <div className="space-y-2">
@@ -590,7 +634,7 @@ function Login() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={busy || (mode === "up" && usernameStatus !== "available")}
+                disabled={busy || (mode === "up" && (!legalConsent || usernameStatus !== "available"))}
                 loading={busy}
                 loadingText={submitLabel}
               >
@@ -625,6 +669,7 @@ function Login() {
                 setFormError(null);
                 setConfirm("");
                 setRecoveryCode("");
+                setLegalConsent(false);
               }}
             >
               {mode === "up" ? "¿Ya tienes cuenta? Entra" : "¿Nueva aquí? Crea una cuenta"}

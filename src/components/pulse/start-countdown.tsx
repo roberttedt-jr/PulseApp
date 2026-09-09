@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { startWorkout } from "@/lib/pulse/fns";
+import { getWorkout, startWorkout } from "@/lib/pulse/fns";
 import { cn } from "@/lib/utils";
 
 type Tick = "3" | "2" | "1" | "go";
@@ -30,6 +31,7 @@ export function StartCountdown({
   onDone: (id: string) => void;
   onFail: (err: Error) => void;
 }) {
+  const qc = useQueryClient();
   const [tick, setTick] = useState<Tick>(prefersReducedMotion() ? "go" : "3");
   const finished = useRef(false);
   const sessionId = useRef<string | null>(null);
@@ -45,6 +47,12 @@ export function StartCountdown({
       .then((res) => {
         if (!alive) return;
         sessionId.current = res.id;
+        // Prefetch workout session during countdown so transition into /train is instant
+        void qc.prefetchQuery({
+          queryKey: ["workout", res.id],
+          queryFn: () => getWorkout({ data: { id: res.id } }),
+          staleTime: 60_000,
+        });
       })
       .catch((e) => {
         if (!alive) return;
@@ -53,17 +61,17 @@ export function StartCountdown({
     return () => {
       alive = false;
     };
-  }, [job]);
+  }, [job, qc]);
 
   useEffect(() => {
     const reduced = prefersReducedMotion();
     const steps: { tick: Tick; ms: number }[] = reduced
-      ? [{ tick: "go", ms: 420 }]
+      ? [{ tick: "go", ms: 400 }]
       : [
           { tick: "3", ms: 1000 },
           { tick: "2", ms: 1000 },
           { tick: "1", ms: 1000 },
-          { tick: "go", ms: 450 },
+          { tick: "go", ms: 400 },
         ];
     let i = 0;
     let timer = 0;
@@ -113,7 +121,7 @@ export function StartCountdown({
       className="fixed inset-0 z-50 grid place-items-center bg-background/96 px-6"
       role="status"
       aria-live="assertive"
-      aria-label={tick === "go" ? "Preparando tu sesión" : `Empieza en ${tick}`}
+      aria-label={tick === "go" ? "¡Vamos!" : `Empieza en ${tick}`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(255_45_85_/_0.16),transparent_62%)]" />
       <div className="relative flex flex-col items-center text-center">
@@ -126,7 +134,7 @@ export function StartCountdown({
             style={{ ["--ring-len" as string]: String(c) }}
             aria-hidden
           >
-            <circle cx="88" cy="88" r={r} fill="none" stroke="currentColor" className="text-muted" strokeWidth="6" />
+            <circle cx="88" cy="88" r={r} fill="none" stroke="currentColor" className="text-muted/40" strokeWidth="3.5" />
             <circle
               key={tick}
               cx="88"
@@ -135,7 +143,7 @@ export function StartCountdown({
               fill="none"
               stroke="currentColor"
               className={cn("text-primary", tick === "go" ? "" : "pulse-countdown-ring")}
-              strokeWidth="6"
+              strokeWidth="3.5"
               strokeLinecap="round"
               strokeDasharray={c}
               strokeDashoffset={tick === "go" ? 0 : c}
@@ -144,15 +152,16 @@ export function StartCountdown({
           <p
             key={tick}
             className={cn(
-              "pulse-countdown-num absolute inset-0 grid place-items-center font-semibold tracking-tight tabular",
-              tick === "go" ? "text-countdown-go" : "text-countdown leading-none",
+              "pulse-countdown-num absolute inset-0 grid place-items-center font-semibold tabular select-none",
+              tick === "go"
+                ? "text-[clamp(2.125rem,7.5vw,2.5rem)] font-semibold tracking-tight text-white [text-shadow:0_0_20px_rgba(255,45,85,0.4)]"
+                : "text-countdown leading-none font-semibold tracking-tight",
             )}
           >
             {label}
           </p>
         </div>
         <p className="mt-5 text-lg font-semibold tracking-tight">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">Preparando tu sesión</p>
       </div>
     </div>
   );
@@ -161,10 +170,16 @@ export function StartCountdown({
 export function useStartWorkout() {
   const navigate = useNavigate();
   const [run, setRun] = useState<{ title: string; job: Promise<{ id: string }> } | null>(null);
+  const startingRef = useRef(false);
 
   function start(title: string, data: { routineId?: string; exerciseIds?: string[] } = {}) {
-    if (run) return;
-    setRun({ title, job: startWorkout({ data }) });
+    if (run || startingRef.current) return;
+    startingRef.current = true;
+    const job = startWorkout({ data }).catch((err) => {
+      startingRef.current = false;
+      throw err;
+    });
+    setRun({ title, job });
   }
 
   const overlay = run ? (
@@ -172,10 +187,12 @@ export function useStartWorkout() {
       title={run.title}
       job={run.job}
       onDone={(id) => {
+        startingRef.current = false;
         setRun(null);
         void navigate({ to: "/train", search: { id } });
       }}
       onFail={(err) => {
+        startingRef.current = false;
         setRun(null);
         toast.error(err.message || "No se ha podido crear la sesión.");
       }}

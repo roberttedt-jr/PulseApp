@@ -167,7 +167,7 @@ describe("Pulse 3.8 native UX contracts", () => {
     assert.match(account, /formatHandle\(p\.username\)/);
     assert.match(countdown, /¡Vamos!/);
     assert.match(countdown, /prefers-reduced-motion/);
-    assert.match(countdown, /Preparando tu sesión/);
+    assert.doesNotMatch(countdown, /Preparando tu sesión/);
     assert.match(home, /useStartWorkout/);
     assert.match(social, /inspectUsername/);
     assert.match(social, /Debe empezar por letra o número/);

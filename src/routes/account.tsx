@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, ChevronRight, HeartPulse, Info, KeyRound, Shield, Trophy, UserRound, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
 import { AppleHealthRow } from "@/components/pulse/apple-health";
 import { ProfileAvatar } from "@/components/pulse/avatar-editor";
-import { UsernameField } from "@/components/pulse/username-field";
+import { SocialProfileSheet } from "@/components/pulse/social-profile-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +21,8 @@ import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } f
 import { readRecoveryCode, storeRecoveryCode } from "@/lib/session-token";
 import { fromKg, toKg } from "@/lib/utils";
 import { DEFAULT_REST_OPTIONS, EXPERIENCE_LEVELS, GOALS, TRAINING_LOCATIONS, WEEKLY_TRAINING_OPTIONS, type Profile } from "@/lib/pulse/types";
-import { formatHandle, validateUsername, type ProfileVisibility, type WorkoutVisibility } from "@/lib/pulse/social";
-import { listBlockedUsers, saveSocialProfile, unblockUser } from "@/lib/pulse/social-fns";
+import { formatHandle } from "@/lib/pulse/social";
+import { listBlockedUsers, unblockUser } from "@/lib/pulse/social-fns";
 import { COMPARE_COPY, COMPARE_METRICS, type CompareMetricId, type ComparePrefs } from "@/lib/pulse/compare";
 import { saveComparePrefs } from "@/lib/pulse/compare-fns";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
+  const socialRowRef = useRef<HTMLButtonElement>(null);
   const display = p?.displayName ?? user?.displayName ?? "Atleta";
 
   useEffect(() => {
@@ -88,21 +89,24 @@ function SettingsPage() {
           <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setSocialOpen(true)}
-          className="flex w-full items-center gap-3 glass px-4 py-3.5 text-left pressable"
-          data-social-profile-row="1"
-        >
-          <span className="grid size-10 place-items-center rounded-2xl bg-primary/12 text-primary">
-            <Users className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium">Perfil social</span>
-            <span className="block text-xs text-muted-foreground">Usuario, privacidad y visibilidad</span>
-          </span>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </button>
+        <section className="overflow-hidden pulse-card">
+          <button
+            ref={socialRowRef}
+            type="button"
+            onClick={() => setSocialOpen(true)}
+            className="flex min-h-[68px] w-full items-center gap-3.5 px-4 py-3 text-left pressable active:scale-[0.99] active:opacity-85 transition-[transform,opacity] duration-150"
+            data-social-profile-row="1"
+          >
+            <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+              <Users className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium text-foreground">Perfil social</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Usuario, privacidad y visibilidad</span>
+            </span>
+            <ChevronRight className="size-4 text-muted-foreground/60 shrink-0" />
+          </button>
+        </section>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="pulse-card p-4">
@@ -378,13 +382,14 @@ function SettingsPage() {
         </div>
       </div>
       <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />
-      <Sheet open={socialOpen} onOpenChange={setSocialOpen}>
-        <SheetContent className="px-4 pt-3 pb-8">
-          <SheetTitle>Perfil social</SheetTitle>
-          <SheetDescription>Usuario, privacidad y visibilidad</SheetDescription>
-          {p ? <SocialSection profile={p} /> : null}
-        </SheetContent>
-      </Sheet>
+      {p ? (
+        <SocialProfileSheet
+          open={socialOpen}
+          onOpenChange={setSocialOpen}
+          profile={p}
+          triggerRef={socialRowRef}
+        />
+      ) : null}
     </AppPage>
   );
 }
@@ -445,133 +450,6 @@ function Go({ to, icon: Icon, label }: { to: "/plan" | "/stats"; icon: typeof Tr
       <span className="flex-1 text-sm">{label}</span>
       <ChevronRight className="size-4 text-muted-foreground" />
     </Link>
-  );
-}
-
-function SocialSection({ profile }: { profile: Profile }) {
-  const qc = useQueryClient();
-  const [username, setUsername] = useState(profile.username ?? "");
-  const [bio, setBio] = useState(profile.bio ?? "");
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [usernameStatus, setUsernameStatus] = useState<"empty" | "invalid" | "checking" | "available" | "taken">(
-    profile.username ? "available" : "empty",
-  );
-  const save = useMutation({
-    mutationFn: (patch: Parameters<typeof saveSocialProfile>[0]["data"]) => saveSocialProfile({ data: patch }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["bootstrap"] });
-      toast.success("Perfil social guardado");
-    },
-    onError: (e) => {
-      setUsernameError(e.message);
-      toast.error(e.message);
-    },
-  });
-
-  function commitUsername() {
-    const raw = username.trim();
-    if (!raw || raw === profile.username) {
-      setUsernameError(null);
-      return;
-    }
-    if (usernameStatus !== "available") {
-      setUsernameError(usernameStatus === "taken" ? "Este usuario ya está en uso" : "Elige un usuario válido.");
-      return;
-    }
-    try {
-      const next = validateUsername(raw);
-      setUsernameError(null);
-      setUsername(next);
-      save.mutate({ username: next });
-    } catch (e) {
-      setUsernameError(e instanceof Error ? e.message : "Usuario no válido.");
-    }
-  }
-
-  return (
-    <section id="perfil-social" className="mt-4 space-y-3 scroll-mt-20">
-      <div className="flex items-center justify-end">
-        {profile.username && (
-          <Link to="/u/$username" params={{ username: profile.username }} className="text-xs font-medium text-primary">
-            Ver perfil
-          </Link>
-        )}
-      </div>
-      <UsernameField
-        value={username}
-        current={profile.username}
-        onChange={(v) => {
-          setUsername(v);
-          setUsernameError(null);
-        }}
-        onStatus={(s) => setUsernameStatus(s)}
-        error={usernameError}
-      />
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={save.isPending || usernameStatus !== "available" || username === (profile.username ?? "")}
-          onClick={commitUsername}
-        >
-          Guardar usuario
-        </Button>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="social-bio">Bio</Label>
-        <Textarea
-          id="social-bio"
-          value={bio}
-          maxLength={160}
-          className="min-h-20"
-          placeholder="Cómo entrenas, a qué te dedicas…"
-          onChange={(e) => setBio(e.target.value)}
-          onBlur={() => {
-            if ((profile.bio ?? "") !== bio.trim()) save.mutate({ bio });
-          }}
-        />
-        <p className="text-right text-[11px] text-muted-foreground">{bio.length}/160</p>
-      </div>
-      <div className="space-y-2">
-        <Label>Visibilidad del perfil</Label>
-        <Segmented
-          ariaLabel="Visibilidad del perfil"
-          className="flex w-full"
-          value={profile.profileVisibility}
-          options={[
-            { value: "private", label: "Privado" },
-            { value: "public", label: "Público" },
-          ]}
-          onChange={(v) => save.mutate({ profileVisibility: v as ProfileVisibility })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Entrenamientos por defecto</Label>
-        <Segmented
-          ariaLabel="Visibilidad predeterminada de entrenamientos"
-          className="flex w-full"
-          value={profile.defaultWorkoutVisibility}
-          options={[
-            { value: "me", label: "Solo yo" },
-            { value: "followers", label: "Seguidores" },
-            { value: "public", label: "Público" },
-          ]}
-          onChange={(v) => save.mutate({ defaultWorkoutVisibility: v as WorkoutVisibility })}
-        />
-      </div>
-      <Toggle
-        label="Compartir volumen"
-        hint="El volumen total puede verse en tus publicaciones"
-        checked={profile.shareVolume}
-        onChange={(v) => save.mutate({ shareVolume: v })}
-      />
-      <Toggle
-        label="Compartir récords"
-        hint="Los PR de esa sesión pueden verse si los hay"
-        checked={profile.sharePrs}
-        onChange={(v) => save.mutate({ sharePrs: v })}
-      />
-    </section>
   );
 }
 

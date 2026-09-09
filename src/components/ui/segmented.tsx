@@ -6,12 +6,14 @@ export function Segmented<T extends string>({
   onChange,
   ariaLabel,
   className,
+  itemClassName,
 }: {
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
   ariaLabel?: string;
   className?: string;
+  itemClassName?: string;
 }) {
   return (
     <div
@@ -30,6 +32,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(opt.value)}
             className={cn(
               "h-11 min-h-11 min-w-14 flex-1 rounded-full px-4 text-sm font-semibold transition-colors pressable-feedback glass-pill",
+              itemClassName,
               on ? "glass-pill-on" : "",
             )}
           >

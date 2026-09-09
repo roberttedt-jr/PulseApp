@@ -44,6 +44,34 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
   // Discard confirmation state
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
+  // Virtual keyboard height tracking for mobile Safari/WebKit:
+  // When keyboard opens, visualViewport shrinks. We add paddingBottom to Drawer.Content
+  // so that the sheet remains firmly anchored to bottom: 0 (preventing background bleed),
+  // the scrollable area adapts, and the floating save bar stays accessible right above the keyboard.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!open) {
+      setKeyboardHeight(0);
+      return;
+    }
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+
+    const handleViewportChange = () => {
+      const diff = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+      setKeyboardHeight(diff > 60 ? Math.round(diff) : 0);
+    };
+
+    handleViewportChange();
+    vv.addEventListener("resize", handleViewportChange);
+    vv.addEventListener("scroll", handleViewportChange);
+    return () => {
+      vv.removeEventListener("resize", handleViewportChange);
+      vv.removeEventListener("scroll", handleViewportChange);
+    };
+  }, [open]);
+
   // Sync form state when sheet opens or profile changes
   useEffect(() => {
     if (open) {
@@ -206,10 +234,18 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
           }
         }}
         dismissible={!isDirty}
+        repositionInputs={false}
       >
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]" />
-          <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border-t border-border/40 bg-card text-card-foreground shadow-float outline-none sm:rounded-3xl sm:max-h-[85vh]">
+          <Drawer.Content
+            style={{
+              bottom: 0,
+              paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined,
+              transition: "padding-bottom 150ms ease-out",
+            }}
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border-t border-border/40 bg-card text-card-foreground shadow-float outline-none sm:rounded-3xl sm:max-h-[85vh]"
+          >
             {/* iOS Top Drag Handle */}
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-2.5 mb-1.5 shrink-0" />
 
@@ -416,7 +452,10 @@ export function SocialProfileSheet({ open, onOpenChange, profile, triggerRef }: 
             {isDirty ? (
               <div
                 data-social-save-bar="1"
-                className="sticky bottom-0 z-20 border-t border-border/40 bg-card/95 px-5 py-3.5 backdrop-blur-md pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-float"
+                className={cn(
+                  "sticky bottom-0 z-20 border-t border-border/40 bg-card/95 px-5 backdrop-blur-md shadow-float",
+                  keyboardHeight > 0 ? "py-3" : "py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]",
+                )}
               >
                 <Button
                   type="button"

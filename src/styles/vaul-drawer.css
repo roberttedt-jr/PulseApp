@@ -7,6 +7,11 @@
   overscroll-behavior: none;
 }
 
+[data-vaul-drawer][data-vaul-drawer-direction="bottom"],
+[data-vaul-drawer]:not([data-vaul-drawer-direction="right"]):not([data-vaul-drawer-direction="top"]):not([data-vaul-drawer-direction="left"]) {
+  bottom: 0 !important;
+}
+
 [data-vaul-handle] {
   display: block;
   position: relative;

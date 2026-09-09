@@ -8,6 +8,7 @@ export function Sheet({
   shouldScaleBackground = false,
   setBackgroundColorOnScale = false,
   handleOnly = true,
+  repositionInputs = false,
   ...props
 }: ComponentProps<typeof Drawer.Root>) {
   return (
@@ -15,6 +16,7 @@ export function Sheet({
       shouldScaleBackground={shouldScaleBackground}
       setBackgroundColorOnScale={setBackgroundColorOnScale}
       handleOnly={handleOnly}
+      repositionInputs={repositionInputs}
       {...props}
     >
       {children}

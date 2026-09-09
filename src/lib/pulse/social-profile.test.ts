@@ -98,5 +98,18 @@ describe("Social Profile Redesign contracts", () => {
 
     // Focus restoration
     assert.match(sheet, /triggerRef\?\.current\?\.focus\(\)/);
+
+    // Mobile keyboard handling (repositionInputs={false}, visualViewport tracking, zero bottom gap)
+    assert.match(sheet, /repositionInputs=\{false\}/);
+    assert.match(sheet, /keyboardHeight/);
+    assert.match(sheet, /window\.visualViewport/);
+    assert.match(sheet, /paddingBottom:\s*keyboardHeight\s*>\s*0/);
+
+    // Global sheet and vaul drawer CSS pinning
+    const sheetComponent = src("../../components/ui/sheet.tsx");
+    assert.match(sheetComponent, /repositionInputs = false/);
+
+    const drawerCss = src("../../styles/vaul-drawer.css");
+    assert.match(drawerCss, /bottom:\s*0\s*!important/);
   });
 });

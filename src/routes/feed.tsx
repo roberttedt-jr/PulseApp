@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Search, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { AppPage } from "@/components/auth-gate";
@@ -9,6 +9,7 @@ import { PostCard } from "@/components/pulse/social";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { getBootstrap } from "@/lib/pulse/fns";
 import { getActivityFeed, getDiscoverFeed } from "@/lib/pulse/social-fns";
 
@@ -24,6 +25,7 @@ function FeedLayout() {
 
 function ActivityPage() {
   const [tab, setTab] = useState<"following" | "foryou">("following");
+  const qc = useQueryClient();
   const bootstrap = useQuery({ queryKey: ["bootstrap"], queryFn: () => getBootstrap() });
   const units = bootstrap.data?.profile.units ?? "metric";
   const feed = useInfiniteQuery({
@@ -70,7 +72,17 @@ function ActivityPage() {
         </div>
       }
     >
-      <div className="mx-auto max-w-xl space-y-4 pt-4">
+      <PullToRefresh
+        onRefresh={async () => {
+          await Promise.allSettled([
+            feed.refetch(),
+            discover.refetch(),
+            qc.invalidateQueries({ queryKey: ["activity-feed"] }),
+            qc.invalidateQueries({ queryKey: ["discover-feed"] }),
+          ]);
+        }}
+      >
+        <div className="mx-auto max-w-xl space-y-4 pt-4">
         <Segmented
           ariaLabel="Tipo de feed"
           className="flex w-full"
@@ -159,6 +171,7 @@ function ActivityPage() {
           </div>
         )}
       </div>
+      </PullToRefresh>
     </AppPage>
   );
 }

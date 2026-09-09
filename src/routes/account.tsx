@@ -13,6 +13,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { deleteAccountData, devToolsAvailable, getBootstrap, purgeMySeededData, updateProfile } from "@/lib/pulse/fns";
@@ -79,7 +80,15 @@ function SettingsPage() {
         </button>
       }
     >
-      <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
+      <PullToRefresh
+        onRefresh={async () => {
+          await Promise.allSettled([
+            qc.invalidateQueries({ queryKey: ["bootstrap"] }),
+            qc.invalidateQueries({ queryKey: ["consistency"] }),
+          ]);
+        }}
+      >
+        <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
         <div className="pulse-card p-5 text-center">
           <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
           <p className="mt-3 font-semibold">{display}</p>
@@ -381,6 +390,7 @@ function SettingsPage() {
           </div>
         </div>
       </div>
+      </PullToRefresh>
       <BlockedSheet open={blockedOpen} onOpenChange={setBlockedOpen} />
       {p ? (
         <SocialProfileSheet

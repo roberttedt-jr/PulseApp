@@ -6,6 +6,7 @@ import { AthleteProfile } from "@/components/pulse/athlete-profile";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { getBootstrap } from "@/lib/pulse/fns";
 import { acceptFollowRequest, blockUser, getSocialProfile, rejectFollowRequest, removeFollower } from "@/lib/pulse/social-fns";
 import { toast } from "sonner";
@@ -99,15 +100,26 @@ function SocialProfilePage() {
         />
       )}
       {data && (
-        <AthleteProfile
-          data={data}
-          units={units}
-          onRefresh={() => void refetch()}
-          onAccept={() => accept.mutate(data.userId)}
-          onReject={() => reject.mutate(data.userId)}
-          onRemove={() => remove.mutate(data.userId)}
-          onBlock={() => block.mutate(data.userId)}
-        />
+        <PullToRefresh
+          onRefresh={async () => {
+            await Promise.allSettled([
+              refetch(),
+              qc.invalidateQueries({ queryKey: ["social-profile", username] }),
+              qc.invalidateQueries({ queryKey: ["bootstrap"] }),
+              qc.invalidateQueries({ queryKey: ["activity-feed"] }),
+            ]);
+          }}
+        >
+          <AthleteProfile
+            data={data}
+            units={units}
+            onRefresh={() => void refetch()}
+            onAccept={() => accept.mutate(data.userId)}
+            onReject={() => reject.mutate(data.userId)}
+            onRemove={() => remove.mutate(data.userId)}
+            onBlock={() => block.mutate(data.userId)}
+          />
+        </PullToRefresh>
       )}
     </AppPage>
   );

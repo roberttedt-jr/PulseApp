@@ -135,7 +135,7 @@ export function AthleteProfile({
   });
 
   return (
-    <div className="mx-auto max-w-xl space-y-4 pt-2 pb-12">
+    <div className="mx-auto max-w-xl space-y-4 pt-[max(56px,calc(env(safe-area-inset-top,0px)+18px))] pb-12">
       {/* High-Performance Athletic Header */}
       <section
         className="pulse-card relative overflow-hidden rounded-[28px] border border-white/10 bg-card/70 p-5 backdrop-blur-xl"

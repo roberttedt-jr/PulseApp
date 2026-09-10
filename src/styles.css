@@ -77,13 +77,13 @@
 }
 
 :root {
-  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-top: max(48px, env(safe-area-inset-top, 0px));
   --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   --safe-left: env(safe-area-inset-left, 0px);
-  --bottom-nav-height: 56px;
-  --bottom-nav-bottom: max(12px, var(--safe-bottom));
-  --bottom-nav-total-space: calc(72px + max(12px, env(safe-area-inset-bottom, 16px)));
+  --bottom-nav-height: 60px;
+  --bottom-nav-bottom: max(16px, var(--safe-bottom));
+  --bottom-nav-total-space: calc(76px + max(16px, env(safe-area-inset-bottom, 16px)));
 }
 
 @layer base {
@@ -212,14 +212,16 @@
   width: calc(100% + 2rem);
   margin-left: -1rem;
   margin-right: -1rem;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 8px));
+  padding-bottom: 12px;
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  height: calc(52px + env(safe-area-inset-top, 0px));
+  min-height: calc(54px + max(48px, calc(env(safe-area-inset-top, 0px) + 8px)));
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  background: rgba(14, 14, 17, 0.72);
+  background: rgba(14, 14, 17, 0.85);
   border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(28px) saturate(190%);
@@ -428,20 +430,25 @@
 .pulse-tabbar {
   view-transition-name: pulse-tabbar;
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
+  bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  left: 1rem;
+  right: 1rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  width: calc(100% - 2rem);
   z-index: 50;
-  background: rgba(14, 14, 18, 0.62);
+  background: rgba(14, 14, 18, 0.78);
   backdrop-filter: blur(32px) saturate(210%);
   -webkit-backdrop-filter: blur(32px) saturate(210%);
-  border-top: 0.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 -10px 30px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 16px));
-  height: calc(56px + max(12px, env(safe-area-inset-bottom, 16px)));
+    0 16px 40px -4px rgba(0, 0, 0, 0.7),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22);
+  padding: 4px;
+  height: 60px;
   contain: layout style;
   touch-action: manipulation;
   user-select: none;
@@ -450,13 +457,13 @@
 .pulse-tabbar-pill,
 .pulse-native-bubble {
   position: absolute;
-  top: 6px;
-  height: 44px;
+  top: 4px;
+  height: calc(100% - 8px);
   border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255, 45, 85, 0.22) 0%, rgba(255, 45, 85, 0.10) 100%);
-  border: 1px solid rgba(255, 45, 85, 0.38);
+  background: linear-gradient(180deg, rgba(255, 45, 85, 0.24) 0%, rgba(255, 45, 85, 0.12) 100%);
+  border: 1px solid rgba(255, 45, 85, 0.42);
   box-shadow:
-    0 2px 14px rgba(255, 45, 85, 0.28),
+    0 2px 14px rgba(255, 45, 85, 0.32),
     inset 0 1px 1px rgba(255, 255, 255, 0.22);
   will-change: transform;
   transform: translateZ(0);

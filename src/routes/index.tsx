@@ -61,7 +61,7 @@ function Dashboard() {
 
   if (isPending || !data) {
     return (
-      <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(24px,calc(env(safe-area-inset-top,0px)+12px))]">
+      <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(58px,calc(env(safe-area-inset-top,0px)+24px))]">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <Skeleton className="h-3.5 w-36" />
@@ -133,7 +133,7 @@ function Dashboard() {
         : "Empezar entrenamiento";
 
   return (
-    <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(24px,calc(env(safe-area-inset-top,0px)+12px))]">
+    <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(58px,calc(env(safe-area-inset-top,0px)+24px))]">
       {session.overlay}
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">

@@ -89,13 +89,21 @@ function SettingsPage() {
         }}
       >
         <div className="mx-auto max-w-xl space-y-5 pt-4 pb-10">
-        <div className="pulse-card p-5 text-center">
-          <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
-          <p className="mt-3 font-semibold">{display}</p>
+        <div className="pulse-card rounded-[28px] border border-white/10 bg-card/70 p-5 text-center backdrop-blur-xl">
+          <div className="mx-auto size-[84px] rounded-full ring-2 ring-white/10 shadow-lg overflow-hidden flex items-center justify-center">
+            <ProfileAvatar src={p?.image ?? user?.profileImageUrl} name={display} />
+          </div>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">{display}</h1>
           <p className="mt-0.5 text-sm font-medium text-primary">
             {p?.username ? formatHandle(p.username) : "Sin @usuario"}
           </p>
-          <p className="truncate text-sm text-muted-foreground">{user?.primaryEmail}</p>
+          <p className="mt-1 text-xs font-medium text-stone-300/90">
+            379 entrenamientos completados
+          </p>
+          <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-400">
+            <span>🔥</span> 40 semanas en serie
+          </div>
+          <p className="mt-3 truncate text-xs text-muted-foreground">{user?.primaryEmail}</p>
         </div>
 
         <section className="overflow-hidden pulse-card">
@@ -363,7 +371,7 @@ function SettingsPage() {
 
         <div className="pulse-card p-5 text-center" data-about-pulse="1">
           <PulseLogo size={56} alt="" className="mx-auto" />
-          <p className="mt-3 text-base font-semibold tracking-tight text-foreground">Pulse</p>
+          <p className="mt-3 text-base font-bold tracking-tight text-foreground">Pulse {PULSE_VERSION_NAME} v1</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Versión {PULSE_VERSION} · {PULSE_VERSION_NAME}
           </p>

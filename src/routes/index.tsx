@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Flame, Play, Trophy, Zap } from "lucide-react";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AppPage, PublicEntryRedirect, ScreenSkeleton } from "@/components/auth-gate";
 import { ChartCard } from "@/components/pulse/cards";
 import { WeekDots } from "@/components/pulse/activity-rings";
 import { ConsistencyCard } from "@/components/pulse/consistency";
 import { HScroll } from "@/components/pulse/h-scroll";
+import { SportSelector } from "@/components/pulse/sport-selector";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { SectionHeader } from "@/components/pulse/metric-card";
 import { MuscleMap } from "@/components/pulse/muscle-map";
@@ -45,6 +46,7 @@ function Home() {
 function Dashboard() {
   const navigate = useNavigate();
   const session = useStartWorkout();
+  const [selectedSport, setSelectedSport] = useState("run");
   const { data, isPending, error } = useQuery({
     queryKey: ["bootstrap"],
     queryFn: () => getBootstrap(),
@@ -138,7 +140,7 @@ function Dashboard() {
           <p className="text-[12px] font-semibold tracking-wider text-muted-foreground/80 uppercase select-none">
             {format(new Date(), "EEEE d MMMM", { locale: es })}
           </p>
-          <h1 className="mt-3 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
+          <h1 className="mt-2.5 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {data.suggestion ?? (fresh ? "Tu progreso empieza hoy." : "Sigue el ritmo de esta semana.")}
           </p>
@@ -147,6 +149,27 @@ function Dashboard() {
           <Avatar src={data.profile.image} fallback={data.profile.displayName ?? "P"} className="size-12 ring-2 ring-white/10 transition-transform active:scale-95 pressable" />
         </Link>
       </header>
+
+      {/* Sports Taxonomy Carousel */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider">
+            Deportes y actividades
+          </p>
+          <Link to="/train" search={{ id: "" }} className="text-xs font-semibold text-[#FC5200] hover:underline">
+            GPS y entrenar →
+          </Link>
+        </div>
+        <SportSelector
+          selectedSportId={selectedSport}
+          onSelectSport={(s) => {
+            setSelectedSport(s.id);
+            if (s.isGpsCapable) {
+              void navigate({ to: "/train", search: { id: "" } });
+            }
+          }}
+        />
+      </div>
 
       <section
         className="relative overflow-hidden pulse-card"

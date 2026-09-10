@@ -4,20 +4,21 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-background: #000000;
+  --color-background: #0e0e11;
   --color-foreground: #f5f5f7;
   --color-foreground-secondary: #aeaeb2;
   --color-foreground-tertiary: #8e8e93;
   --color-foreground-disabled: #636366;
-  --color-card: #1c1c1e;
+  --color-card: #18181d;
   --color-card-foreground: #f5f5f7;
-  --color-popover: #2c2c2e;
+  --color-popover: #18181d;
   --color-popover-foreground: #f5f5f7;
-  --color-muted: #2c2c2e;
+  --color-muted: #222228;
   --color-muted-foreground: #8e8e93;
   --color-primary: #ff2d55;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #2c2c2e;
+  --color-strava: #fc5200;
+  --color-secondary: #222228;
   --color-secondary-foreground: #f5f5f7;
   --color-accent: #007aff;
   --color-accent-foreground: #ffffff;
@@ -27,15 +28,15 @@
   --color-warning-foreground: #1c1200;
   --color-destructive: #ff453a;
   --color-destructive-foreground: #ffffff;
-  --color-border: rgb(255 255 255 / 0.1);
-  --color-input: rgb(255 255 255 / 0.08);
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-input: rgba(255, 255, 255, 0.08);
   --color-ring: #ff2d55;
-  --color-ios-fill: #2c2c2e;
-  --color-ios-elevated: #3a3a3c;
+  --color-ios-fill: #222228;
+  --color-ios-elevated: #2c2c34;
   --color-glass: rgb(18 18 22 / 0.65);
   --color-glass-solid: rgb(18 18 22 / 0.96);
-  --color-glass-border: rgb(255 255 255 / 0.15);
-  --color-glass-highlight: rgb(255 255 255 / 0.2);
+  --color-glass-border: rgb(255 255 255 / 0.12);
+  --color-glass-highlight: rgb(255 255 255 / 0.18);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Inter", "Segoe UI", system-ui, sans-serif;
@@ -80,9 +81,9 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-  --bottom-nav-height: 52px;
-  --bottom-nav-bottom: max(10px, var(--safe-bottom));
-  --bottom-nav-total-space: calc(var(--bottom-nav-height) + var(--bottom-nav-bottom) + 16px);
+  --bottom-nav-height: 56px;
+  --bottom-nav-bottom: max(12px, var(--safe-bottom));
+  --bottom-nav-total-space: calc(72px + max(12px, env(safe-area-inset-bottom, 16px)));
 }
 
 @layer base {
@@ -426,54 +427,55 @@
   }
 }
 
+.pulse-native-tabbar,
 .pulse-tabbar {
   view-transition-name: pulse-tabbar;
   position: fixed;
-  z-index: 40;
-  left: max(16px, var(--safe-left));
-  right: max(16px, var(--safe-right));
-  bottom: max(10px, var(--safe-bottom));
-  max-width: 28rem;
-  margin-inline: auto;
-  border-radius: 9999px;
-  overflow: visible;
-  background: rgba(16, 16, 20, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 8px 24px rgba(0, 0, 0, 0.38);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 50;
+  background: rgba(16, 16, 20, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 16px));
+  height: calc(56px + max(12px, env(safe-area-inset-bottom, 16px)));
+  contain: layout style;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .pulse-tabbar {
-    background: rgba(16, 16, 20, 0.72);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-  }
-}
-.pulse-tabbar-pill {
+.pulse-tabbar-pill,
+.pulse-native-bubble {
+  position: absolute;
+  top: 6px;
+  height: 44px;
+  border-radius: 9999px;
   background: rgba(255, 45, 85, 0.15);
-  border: 1px solid rgba(255, 45, 85, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 2px 10px rgba(255, 45, 85, 0.16);
+  border: 1px solid rgba(255, 45, 85, 0.30);
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.20);
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
-  border-radius: 9999px;
+  pointer-events: none;
 }
 .pulse-tab-item {
-  color: rgba(255, 255, 255, 0.55);
+  color: #8e8e93;
+  opacity: 0.85;
   touch-action: manipulation;
   transition: color 150ms ease, transform 120ms ease, opacity 120ms ease;
 }
 .pulse-tab-item:active:not(.is-disabled) {
-  transform: scale(0.965);
-  opacity: 0.9;
+  transform: scale(0.92);
+  opacity: 0.95;
 }
-.pulse-tab-item.is-on,
+.pulse-tab-item.is-on {
+  color: #ffffff;
+  opacity: 1;
+}
 .pulse-tab-item.is-hot,
 .pulse-tab-item.is-bubble {
   color: #ffffff;
@@ -500,22 +502,36 @@
   display: block;
   fill: none;
   color: inherit;
+  width: 22px;
+  height: 22px;
+  transition: color 150ms ease, filter 150ms ease;
 }
-.pulse-tab-item.is-on .pulse-tab-icon,
+.pulse-tab-item.is-on .pulse-tab-icon {
+  color: #ff2d55;
+  filter: drop-shadow(0 0 6px rgba(255, 45, 85, 0.45));
+}
 .pulse-tab-item.is-hot .pulse-tab-icon,
 .pulse-tab-item.is-bubble .pulse-tab-icon {
   fill: currentColor;
   fill-opacity: 0.24;
 }
 .pulse-tab-label {
-  opacity: 0.75;
+  opacity: 0.85;
   color: inherit;
+  font-size: 10px;
+  font-weight: 500;
   line-height: 1;
+  letter-spacing: -0.01em;
   transition:
     transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 160ms ease;
+    opacity 160ms ease,
+    color 150ms ease;
 }
-.pulse-tab-item.is-on .pulse-tab-label,
+.pulse-tab-item.is-on .pulse-tab-label {
+  color: #ffffff;
+  opacity: 1;
+  font-weight: 600;
+}
 .pulse-tab-item.is-hot .pulse-tab-label,
 .pulse-tab-item.is-bubble .pulse-tab-label {
   opacity: 1;
@@ -1035,6 +1051,21 @@ body[data-scroll-locked] {
 }
 .pulse-countdown-num {
   animation: pulse-countdown-pop 280ms var(--ease-out-ios) both;
+}
+
+/* Strava Dark Map & Live GPS Styling */
+.pulse-dark-map .leaflet-layer,
+.pulse-dark-map .leaflet-control-zoom {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.pulse-dark-tile {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.pulse-athlete-marker-container {
+  background: transparent !important;
+  border: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

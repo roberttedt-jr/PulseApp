@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { PULSE_TAGLINE, PULSE_VERSION, PULSE_VERSION_NAME } from "./version.ts";
 
-describe("Pulse 4.0 identity", () => {
+describe("Pulse Ultra v1 identity", () => {
   it("exports a single version source of truth", () => {
-    assert.equal(PULSE_VERSION, "4.0");
-    assert.equal(PULSE_VERSION_NAME, "Native");
+    assert.equal(PULSE_VERSION, "1.0");
+    assert.equal(PULSE_VERSION_NAME, "Ultra");
     assert.match(PULSE_TAGLINE, /Entrenamiento/);
   });
 
@@ -62,7 +62,7 @@ describe("Pulse 4.0 identity", () => {
 
   it("uses Liquid Glass tokens", () => {
     const css = readFileSync(new URL("../../styles.css", import.meta.url), "utf8");
-    assert.match(css, /blur\((?:20|30)px\) saturate\((?:150|180)%\)/);
+    assert.match(css, /blur\((?:20|28|30)px\) saturate\((?:150|180|190)%\)/);
     assert.match(css, /rgba?\(255[ ,/]+45[ ,/]+85/);
     assert.match(css, /rgb\(18 18 22 \/ 0\.65\)/);
   });

@@ -15,6 +15,7 @@ import {
 import { PageTransition } from "@/components/motion/page-transition";
 import { PulseLogo } from "@/components/pulse-logo";
 import { createSpring, type Spring } from "@/lib/pulse/spring";
+import { calculatePillInterpolation } from "@/lib/pulse/ultra-native-math";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -103,7 +104,10 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
     const items = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-item]"));
 
     const paintPill = (index: number) => {
-      if (pill) pill.style.transform = `translate3d(${index * 100}%,0,0)`;
+      if (pill && !drag.on) {
+        pill.style.transition = "none";
+        pill.style.transform = `translate3d(${index * 100}%,0,0) scale(1)`;
+      }
     };
     const paintBubble = (i: number, lift: number) => {
       const mark = marks()[i];
@@ -120,11 +124,6 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
 
     const drag = { on: false, last: -1, width: 0, left: 0 };
 
-    const indexFromX = (x: number) => {
-      const t = (x - drag.left) / Math.max(1, drag.width);
-      return Math.max(0, Math.min(TABS.length - 1, Math.floor(t * TABS.length)));
-    };
-
     const hot = (i: number) => {
       items().forEach((el, idx) => {
         el.classList.toggle("is-hot", idx === i);
@@ -137,10 +136,19 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       drag.on = true;
       drag.width = r.width;
       drag.left = r.left;
-      const i = indexFromX(x);
+      const interp = calculatePillInterpolation({
+        pointerX: x - drag.left,
+        trackWidth: drag.width,
+        tabCount: TABS.length,
+        pillWidth: drag.width / TABS.length,
+      });
+      const i = interp.nearestIndex;
       drag.last = i;
       hot(i);
-      pillSpring.to(i);
+      if (pill) {
+        pill.style.transition = "none";
+        pill.style.transform = `translate3d(${interp.continuousIndex * 100}%,0,0) scale(0.92)`;
+      }
       scaleSprings.forEach((s, idx) => s.to(idx === i ? 1 : 0));
       haptic();
       const tab = TABS[i];
@@ -150,12 +158,21 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
     const move = (x: number, prevent: () => void) => {
       if (!drag.on) return;
       prevent();
-      const i = indexFromX(x);
+      const interp = calculatePillInterpolation({
+        pointerX: x - drag.left,
+        trackWidth: drag.width,
+        tabCount: TABS.length,
+        pillWidth: drag.width / TABS.length,
+      });
+      if (pill) {
+        pill.style.transition = "none";
+        pill.style.transform = `translate3d(${interp.continuousIndex * 100}%,0,0) scale(0.92)`;
+      }
+      const i = interp.nearestIndex;
       if (i === drag.last) return;
       scaleSprings[drag.last]?.to(0);
       drag.last = i;
       hot(i);
-      pillSpring.to(i);
       scaleSprings[i]?.to(1);
       haptic();
       const tab = TABS[i];
@@ -171,7 +188,11 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
       const tab = TABS[i];
       if (!tab || i < 0) return;
       hot(i);
-      pillSpring.to(i);
+      if (pill) {
+        pill.style.transition = "transform 300ms cubic-bezier(0.32, 0.72, 0, 1)";
+        pill.style.transform = `translate3d(${i * 100}%,0,0) scale(1)`;
+      }
+      pillSpring.set(i);
       if (atTabRoot(pathRef.current, tab.to)) return;
       startTransition(() => {
         void navigate({ to: tab.to, replace: true, viewTransition: false });
@@ -232,39 +253,41 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
   }, [routeActive]);
 
   return (
-    <nav className="pulse-tabbar md:hidden" aria-label="Principal">
-      <ul ref={trackRef} className="relative grid grid-cols-5 p-1" role="tablist" data-tabbar-track="1">
-        <span
-          aria-hidden
-          data-tabbar-pill="1"
-          className="pulse-tabbar-pill pointer-events-none absolute top-1 left-1 h-11 w-[calc((100%-0.5rem)/5)] rounded-full"
-        />
-        {TABS.map((tab, i) => {
-          const on = routeActive === i;
-          const Icon = tab.icon;
-          return (
-            <li key={tab.to} className="min-w-0 overflow-visible" role="presentation">
-              <span
-                role="tab"
-                data-tab-item={i}
-                aria-selected={on}
-                aria-label={tab.label}
-                className={cn(
-                  "pulse-tab-item relative flex h-11 min-w-0 flex-col items-center justify-center gap-1 overflow-visible rounded-full select-none",
-                  on && "is-on",
-                )}
-              >
-                <span className="pulse-tab-bubble-mark -mt-[0.5px]" data-tab-bubble={i}>
-                  <Icon className="pulse-tab-icon size-5" strokeWidth={on ? 2.2 : 2} />
+    <nav className="pulse-native-tabbar pulse-tabbar md:hidden" aria-label="Principal">
+      <div className="relative mx-auto h-14 w-full max-w-lg px-2">
+        <ul ref={trackRef} className="relative grid h-full grid-cols-5 items-center" role="tablist" data-tabbar-track="1">
+          <span
+            aria-hidden
+            data-tabbar-pill="1"
+            className="pulse-native-bubble pulse-tabbar-pill pointer-events-none absolute top-1.5 left-0 h-11 w-1/5 rounded-full"
+          />
+          {TABS.map((tab, i) => {
+            const on = routeActive === i;
+            const Icon = tab.icon;
+            return (
+              <li key={tab.to} className="min-w-0 overflow-visible" role="presentation">
+                <span
+                  role="tab"
+                  data-tab-item={i}
+                  aria-selected={on}
+                  aria-label={tab.label}
+                  className={cn(
+                    "pulse-tab-item relative flex h-11 min-w-0 flex-col items-center justify-center gap-1 overflow-visible rounded-full select-none",
+                    on && "is-on",
+                  )}
+                >
+                  <span className="pulse-tab-bubble-mark -mt-[0.5px]" data-tab-bubble={i}>
+                    <Icon className="pulse-tab-icon size-[22px]" strokeWidth={on ? 2.3 : 2} />
+                  </span>
+                  <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] leading-none font-medium tracking-tight">
+                    {tab.label}
+                  </span>
                 </span>
-                <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] leading-none font-semibold tracking-tight">
-                  {tab.label}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 });

@@ -138,7 +138,7 @@ function Dashboard() {
           <p className="text-[12px] font-semibold tracking-wider text-muted-foreground/80 uppercase select-none">
             {format(new Date(), "EEEE d MMMM", { locale: es })}
           </p>
-          <h1 className="mt-3 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
+          <h1 className="mt-2.5 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {data.suggestion ?? (fresh ? "Tu progreso empieza hoy." : "Sigue el ritmo de esta semana.")}
           </p>

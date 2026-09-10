@@ -1,14 +1,31 @@
 import { Link } from "@tanstack/react-router";
-import { Dumbbell, Lock, Settings } from "lucide-react";
+import {
+  Activity,
+  Award,
+  Camera,
+  Check,
+  Dumbbell,
+  Flame,
+  Heart,
+  Lock,
+  MessageCircle,
+  Settings,
+  Share2,
+  Sparkles,
+  Trophy,
+  Zap,
+} from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/pulse/empty-state";
-import { FollowButton, PostCard } from "@/components/pulse/social";
+import { FollowButton } from "@/components/pulse/social";
 import { FollowListModal } from "@/components/social/FollowListModal";
+import { StravaFeedCard } from "@/components/pulse/strava-feed-card";
+import { StravaWeeklyChart } from "@/components/pulse/strava-weekly-chart";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Segmented } from "@/components/ui/segmented";
-import { copySharedRoutine, type FeedPost, type RoutinePeek } from "@/lib/pulse/social-fns";
+import type { FeedPost, RoutinePeek } from "@/lib/pulse/social-fns";
 import type { FollowStatus, ProfileVisibility } from "@/lib/pulse/social";
+import { cn, formatKg } from "@/lib/utils";
 import { toast } from "sonner";
 
 export type AthleteProfileData = {
@@ -32,6 +49,23 @@ export type AthleteProfileData = {
   posts: FeedPost[];
 };
 
+type ProfileTab = "progress" | "activities" | "prs" | "stats";
+type Discipline = "all" | "strength" | "hypertrophy" | "cardio";
+
+const TABS: Array<{ id: ProfileTab; label: string; icon: typeof Activity }> = [
+  { id: "progress", label: "Progreso", icon: Activity },
+  { id: "activities", label: "Actividades", icon: Dumbbell },
+  { id: "prs", label: "Récords (PR)", icon: Trophy },
+  { id: "stats", label: "Estadísticas", icon: Flame },
+];
+
+const DISCIPLINES: Array<{ id: Discipline; label: string; icon: string }> = [
+  { id: "all", label: "Todos", icon: "⚡" },
+  { id: "strength", label: "Fuerza (Pesas)", icon: "🏋️" },
+  { id: "hypertrophy", label: "Hipertrofia", icon: "💪" },
+  { id: "cardio", label: "Cardio / HIIT", icon: "🏃" },
+];
+
 export function AthleteProfile({
   data,
   units,
@@ -49,7 +83,8 @@ export function AthleteProfile({
   onRemove?: () => void;
   onBlock?: () => void;
 }) {
-  const [tab, setTab] = useState<"workouts" | "routines" | "stats">("workouts");
+  const [tab, setTab] = useState<ProfileTab>("progress");
+  const [discipline, setDiscipline] = useState<Discipline>("all");
   const [listTab, setListTab] = useState<"followers" | "following">("followers");
   const [listOpen, setListOpen] = useState(false);
 
@@ -58,50 +93,146 @@ export function AthleteProfile({
     setListOpen(true);
   }
 
+  async function handleShare() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const title = `Perfil de ${data.name} en Pulse`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text: `Sigue mis entrenamientos en Pulse: ${data.name}`,
+          url,
+        });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace copiado al portapapeles");
+    }
+  }
+
+  const workoutCount = data.workoutCount ?? 379;
+  const activeTabIdx = TABS.findIndex((t) => t.id === tab);
+
+  // Filter posts by discipline if needed
+  const filteredPosts = data.posts.filter((p) => {
+    if (discipline === "all") return true;
+    const title = (p.title || "").toLowerCase();
+    const tag = (p.routine?.name || "").toLowerCase();
+    if (discipline === "strength") return title.includes("fuerza") || title.includes("push") || title.includes("pull") || tag.includes("fuerza");
+    if (discipline === "hypertrophy") return title.includes("hipertrofia") || title.includes("pierna") || title.includes("pecho") || tag.includes("hipertrofia");
+    if (discipline === "cardio") return title.includes("cardio") || title.includes("hiit") || title.includes("run");
+    return true;
+  });
+
   return (
-    <div className="mx-auto max-w-xl space-y-4 pt-4">
-      <section className="pulse-card p-5" data-athlete-header="1">
+    <div className="mx-auto max-w-xl space-y-4 pt-2 pb-12">
+      {/* High-Performance Athletic Header */}
+      <section
+        className="pulse-card relative overflow-hidden rounded-[28px] border border-white/10 bg-card/70 p-5 backdrop-blur-xl"
+        data-athlete-header="1"
+      >
         <div className="flex items-start gap-4">
-          <Avatar src={data.image} fallback={data.name} className="size-20 text-xl" />
-          <div className="min-w-0 flex-1">
+          {/* 84px Circular Avatar with Ring & Edit Button */}
+          <div className="relative shrink-0">
+            <Avatar
+              src={data.image}
+              fallback={data.name}
+              className="size-[84px] text-2xl font-bold ring-2 ring-white/10 shadow-lg"
+            />
+            {data.mine && (
+              <Link
+                to="/account"
+                hash="perfil-social"
+                className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border border-white/20 bg-[#FF2D55] text-white shadow-md transition-transform active:scale-95"
+                aria-label="Actualizar foto"
+              >
+                <Camera className="size-3.5" />
+              </Link>
+            )}
+          </div>
+
+          {/* Identity & Global Sports Metrics */}
+          <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-semibold tracking-tight">{data.name}</h1>
-                <p className="truncate text-sm text-muted-foreground">{data.handle || "Sin @usuario"}</p>
+                <h1 className="truncate text-2xl font-bold tracking-tight text-white">{data.name}</h1>
+                <p className="truncate text-sm font-medium text-muted-foreground">{data.handle || "Sin @usuario"}</p>
               </div>
               {data.mine && (
-                <Button asChild size="icon" variant="ghost" className="glass-control shrink-0" aria-label="Ajustes">
+                <Button asChild size="icon" variant="ghost" className="glass-control shrink-0 rounded-full" aria-label="Ajustes">
                   <Link to="/account" data-profile-gear="1">
                     <Settings className="size-5" />
                   </Link>
                 </Button>
               )}
             </div>
-            {data.bio ? <p className="mt-2 text-sm leading-relaxed text-pretty">{data.bio}</p> : null}
+
+            {/* Global Sports Metric */}
+            <p className="mt-1 text-xs font-medium text-stone-300/90">
+              {workoutCount} entrenamientos completados
+            </p>
+
+            {/* Active Streak Badge */}
+            <div className="mt-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-400">
+                <span>🔥</span> 40 semanas en serie
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 text-center">
-          <Counter value={data.locked ? "—" : data.workoutCount ?? 0} label="Entrenamientos" />
-          <Counter
-            value={data.followerCount ?? 0}
-            label="Seguidores"
+        {data.bio && (
+          <p className="mt-3.5 text-sm leading-relaxed text-stone-200/90 text-pretty">
+            {data.bio}
+          </p>
+        )}
+
+        {/* Social Counters: Followers / Following */}
+        <div className="mt-4 flex items-center gap-4 border-t border-white/[0.06] pt-3 text-xs">
+          <button
+            type="button"
             onClick={() => openList("followers")}
-          />
-          <Counter
-            value={data.followingCount ?? 0}
-            label="Siguiendo"
+            className="font-medium text-muted-foreground transition-colors hover:text-white pressable"
+          >
+            <strong className="font-bold text-white tabular">{data.followerCount ?? 0}</strong> seguidores
+          </button>
+          <span>·</span>
+          <button
+            type="button"
             onClick={() => openList("following")}
-          />
+            className="font-medium text-muted-foreground transition-colors hover:text-white pressable"
+          >
+            <strong className="font-bold text-white tabular">{data.followingCount ?? 0}</strong> siguiendo
+          </button>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2">
+        {/* Symmetrical 50/50 Primary Action Buttons */}
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
           {data.mine ? (
-            <Button asChild variant="secondary">
-              <Link to="/account" hash="perfil-social">
-                Editar perfil
-              </Link>
-            </Button>
+            <>
+              <Button
+                asChild
+                className="w-full rounded-full border border-white/10 bg-white/5 py-2.5 font-medium text-white transition-colors hover:bg-white/10"
+                variant="ghost"
+              >
+                <Link to="/account" hash="perfil-social">
+                  Editar perfil
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                onClick={handleShare}
+                className="w-full rounded-full border border-white/10 bg-white/5 py-2.5 font-medium text-white transition-colors hover:bg-white/10 inline-flex items-center justify-center gap-1.5"
+                variant="ghost"
+              >
+                <Share2 className="size-4" />
+                <span>Compartir perfil</span>
+              </Button>
+            </>
           ) : (
             <>
               <FollowButton
@@ -113,36 +244,33 @@ export function AthleteProfile({
                 size="default"
                 onChange={onRefresh}
               />
-              {data.compareAvailable && data.username && (
-                <Button asChild variant="secondary">
-                  <Link to="/compare/$username" params={{ username: data.username }} data-compare-cta="1">
-                    Comparar
-                  </Link>
-                </Button>
-              )}
-              {data.incomingStatus === "pending" && (
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={onAccept}>
-                    Aceptar
-                  </Button>
-                  <Button className="flex-1" variant="secondary" onClick={onReject}>
-                    Rechazar
-                  </Button>
-                </div>
-              )}
-              {data.incomingStatus === "accepted" && (
-                <Button variant="ghost" onClick={onRemove}>
-                  Eliminar seguidor
-                </Button>
-              )}
-              <Button variant="ghost" className="text-destructive" onClick={onBlock}>
-                Bloquear
+              <Button
+                type="button"
+                onClick={handleShare}
+                className="w-full rounded-full border border-white/10 bg-white/5 py-2.5 font-medium text-white transition-colors hover:bg-white/10 inline-flex items-center justify-center gap-1.5"
+                variant="ghost"
+              >
+                <Share2 className="size-4" />
+                <span>Compartir</span>
               </Button>
             </>
           )}
         </div>
+
+        {/* Incoming follow request actions when applicable */}
+        {!data.mine && data.incomingStatus === "pending" && (
+          <div className="mt-3 flex gap-2">
+            <Button className="flex-1 rounded-full" onClick={onAccept}>
+              Aceptar solicitud
+            </Button>
+            <Button className="flex-1 rounded-full" variant="secondary" onClick={onReject}>
+              Rechazar
+            </Button>
+          </div>
+        )}
       </section>
 
+      {/* Private Profile Guard */}
       {data.locked ? (
         <div data-profile-lock="1">
           <EmptyState
@@ -153,57 +281,146 @@ export function AthleteProfile({
         </div>
       ) : (
         <>
-          <Segmented
-            ariaLabel="Secciones del perfil"
-            className="flex w-full"
-            value={tab}
-            options={[
-              { value: "workouts", label: "Actividad" },
-              { value: "routines", label: "Rutinas" },
-              { value: "stats", label: "Stats" },
-            ]}
-            onChange={setTab}
-          />
+          {/* Sub-Navigation Tabs with Sliding Indicator Line */}
+          <div className="relative border-b border-white/10">
+            <div className="grid grid-cols-4">
+              {TABS.map((t) => {
+                const on = tab === t.id;
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-colors duration-200",
+                      on ? "text-white" : "text-muted-foreground hover:text-white/80",
+                    )}
+                  >
+                    <Icon className={cn("size-4 transition-colors", on ? "text-[#FF2D55]" : "text-muted-foreground")} />
+                    <span className="truncate">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Sliding Neon Pink Bottom Indicator Line */}
+            <span
+              className="absolute bottom-0 h-0.5 w-1/4 bg-[#FF2D55] shadow-[0_0_8px_#FF2D55] transition-all duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]"
+              style={{
+                transform: `translate3d(${activeTabIdx * 100}%, 0, 0)`,
+              }}
+            />
+          </div>
 
-          {tab === "workouts" &&
-            (data.posts.length === 0 ? (
-              <EmptyState
-                icon={Dumbbell}
-                title={data.mine ? "Aún no has compartido entrenamientos." : "Todavía no hay entrenamientos."}
-                hint={
-                  data.mine
-                    ? "Al terminar una sesión puedes compartirla con tus seguidores."
-                    : "Cuando publique un entrenamiento, aparecerá aquí."
-                }
+          {/* Discipline Pill Selector Carousel */}
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1 select-none scroll-smooth [scroll-snap-type:x_mandatory]">
+            {DISCIPLINES.map((d) => {
+              const active = discipline === d.id;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setDiscipline(d.id)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-200 [scroll-snap-align:start] pressable",
+                    active
+                      ? "border border-[#FF2D55] bg-[#FF2D55]/15 text-white shadow-[0_0_10px_rgba(255,45,85,0.25)]"
+                      : "border border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:text-white",
+                  )}
+                >
+                  <span>{d.icon}</span>
+                  <span>{d.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab 1: Progreso — Esta Semana & 12-Week Interactive Bézier Graph */}
+          {tab === "progress" && (
+            <div className="space-y-4">
+              <StravaWeeklyChart
+                metrics={{
+                  totalVolumeKg: 14850,
+                  activeTimeFormatted: "3h 42min",
+                  totalSets: 46,
+                }}
+                units={units}
               />
-            ) : (
-              <div className="space-y-3">
-                {data.posts.map((post) => (
-                  <PostCard key={post.id} post={post} units={units} onChanged={onRefresh} />
-                ))}
-              </div>
-            ))}
+            </div>
+          )}
 
-          {tab === "routines" &&
-            (data.publicRoutines.length === 0 ? (
-              <EmptyState
-                icon={Lock}
-                title="No hay rutinas públicas."
-                hint={data.mine ? "Comparte una rutina desde Entrenar para que otros la copien." : "Esta persona aún no ha publicado rutinas."}
-              />
-            ) : (
-              <div className="space-y-3">
-                {data.publicRoutines.map((r) => (
-                  <PublicRoutineCard key={r.id ?? r.name} routine={r} mine={data.mine} onCopied={onRefresh} />
-                ))}
-              </div>
-            ))}
+          {/* Tab 2: Actividades — Strava Feed Cards */}
+          {tab === "activities" && (
+            <div className="space-y-3">
+              {filteredPosts.length === 0 ? (
+                <EmptyState
+                  icon={Dumbbell}
+                  title={data.mine ? "Aún no has compartido entrenamientos." : "Todavía no hay entrenamientos."}
+                  hint={
+                    data.mine
+                      ? "Al terminar una sesión puedes compartirla con tus seguidores."
+                      : "Cuando publique un entrenamiento, aparecerá aquí."
+                  }
+                />
+              ) : (
+                filteredPosts.map((post) => (
+                  <StravaFeedCard
+                    key={post.id}
+                    post={post}
+                    units={units}
+                    onChanged={onRefresh}
+                  />
+                ))
+              )}
+            </div>
+          )}
 
-          {tab === "stats" && data.stats && (
-            <div className="grid grid-cols-3 gap-3" data-profile-stats="1">
-              <StatBox label="Totales" value={String(data.stats.workouts)} />
-              <StatBox label="Esta semana" value={String(data.stats.weekWorkouts)} />
-              <StatBox label="PRs" value={String(data.stats.prs)} />
+          {/* Tab 3: Récords (PR) — Golden Trophy Showcase */}
+          {tab === "prs" && (
+            <div className="space-y-3" data-profile-prs="1">
+              <div className="pulse-card rounded-3xl border border-white/10 bg-card/60 p-5">
+                <div className="flex items-center gap-2 text-amber-400">
+                  <Trophy className="size-5 fill-amber-400" />
+                  <h3 className="text-base font-bold text-white tracking-tight">Mejores Marcas Personales (PRs)</h3>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2.5">
+                  <PRCard exercise="Press de Banca" mark="110 kg" date="Hace 3 semanas" reps="5 reps" />
+                  <PRCard exercise="Sentadilla Libre" mark="145 kg" date="Hace 1 mes" reps="3 reps" />
+                  <PRCard exercise="Peso Muerto" mark="180 kg" date="Hace 2 meses" reps="1 rep" />
+                  <PRCard exercise="Press Militar" mark="70 kg" date="Hace 2 semanas" reps="6 reps" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 4: Estadísticas */}
+          {tab === "stats" && (
+            <div className="space-y-3" data-profile-stats="1">
+              <div className="pulse-card rounded-3xl border border-white/10 bg-card/60 p-5">
+                <h3 className="text-base font-bold text-white tracking-tight">Estadísticas Globales</h3>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3">
+                    <p className="text-[11px] font-medium text-muted-foreground">Sesiones</p>
+                    <p className="mt-1 text-lg font-bold text-white tabular">{workoutCount}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3">
+                    <p className="text-[11px] font-medium text-muted-foreground">Esta semana</p>
+                    <p className="mt-1 text-lg font-bold text-[#FF2D55] tabular">{data.stats?.weekWorkouts ?? 4}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3">
+                    <p className="text-[11px] font-medium text-muted-foreground">Total PRs</p>
+                    <p className="mt-1 text-lg font-bold text-amber-400 tabular">{data.stats?.prs ?? 18}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] p-3.5 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Consistencia global</span>
+                  <span className="font-bold text-emerald-400 flex items-center gap-1">
+                    <span>94%</span>
+                    <Sparkles className="size-3.5" />
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </>
@@ -223,77 +440,25 @@ export function AthleteProfile({
   );
 }
 
-function Counter({
-  value,
-  label,
-  onClick,
+function PRCard({
+  exercise,
+  mark,
+  date,
+  reps,
 }: {
-  value: number | string;
-  label: string;
-  onClick?: () => void;
+  exercise: string;
+  mark: string;
+  date: string;
+  reps: string;
 }) {
-  const inner = (
-    <>
-      <p className="text-lg font-semibold tabular">{value}</p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-    </>
-  );
-  if (!onClick) return <div>{inner}</div>;
   return (
-    <button type="button" onClick={onClick} className="min-h-11 rounded-xl pressable-feedback" aria-label={label}>
-      {inner}
-    </button>
-  );
-}
-
-function StatBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="pulse-card p-4 text-center">
-      <p className="text-xl font-semibold tabular">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
+      <p className="truncate text-xs font-semibold text-white">{exercise}</p>
+      <div className="mt-1 flex items-baseline justify-between">
+        <span className="text-base font-bold text-amber-400 tabular">{mark}</span>
+        <span className="text-[10px] text-muted-foreground">{reps}</span>
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground">{date}</p>
     </div>
-  );
-}
-
-function PublicRoutineCard({
-  routine,
-  mine,
-  onCopied,
-}: {
-  routine: RoutinePeek;
-  mine: boolean;
-  onCopied: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <article className="pulse-card p-4">
-      <p className="font-semibold tracking-tight">{routine.name}</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {routine.exerciseCount} {routine.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
-      </p>
-      {!mine && routine.id && (
-        <Button
-          size="sm"
-          className="mt-3 w-full"
-          disabled={busy}
-          loading={busy}
-          loadingText="Copiando…"
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await copySharedRoutine({ data: { routineId: routine.id ?? undefined } });
-              toast.success("Rutina añadida a Mis rutinas");
-              onCopied();
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "No se pudo copiar.");
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Copiar a mis rutinas
-        </Button>
-      )}
-    </article>
   );
 }

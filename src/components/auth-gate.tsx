@@ -9,7 +9,7 @@ import { getBootstrap } from "@/lib/pulse/fns";
 export function ScreenSkeleton() {
   return (
     <div
-      className="min-h-dvh bg-black"
+      className="min-h-dvh bg-background"
       aria-busy="true"
       aria-label="Cargando Pulse"
       suppressHydrationWarning

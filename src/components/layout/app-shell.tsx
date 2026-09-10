@@ -103,6 +103,8 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
     const marks = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-bubble]"));
     const items = () => Array.from(node.querySelectorAll<HTMLElement>("[data-tab-item]"));
 
+    const drag = { on: false, last: -1, width: 0, left: 0 };
+
     const paintPill = (index: number) => {
       if (pill && !drag.on) {
         pill.style.transition = "none";
@@ -121,8 +123,6 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
     const scaleSprings = TABS.map((_, i) => createSpring((v) => paintBubble(i, v), { stiffness: 420, damping: 26, mass: 0.7 }));
     springsRef.current = { pill: pillSpring, scale: scaleSprings };
     pillSpring.set(activeRef.current);
-
-    const drag = { on: false, last: -1, width: 0, left: 0 };
 
     const hot = (i: number) => {
       items().forEach((el, idx) => {

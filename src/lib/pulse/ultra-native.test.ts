@@ -117,3 +117,19 @@ describe("Ultra Native Math — Smooth Cubic Bézier Spline Generation", () => {
     assert.match(empty.areaPath, /Z$/);
   });
 });
+
+describe("Ultra Native Tabbar — Mount & Scope Safety", () => {
+  it("ensures drag controller is declared before paintPill and spring initialization", async () => {
+    const fs = await import("node:fs");
+    const code = fs.readFileSync(new URL("../../components/layout/app-shell.tsx", import.meta.url), "utf8");
+    const dragIdx = code.indexOf("const drag = { on: false, last: -1, width: 0, left: 0 };");
+    const paintPillIdx = code.indexOf("const paintPill = (index: number) =>");
+    const pillSpringIdx = code.indexOf("pillSpring.set(activeRef.current);");
+
+    assert.ok(dragIdx !== -1, "drag object must be declared");
+    assert.ok(paintPillIdx !== -1, "paintPill must be declared");
+    assert.ok(pillSpringIdx !== -1, "pillSpring.set must be called");
+    assert.ok(dragIdx < paintPillIdx, "drag must be declared BEFORE paintPill to prevent TDZ ReferenceError");
+    assert.ok(dragIdx < pillSpringIdx, "drag must be declared BEFORE pillSpring.set to prevent TDZ ReferenceError");
+  });
+});

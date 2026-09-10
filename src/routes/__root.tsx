@@ -44,7 +44,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: APP_NAME },
       { name: "description", content: "Pulse — entrena, registra y progresa. Tu ritmo. Tu progreso." },
-      { name: "theme-color", content: "#000000" },
+      { name: "theme-color", content: "#0e0e11" },
       { name: "color-scheme", content: "dark" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },

@@ -25,7 +25,7 @@ import { ageFromBirthDate, bmi, bmiLabel, mifflinStJeor, recommendedCalories } f
 import { formatDuration, formatKg, greetingForHour } from "@/lib/utils";
 
 const WeekVolumeChart = lazy(() =>
-  import("@/components/charts").then((m) => ({ default: m.WeekVolumeChart })),
+  import("@/components/charts").then((mod) => ({ default: mod.WeekVolumeChart })),
 );
 
 export const Route = createFileRoute("/")({ component: Home });

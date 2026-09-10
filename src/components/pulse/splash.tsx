@@ -6,10 +6,10 @@ import { getBootstrap, listRoutines, getProgress, getMuscleLoad } from "@/lib/pu
 import { getActivityFeed, getSocialProfile } from "@/lib/pulse/social-fns";
 
 export const PULSE_SPLASH_CSS = `
-html,body{background:#000000;color-scheme:dark}
+html,body{background:#0e0e11;color-scheme:dark}
 #pulse-splash,.pulse-splash-fallback{
   position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;
-  padding-top:22vh;background:#000000;color:#f5f5f7;pointer-events:none;overflow:visible;
+  padding-top:22vh;background:#0e0e11;color:#f5f5f7;pointer-events:none;overflow:visible;
 }
 #pulse-splash{transition:opacity 200ms cubic-bezier(0.22,1,0.36,1)}
 #pulse-splash.is-done{opacity:0}

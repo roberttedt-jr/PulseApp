@@ -455,9 +455,9 @@ function Login() {
           : "Entrar";
 
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-visible bg-background px-5 pt-[var(--safe-top)] pb-[max(1.25rem,var(--safe-bottom))]">
+    <main className="relative flex min-h-screen min-h-dvh w-full flex-col justify-center items-center overflow-x-hidden bg-background px-5 pt-[max(1.5rem,var(--safe-top))] pb-[max(2.5rem,calc(var(--safe-bottom)+1.75rem))]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,rgba(255,45,85,0.18),transparent_60%)]" />
-      <div className="relative w-full max-w-sm">
+      <div className="relative my-auto w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <PulseLogo animated size={88} alt="Pulse" className="mb-5" />
           <h1 className="text-3xl font-semibold tracking-tight">Pulse</h1>

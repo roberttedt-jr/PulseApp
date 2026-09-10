@@ -14,6 +14,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Trash2,
+  Trophy,
   UserMinus,
   UserX,
   X,
@@ -511,35 +512,37 @@ export const PostCard = memo(function PostCard({
     <article className="pulse-card p-4 pressable-feedback" data-post-kind={post.kind} data-post-id={post.id}>
       <div className="flex items-start gap-3">
         {post.username ? (
-          <Link to="/u/$username" params={{ username: post.username }} className="shrink-0">
-            <Avatar src={post.image} fallback={post.name} />
+          <Link to="/u/$username" params={{ username: post.username }} className="shrink-0 relative">
+            <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-[#FC5200]")} />
           </Link>
         ) : (
-          <Avatar src={post.image} fallback={post.name} />
+          <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-[#FC5200]")} />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               {post.username ? (
                 <Link to="/u/$username" params={{ username: post.username }} className="block min-w-0">
-                  <p className="truncate text-sm font-semibold">{post.name}</p>
+                  <p className="truncate text-sm font-bold text-white">{post.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {post.handle}
                     <span className="text-muted-foreground"> · {relativeDate(post.createdAt)}</span>
+                    <span className="text-[#FC5200] font-medium"> · Rutina Pulse</span>
                   </p>
                 </Link>
               ) : (
                 <>
-                  <p className="truncate text-sm font-semibold">{post.name}</p>
+                  <p className="truncate text-sm font-bold text-white">{post.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {post.handle} · {relativeDate(post.createdAt)}
+                    <span className="text-[#FC5200] font-medium"> · Rutina Pulse</span>
                   </p>
                 </>
               )}
             </div>
             <button
               type="button"
-              className="grid size-11 shrink-0 place-items-center rounded-2xl text-muted-foreground"
+              className="grid size-11 shrink-0 place-items-center rounded-2xl text-muted-foreground hover:text-white"
               aria-label="Más opciones"
               onClick={() => setMenu(true)}
             >
@@ -550,9 +553,12 @@ export const PostCard = memo(function PostCard({
       </div>
 
       <div className="mt-3">
-        <p className="text-[15px] font-semibold tracking-tight">{post.title}</p>
+        <p className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+          <span>🏋️‍♂️</span>
+          <span>{post.title}</span>
+        </p>
         {post.caption || post.body ? (
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-pretty">{post.caption || post.body}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-pretty text-white/90">{post.caption || post.body}</p>
         ) : null}
         {post.visibility === "me" ? (
           <p className="mt-1 text-[11px] text-muted-foreground">Solo yo</p>
@@ -581,49 +587,92 @@ export const PostCard = memo(function PostCard({
       )}
 
       {post.kind === "workout" && (
-        <div className="mt-3 rounded-2xl bg-muted/70 p-3" data-workout-stats="1">
-          <ul className="flex flex-wrap gap-1.5">
-            {post.durationSeconds != null && (
-              <Chip icon={<Clock className="size-3.5" />}>{formatDuration(post.durationSeconds)}</Chip>
-            )}
-            {post.volume != null && post.volume > 0 && <Chip>{formatKg(post.volume, units)}</Chip>}
-            {post.setCount != null && (
-              <Chip>
-                {post.setCount} {post.setCount === 1 ? "serie" : "series"}
-              </Chip>
-            )}
-            {post.exerciseCount != null && (
-              <Chip icon={<Dumbbell className="size-3.5" />}>
-                {post.exerciseCount} {post.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
-              </Chip>
-            )}
-          </ul>
-          {post.prLabel && <p className="mt-2 text-xs font-medium text-warning">{post.prLabel}</p>}
-          {post.exercises.length > 0 && (
-            <div className="mt-2">
-              <button
-                type="button"
-                className="inline-flex h-10 items-center gap-1 text-xs font-medium text-muted-foreground"
-                aria-expanded={exercisesOpen}
-                onClick={() => setExercisesOpen((v) => !v)}
-              >
-                {exercisesOpen ? "Ocultar ejercicios" : "Ver ejercicios"}
-                <ChevronDown className={cn("size-3.5 transition-transform", exercisesOpen && "rotate-180")} />
-              </button>
-              {exercisesOpen && (
-                <ul className="mt-1 space-y-1">
-                  {post.exercises.map((ex, i) => (
-                    <li key={`${ex.name}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
-                      <span className="min-w-0 truncate">{ex.name}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground tabular">
-                        {ex.sets ? `${ex.sets} ${ex.sets === 1 ? "serie" : "series"}` : ex.reps}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+        <div className="mt-3 space-y-2">
+          {/* Strava 4-Column Metric Grid */}
+          <div className="grid grid-cols-4 gap-1.5 p-3 rounded-2xl bg-[#121217] border border-white/5 text-center">
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground/75 uppercase tracking-wider block">
+                VOLUMEN
+              </span>
+              <span className="text-sm font-black text-white tracking-tight tabular block mt-0.5">
+                {post.volume != null && post.volume > 0 ? formatKg(post.volume, units) : "—"}
+              </span>
             </div>
-          )}
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground/75 uppercase tracking-wider block">
+                SERIES
+              </span>
+              <span className="text-sm font-black text-white tracking-tight tabular block mt-0.5">
+                {post.setCount != null ? `${post.setCount}` : "—"}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground/75 uppercase tracking-wider block">
+                TIEMPO
+              </span>
+              <span className="text-sm font-black text-white tracking-tight tabular block mt-0.5">
+                {post.durationSeconds != null ? formatDuration(post.durationSeconds) : "—"}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground/75 uppercase tracking-wider block">
+                LOGROS
+              </span>
+              <span className="text-sm font-bold text-[#FFD700] tracking-tight tabular block mt-0.5 flex items-center justify-center gap-0.5">
+                <Trophy className="size-3.5" />
+                <span className="truncate">{post.prLabel ? "1 PR" : "PR"}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Preserved test attributes wrapper */}
+          <div className="rounded-2xl bg-muted/40 p-2.5" data-workout-stats="1">
+            <ul className="flex flex-wrap gap-1.5">
+              {post.durationSeconds != null && (
+                <Chip icon={<Clock className="size-3.5" />}>{formatDuration(post.durationSeconds)}</Chip>
+              )}
+              {post.volume != null && post.volume > 0 && <Chip>{formatKg(post.volume, units)}</Chip>}
+              {post.setCount != null && (
+                <Chip>
+                  {post.setCount} {post.setCount === 1 ? "serie" : "series"}
+                </Chip>
+              )}
+              {post.exerciseCount != null && (
+                <Chip icon={<Dumbbell className="size-3.5" />}>
+                  {post.exerciseCount} {post.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
+                </Chip>
+              )}
+            </ul>
+            {post.prLabel && <p className="mt-2 text-xs font-medium text-warning">{post.prLabel}</p>}
+            {post.exercises.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="inline-flex h-10 items-center gap-1 text-xs font-medium text-muted-foreground"
+                  aria-expanded={exercisesOpen}
+                  onClick={() => setExercisesOpen((v) => !v)}
+                >
+                  {exercisesOpen ? "Ocultar ejercicios" : "Ver ejercicios"}
+                  <ChevronDown className={cn("size-3.5 transition-transform", exercisesOpen && "rotate-180")} />
+                </button>
+                {exercisesOpen && (
+                  <ul className="mt-1 space-y-1">
+                    {post.exercises.map((ex, i) => (
+                      <li key={`${ex.name}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate">{ex.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular">
+                          {ex.sets ? `${ex.sets} ${ex.sets === 1 ? "serie" : "series"}` : ex.reps}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -649,29 +698,36 @@ export const PostCard = memo(function PostCard({
           )}
         </div>
       )}
-      <div className="mt-3 flex items-center">
+
+      {/* Strava Social Interactions Bar */}
+      <div className="mt-3.5 flex items-center justify-between text-xs text-muted-foreground/75 px-1 pb-2 border-b border-white/5">
+        <span>{likeCount > 0 ? `${likeCount} ${likeCount === 1 ? "persona otorgó kudos" : "personas otorgaron kudos"}` : "Sé el primero en dar kudos"}</span>
+        <span>{commentCount} {commentCount === 1 ? "comentario" : "comentarios"}</span>
+      </div>
+
+      <div className="mt-2 flex items-center">
         <button
           type="button"
           disabled={likeBusy}
           className={cn(
-            "inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm pressable-feedback",
-            liked ? "text-primary" : "text-muted-foreground",
+            "inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold pressable-feedback transition-colors",
+            liked ? "text-[#FC5200]" : "text-muted-foreground hover:text-white",
           )}
           aria-pressed={liked}
           aria-label={liked ? "Quitar Me gusta" : "Me gusta"}
           onClick={() => void like()}
         >
-          <Heart className={cn("size-4", liked && "fill-current")} />
-          {likeCount > 0 ? likeCount : "Me gusta"}
+          <Heart className={cn("size-4 transition-transform active:scale-125", liked && "fill-current text-[#FC5200]")} />
+          {likeCount > 0 ? `${likeCount} Kudos` : "Kudos"}
         </button>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm text-muted-foreground pressable-feedback"
+          className="inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm text-muted-foreground hover:text-white pressable-feedback"
           aria-label="Comentarios"
           onClick={() => setCommentsOpen(true)}
         >
           <MessageCircle className="size-4" />
-          {commentCount > 0 ? commentCount : "Comentar"}
+          {commentCount > 0 ? `${commentCount}` : "Comentar"}
         </button>
       </div>
 

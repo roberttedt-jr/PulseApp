@@ -14,6 +14,9 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppPage } from "@/components/auth-gate";
+import { SportSelector } from "@/components/pulse/sport-selector";
+import { LiveGpsMap } from "@/components/pulse/live-gps-map";
+import { getSportMeta, SPORTS_CATALOG } from "@/lib/pulse/sports";
 import { ExerciseDemo } from "@/components/pulse/exercise-demo";
 import { HScroll } from "@/components/pulse/h-scroll";
 import { NumericField } from "@/components/pulse/numeric-field";
@@ -56,9 +59,102 @@ export const Route = createFileRoute("/train")({
 
 function TrainRoute() {
   const { id } = Route.useSearch();
+  const [selectedSportId, setSelectedSportId] = useState("run");
+  const [liveGpsOpen, setLiveGpsOpen] = useState(false);
+  const selectedSport = getSportMeta(selectedSportId);
+
+  if (id) {
+    return (
+      <AppPage hideNav>
+        <Live id={id} />
+      </AppPage>
+    );
+  }
+
   return (
-    <AppPage hideNav>
-      {id ? <Live id={id} /> : <p className="pt-10 text-center text-sm text-muted-foreground">No hay sesión activa.</p>}
+    <AppPage title="Entrenar">
+      <div className="mx-auto max-w-xl space-y-6 pt-4 pb-16">
+        {liveGpsOpen ? (
+          <LiveGpsMap
+            sportId={selectedSportId}
+            onClose={() => setLiveGpsOpen(false)}
+          />
+        ) : (
+          <>
+            {/* Sports Taxonomy Carousel */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Catálogo de deportes
+                </p>
+                <span className="text-xs font-medium text-[#FC5200]">
+                  {selectedSport.isGpsCapable ? "● GPS al aire libre" : "Gimnasio y sala"}
+                </span>
+              </div>
+              <SportSelector
+                selectedSportId={selectedSportId}
+                onSelectSport={(s) => setSelectedSportId(s.id)}
+              />
+            </div>
+
+            {/* Selected Sport Hero Card */}
+            <div className="relative overflow-hidden rounded-[24px] bg-[#18181D] border border-white/10 p-5 space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="grid size-14 place-items-center rounded-2xl bg-[#FC5200]/15 text-3xl border border-[#FC5200]/25">
+                    {selectedSport.emoji}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-white">{selectedSport.name}</h2>
+                    <p className="text-xs text-muted-foreground">{selectedSport.description}</p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedSport.isGpsCapable ? (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-3 gap-2 text-center p-3 rounded-2xl bg-[#121217] border border-white/5">
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase block">MÉTRICA 1</span>
+                      <span className="text-sm font-bold text-white block mt-0.5">Distancia (km)</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase block">MÉTRICA 2</span>
+                      <span className="text-sm font-bold text-white block mt-0.5">Ritmo / Vel</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase block">MÉTRICA 3</span>
+                      <span className="text-sm font-bold text-[#34C759] block mt-0.5">Desnivel D+</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="lg"
+                    className="w-full h-14 rounded-2xl bg-[#FC5200] hover:bg-[#FC5200]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(252,82,0,0.35)] active:scale-98 transition-transform"
+                    onClick={() => setLiveGpsOpen(true)}
+                  >
+                    <Play className="size-5 fill-white mr-2" /> Iniciar GPS en vivo
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Registra series, repeticiones, peso y RPE para {selectedSport.name}.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button asChild size="lg" className="flex-1 h-14 rounded-2xl bg-[#FF2D55] text-white font-bold">
+                      <Link to="/routines">Mis rutinas</Link>
+                    </Button>
+                    <Button asChild variant="secondary" size="lg" className="flex-1 h-14 rounded-2xl bg-white/10 text-white font-semibold">
+                      <Link to="/exercises">Ver ejercicios</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </AppPage>
   );
 }

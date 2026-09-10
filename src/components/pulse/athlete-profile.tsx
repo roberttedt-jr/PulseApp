@@ -50,20 +50,23 @@ export type AthleteProfileData = {
 };
 
 type ProfileTab = "progress" | "activities" | "prs" | "stats";
-type Discipline = "all" | "strength" | "hypertrophy" | "cardio";
+type Discipline = "all" | "weight_training" | "walk" | "run" | "ride" | "hike" | "swim";
 
 const TABS: Array<{ id: ProfileTab; label: string; icon: typeof Activity }> = [
   { id: "progress", label: "Progreso", icon: Activity },
   { id: "activities", label: "Actividades", icon: Dumbbell },
-  { id: "prs", label: "Récords (PR)", icon: Trophy },
-  { id: "stats", label: "Estadísticas", icon: Flame },
+  { id: "prs", label: "Récords", icon: Trophy },
+  { id: "stats", label: "Más", icon: Flame },
 ];
 
 const DISCIPLINES: Array<{ id: Discipline; label: string; icon: string }> = [
   { id: "all", label: "Todos", icon: "⚡" },
-  { id: "strength", label: "Fuerza (Pesas)", icon: "🏋️" },
-  { id: "hypertrophy", label: "Hipertrofia", icon: "💪" },
-  { id: "cardio", label: "Cardio / HIIT", icon: "🏃" },
+  { id: "weight_training", label: "Entrenamiento con pesas", icon: "🏋️" },
+  { id: "walk", label: "Caminata", icon: "🚶" },
+  { id: "run", label: "Carrera", icon: "🏃" },
+  { id: "ride", label: "Bicicleta", icon: "🚴" },
+  { id: "hike", label: "Senderismo", icon: "🥾" },
+  { id: "swim", label: "Natación", icon: "🏊" },
 ];
 
 export function AthleteProfile({
@@ -122,9 +125,12 @@ export function AthleteProfile({
     if (discipline === "all") return true;
     const title = (p.title || "").toLowerCase();
     const tag = (p.routine?.name || "").toLowerCase();
-    if (discipline === "strength") return title.includes("fuerza") || title.includes("push") || title.includes("pull") || tag.includes("fuerza");
-    if (discipline === "hypertrophy") return title.includes("hipertrofia") || title.includes("pierna") || title.includes("pecho") || tag.includes("hipertrofia");
-    if (discipline === "cardio") return title.includes("cardio") || title.includes("hiit") || title.includes("run");
+    if (discipline === "weight_training") return title.includes("fuerza") || title.includes("push") || title.includes("pull") || title.includes("pesas") || tag.includes("fuerza");
+    if (discipline === "run") return title.includes("run") || title.includes("carrera") || tag.includes("carrera");
+    if (discipline === "walk") return title.includes("caminata") || title.includes("paseo") || title.includes("walk");
+    if (discipline === "ride") return title.includes("bici") || title.includes("ride") || title.includes("ciclismo");
+    if (discipline === "hike") return title.includes("hike") || title.includes("senderismo");
+    if (discipline === "swim") return title.includes("swim") || title.includes("natación");
     return true;
   });
 
@@ -346,6 +352,13 @@ export function AthleteProfile({
                 }}
                 units={units}
               />
+              <Button
+                asChild
+                variant="secondary"
+                className="w-full h-12 rounded-full border border-white/10 bg-[#18181D] hover:bg-white/10 text-white font-semibold text-xs transition-colors"
+              >
+                <Link to="/progress">Ver tu progreso con más detalle →</Link>
+              </Button>
             </div>
           )}
 

@@ -371,7 +371,7 @@ function SettingsPage() {
 
         <div className="pulse-card p-5 text-center" data-about-pulse="1">
           <PulseLogo size={56} alt="" className="mx-auto" />
-          <p className="mt-3 text-base font-semibold tracking-tight text-foreground">Pulse</p>
+          <p className="mt-3 text-base font-bold tracking-tight text-foreground">Pulse {PULSE_VERSION_NAME} v1</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Versión {PULSE_VERSION} · {PULSE_VERSION_NAME}
           </p>

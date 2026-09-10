@@ -4,20 +4,21 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-background: #000000;
+  --color-background: #0e0e11;
   --color-foreground: #f5f5f7;
   --color-foreground-secondary: #aeaeb2;
   --color-foreground-tertiary: #8e8e93;
   --color-foreground-disabled: #636366;
-  --color-card: #1c1c1e;
+  --color-card: #18181d;
   --color-card-foreground: #f5f5f7;
-  --color-popover: #2c2c2e;
+  --color-popover: #18181d;
   --color-popover-foreground: #f5f5f7;
-  --color-muted: #2c2c2e;
+  --color-muted: #222228;
   --color-muted-foreground: #8e8e93;
   --color-primary: #ff2d55;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #2c2c2e;
+  --color-strava: #fc5200;
+  --color-secondary: #222228;
   --color-secondary-foreground: #f5f5f7;
   --color-accent: #007aff;
   --color-accent-foreground: #ffffff;
@@ -27,15 +28,15 @@
   --color-warning-foreground: #1c1200;
   --color-destructive: #ff453a;
   --color-destructive-foreground: #ffffff;
-  --color-border: rgb(255 255 255 / 0.1);
-  --color-input: rgb(255 255 255 / 0.08);
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-input: rgba(255, 255, 255, 0.08);
   --color-ring: #ff2d55;
-  --color-ios-fill: #2c2c2e;
-  --color-ios-elevated: #3a3a3c;
+  --color-ios-fill: #222228;
+  --color-ios-elevated: #2c2c34;
   --color-glass: rgb(18 18 22 / 0.65);
   --color-glass-solid: rgb(18 18 22 / 0.96);
-  --color-glass-border: rgb(255 255 255 / 0.15);
-  --color-glass-highlight: rgb(255 255 255 / 0.2);
+  --color-glass-border: rgb(255 255 255 / 0.12);
+  --color-glass-highlight: rgb(255 255 255 / 0.18);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Inter", "Segoe UI", system-ui, sans-serif;
@@ -1050,6 +1051,21 @@ body[data-scroll-locked] {
 }
 .pulse-countdown-num {
   animation: pulse-countdown-pop 280ms var(--ease-out-ios) both;
+}
+
+/* Strava Dark Map & Live GPS Styling */
+.pulse-dark-map .leaflet-layer,
+.pulse-dark-map .leaflet-control-zoom {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.pulse-dark-tile {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.pulse-athlete-marker-container {
+  background: transparent !important;
+  border: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

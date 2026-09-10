@@ -59,8 +59,15 @@ function Dashboard() {
 
   if (isPending || !data) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 pt-6">
-        <Skeleton className="h-8 w-56" />
+      <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(24px,calc(env(safe-area-inset-top,0px)+12px))]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <Skeleton className="h-3.5 w-36" />
+            <Skeleton className="h-9 w-60" />
+            <Skeleton className="h-4 w-44" />
+          </div>
+          <Skeleton className="mt-2 size-12 shrink-0 rounded-full" />
+        </div>
         <Skeleton className="h-40 rounded-3xl" />
         <div className="grid grid-cols-2 gap-3">
           <Skeleton className="h-24 rounded-3xl" />
@@ -124,20 +131,20 @@ function Dashboard() {
         : "Empezar entrenamiento";
 
   return (
-    <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-3">
+    <div className="mx-auto min-w-0 max-w-3xl space-y-7 pt-[max(24px,calc(env(safe-area-inset-top,0px)+12px))]">
       {session.overlay}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium tracking-wide text-foreground-tertiary uppercase">
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold tracking-wider text-muted-foreground/80 uppercase select-none">
             {format(new Date(), "EEEE d MMMM", { locale: es })}
           </p>
-          <h1 className="mt-1 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
+          <h1 className="mt-3 text-[clamp(1.6rem,8vw,2rem)] leading-[1.05] font-semibold tracking-tight break-words">{greet}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {data.suggestion ?? (fresh ? "Tu progreso empieza hoy." : "Sigue el ritmo de esta semana.")}
           </p>
         </div>
-        <Link to="/settings" className="shrink-0" aria-label="Perfil">
-          <Avatar src={data.profile.image} fallback={data.profile.displayName ?? "P"} className="size-12" />
+        <Link to="/settings" className="shrink-0 pt-2" aria-label="Perfil">
+          <Avatar src={data.profile.image} fallback={data.profile.displayName ?? "P"} className="size-12 ring-2 ring-white/10 transition-transform active:scale-95 pressable" />
         </Link>
       </header>
 

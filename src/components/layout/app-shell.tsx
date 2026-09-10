@@ -233,11 +233,11 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
 
   return (
     <nav className="pulse-tabbar md:hidden" aria-label="Principal">
-      <ul ref={trackRef} className="relative grid grid-cols-5 px-1.5 py-1.5" role="tablist" data-tabbar-track="1">
+      <ul ref={trackRef} className="relative grid grid-cols-5 p-1" role="tablist" data-tabbar-track="1">
         <span
           aria-hidden
           data-tabbar-pill="1"
-          className="pulse-tabbar-pill pointer-events-none absolute top-1.5 left-1.5 h-11 w-[calc((100%-0.75rem)/5)] rounded-full"
+          className="pulse-tabbar-pill pointer-events-none absolute top-1 left-1 h-11 w-[calc((100%-0.5rem)/5)] rounded-full"
         />
         {TABS.map((tab, i) => {
           const on = routeActive === i;
@@ -249,12 +249,17 @@ export const BottomNavigation = memo(function BottomNavigation({ pathname }: { p
                 data-tab-item={i}
                 aria-selected={on}
                 aria-label={tab.label}
-                className={cn("pulse-tab-item relative flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 overflow-visible rounded-full", on && "is-on")}
+                className={cn(
+                  "pulse-tab-item relative flex h-11 min-w-0 flex-col items-center justify-center gap-1 overflow-visible rounded-full select-none",
+                  on && "is-on",
+                )}
               >
-                <span className="pulse-tab-bubble-mark" data-tab-bubble={i}>
-                  <Icon className="pulse-tab-icon size-5" strokeWidth={2} />
+                <span className="pulse-tab-bubble-mark -mt-[0.5px]" data-tab-bubble={i}>
+                  <Icon className="pulse-tab-icon size-5" strokeWidth={on ? 2.2 : 2} />
                 </span>
-                <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] font-semibold tracking-wide">{tab.label}</span>
+                <span className="pulse-tab-label max-w-full truncate px-0.5 text-[10px] leading-none font-semibold tracking-tight">
+                  {tab.label}
+                </span>
               </span>
             </li>
           );
@@ -312,7 +317,7 @@ export function AppShell({
         </aside>
 
         <div className="flex min-w-0 max-w-full flex-1 flex-col">
-          <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-[calc(6.5rem+var(--safe-bottom))] md:pb-10")}>
+          <main className={cn("min-w-0 max-w-full flex-1 px-4 md:px-8", hideNav ? "pb-8" : "pb-[var(--bottom-nav-total-space)] md:pb-10")}>
             <PageTransition>{children}</PageTransition>
           </main>
         </div>

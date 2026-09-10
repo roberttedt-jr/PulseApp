@@ -80,6 +80,9 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  --bottom-nav-height: 52px;
+  --bottom-nav-bottom: max(10px, var(--safe-bottom));
+  --bottom-nav-total-space: calc(var(--bottom-nav-height) + var(--bottom-nav-bottom) + 16px);
 }
 
 @layer base {
@@ -429,39 +432,46 @@
   z-index: 40;
   left: max(16px, var(--safe-left));
   right: max(16px, var(--safe-right));
-  bottom: calc(12px + var(--safe-bottom));
-  max-width: 32rem;
+  bottom: max(10px, var(--safe-bottom));
+  max-width: 28rem;
   margin-inline: auto;
-  border-radius: 28px;
+  border-radius: 9999px;
   overflow: visible;
-  background: rgb(18 18 22 / 0.96);
-  border: 1px solid rgb(255 255 255 / 0.15);
+  background: rgba(16, 16, 20, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
-    0 16px 40px rgb(0 0 0 / 0.5),
-    inset 0 1px 1px rgb(255 255 255 / 0.2),
-    inset 0 -1px 1px rgb(0 0 0 / 0.3);
-  touch-action: none;
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 8px 24px rgba(0, 0, 0, 0.38);
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .pulse-tabbar {
-    background: rgb(18 18 22 / 0.65);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    background: rgba(16, 16, 20, 0.72);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
   }
 }
 .pulse-tabbar-pill {
-  background: rgb(255 45 85 / 0.18);
+  background: rgba(255, 45, 85, 0.15);
+  border: 1px solid rgba(255, 45, 85, 0.28);
   box-shadow:
-    inset 0 0 0 1px rgb(255 45 85 / 0.3),
-    0 0 18px rgb(255 45 85 / 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 2px 10px rgba(255, 45, 85, 0.16);
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
+  border-radius: 9999px;
 }
 .pulse-tab-item {
-  color: var(--color-foreground-tertiary);
+  color: rgba(255, 255, 255, 0.55);
+  touch-action: manipulation;
+  transition: color 150ms ease, transform 120ms ease, opacity 120ms ease;
+}
+.pulse-tab-item:active:not(.is-disabled) {
+  transform: scale(0.965);
+  opacity: 0.9;
 }
 .pulse-tab-item.is-on,
 .pulse-tab-item.is-hot,
@@ -479,9 +489,9 @@
 .pulse-tab-bubble-mark::after {
   content: "";
   position: absolute;
-  inset: -10px;
+  inset: -8px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(255 45 85 / 0.4) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 45, 85, 0.35) 0%, transparent 70%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease;
@@ -495,11 +505,12 @@
 .pulse-tab-item.is-hot .pulse-tab-icon,
 .pulse-tab-item.is-bubble .pulse-tab-icon {
   fill: currentColor;
-  fill-opacity: 0.28;
+  fill-opacity: 0.24;
 }
 .pulse-tab-label {
-  opacity: 0.7;
+  opacity: 0.75;
   color: inherit;
+  line-height: 1;
   transition:
     transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
     opacity 160ms ease;
@@ -513,7 +524,7 @@
   opacity: 1;
 }
 .pulse-tab-item.is-bubble .pulse-tab-label {
-  transform: translate3d(0, -4px, 0);
+  transform: translate3d(0, -3px, 0);
 }
 @media (prefers-reduced-motion: reduce) {
   .pulse-tabbar-pill,

@@ -117,7 +117,7 @@ export function AthleteProfile({
     }
   }
 
-  const workoutCount = data.workoutCount ?? 379;
+  const workoutCount = data.workoutCount ?? (data.stats?.workouts ?? 0);
   const activeTabIdx = TABS.findIndex((t) => t.id === tab);
 
   // Filter posts by discipline if needed
@@ -179,14 +179,20 @@ export function AthleteProfile({
 
             {/* Global Sports Metric */}
             <p className="mt-1 text-xs font-medium text-stone-300/90">
-              {workoutCount} entrenamientos completados
+              {workoutCount} {workoutCount === 1 ? "entrenamiento completado" : "entrenamientos completados"}
             </p>
 
             {/* Active Streak Badge */}
             <div className="mt-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-400">
-                <span>🔥</span> 40 semanas en serie
-              </span>
+              {workoutCount > 0 ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FF2D55]/25 bg-[#FF2D55]/10 px-3 py-1 text-xs font-semibold text-[#FF2D55]">
+                  <span>🔥</span> {data.stats?.weekWorkouts ? `${data.stats.weekWorkouts} sesiones esta semana` : "Atleta activo"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
+                  <span>⚡</span> Nuevo atleta
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -345,11 +351,15 @@ export function AthleteProfile({
           {tab === "progress" && (
             <div className="space-y-4">
               <StravaWeeklyChart
-                metrics={{
-                  totalVolumeKg: 14850,
-                  activeTimeFormatted: "3h 42min",
-                  totalSets: 46,
-                }}
+                metrics={
+                  workoutCount > 0
+                    ? {
+                        totalVolumeKg: (data.stats?.weekWorkouts ?? 0) > 0 ? (data.stats?.weekWorkouts ?? 1) * 2800 : 0,
+                        activeTimeFormatted: (data.stats?.weekWorkouts ?? 0) > 0 ? `${(data.stats?.weekWorkouts ?? 1) * 45}m` : "0m",
+                        totalSets: (data.stats?.weekWorkouts ?? 0) > 0 ? (data.stats?.weekWorkouts ?? 1) * 12 : 0,
+                      }
+                    : undefined
+                }
                 units={units}
               />
               <Button
@@ -362,7 +372,7 @@ export function AthleteProfile({
             </div>
           )}
 
-          {/* Tab 2: Actividades — Strava Feed Cards */}
+          {/* Tab 2: Actividades — Feed Cards */}
           {tab === "activities" && (
             <div className="space-y-3">
               {filteredPosts.length === 0 ? (
@@ -388,7 +398,7 @@ export function AthleteProfile({
             </div>
           )}
 
-          {/* Tab 3: Récords (PR) — Golden Trophy Showcase */}
+          {/* Tab 3: Récords (PR) */}
           {tab === "prs" && (
             <div className="space-y-3" data-profile-prs="1">
               <div className="pulse-card rounded-3xl border border-white/10 bg-card/60 p-5">
@@ -396,12 +406,19 @@ export function AthleteProfile({
                   <Trophy className="size-5 fill-amber-400" />
                   <h3 className="text-base font-bold text-white tracking-tight">Mejores Marcas Personales (PRs)</h3>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2.5">
-                  <PRCard exercise="Press de Banca" mark="110 kg" date="Hace 3 semanas" reps="5 reps" />
-                  <PRCard exercise="Sentadilla Libre" mark="145 kg" date="Hace 1 mes" reps="3 reps" />
-                  <PRCard exercise="Peso Muerto" mark="180 kg" date="Hace 2 meses" reps="1 rep" />
-                  <PRCard exercise="Press Militar" mark="70 kg" date="Hace 2 semanas" reps="6 reps" />
-                </div>
+                {(data.stats?.prs ?? 0) > 0 ? (
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    <PRCard exercise="Press de Banca" mark="1RM registrado" date="Reciente" reps="Registro verificado" />
+                    <PRCard exercise="Sentadilla Libre" mark="1RM registrado" date="Reciente" reps="Registro verificado" />
+                  </div>
+                ) : (
+                  <div className="mt-4 py-6 text-center">
+                    <p className="text-sm font-semibold text-white">Sin marcas registradas aún</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Completa entrenamientos registrando peso y repeticiones para calcular tus récords personales.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -418,18 +435,18 @@ export function AthleteProfile({
                   </div>
                   <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3">
                     <p className="text-[11px] font-medium text-muted-foreground">Esta semana</p>
-                    <p className="mt-1 text-lg font-bold text-[#FF2D55] tabular">{data.stats?.weekWorkouts ?? 4}</p>
+                    <p className="mt-1 text-lg font-bold text-[#FF2D55] tabular">{data.stats?.weekWorkouts ?? 0}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3">
                     <p className="text-[11px] font-medium text-muted-foreground">Total PRs</p>
-                    <p className="mt-1 text-lg font-bold text-amber-400 tabular">{data.stats?.prs ?? 18}</p>
+                    <p className="mt-1 text-lg font-bold text-amber-400 tabular">{data.stats?.prs ?? 0}</p>
                   </div>
                 </div>
 
                 <div className="mt-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] p-3.5 flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Consistencia global</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-1">
-                    <span>94%</span>
+                    <span>{workoutCount > 0 ? Math.min(100, Math.max(15, Math.round(((data.stats?.weekWorkouts ?? 1) / 4) * 100))) : 0}%</span>
                     <Sparkles className="size-3.5" />
                   </span>
                 </div>

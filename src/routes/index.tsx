@@ -156,7 +156,7 @@ function Dashboard() {
           <p className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider">
             Deportes y actividades
           </p>
-          <Link to="/train" search={{ id: "" }} className="text-xs font-semibold text-[#FC5200] hover:underline">
+          <Link to="/train" search={{ id: "" }} className="text-xs font-semibold text-primary hover:underline">
             GPS y entrenar →
           </Link>
         </div>

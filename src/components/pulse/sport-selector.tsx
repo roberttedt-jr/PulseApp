@@ -31,7 +31,7 @@ export function SportSelector({
               onClick={() => onSelectSport(sport)}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none pressable active:scale-95 ${
                 isSelected
-                  ? "bg-[#FC5200] text-white shadow-[0_2px_10px_rgba(252,82,0,0.35)]"
+                  ? "bg-[#FF2D55] text-white shadow-[0_2px_12px_rgba(255,45,85,0.35)]"
                   : "bg-[#18181D] text-white/80 border border-white/10 hover:bg-white/10"
               }`}
             >

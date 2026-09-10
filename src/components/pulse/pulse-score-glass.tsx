@@ -159,8 +159,8 @@ export function PulseScoreGlass({
               />
             ))}
           </svg>
-          <span className="pointer-events-none absolute inset-0 grid place-items-center">
-            <span className="pulse-score-num">{shownScore}</span>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="pulse-score-num select-none">{shownScore}</span>
           </span>
         </div>
         <div className="min-w-0 flex-1">

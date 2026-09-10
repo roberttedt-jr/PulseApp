@@ -78,8 +78,8 @@ export function useHideNav(hide?: boolean) {
 export function PageHeader({ title, action }: { title?: string; action?: ReactNode }) {
   if (!title && !action) return null;
   return (
-    <header className="page-header sticky top-0 z-30 -mx-4 flex min-w-0 items-center justify-between gap-3 px-4 pb-3 md:-mx-8 md:px-8">
-      <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight">{title}</h1>
+    <header className="page-header gap-3 md:-mx-8 md:w-[calc(100%+4rem)] md:px-8">
+      <h1 className="min-w-0 flex-1 truncate text-[18px] font-bold tracking-tight text-white">{title}</h1>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
   );

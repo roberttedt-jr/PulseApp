@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Play, Pause, Square, MapPin, Navigation, Compass, Zap, Flame, Trophy, Volume2, Maximize2, Minimize2 } from "lucide-react";
 import { useGpsTracker, type GpsPoint, type KmSplit } from "@/lib/pulse/use-gps-tracker";
 import { formatPace, formatSpeed, formatDistance, formatElevation, type SportMeta, getSportMeta } from "@/lib/pulse/sports";
@@ -25,12 +25,41 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
   const [fullscreen, setFullscreen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "splits">("map");
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoPermission, setGeoPermission] = useState<"prompt" | "granted" | "denied">("prompt");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapElementRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const polylineRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [isLeafletReady, setIsLeafletReady] = useState(false);
+
+  // Request actual device geolocation immediately
+  const requestLocation = useCallback(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        setGeoPermission("granted");
+        if (leafletMapRef.current) {
+          leafletMapRef.current.setView([coords.lat, coords.lng], 16);
+          if (markerRef.current) {
+            markerRef.current.setLatLng([coords.lat, coords.lng]);
+          }
+        }
+      },
+      (err) => {
+        console.warn("Geolocation permission/error:", err.message);
+        if (err.code === 1) setGeoPermission("denied");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
 
   // Initialize Leaflet only in browser
   useEffect(() => {
@@ -64,9 +93,13 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
         const L = (window as any).L;
         if (!L) return;
 
-        // Default to Madrid coordinates if no points yet
-        const initialLat = tracker.points.length > 0 ? tracker.points[tracker.points.length - 1]!.lat : 40.4153;
-        const initialLng = tracker.points.length > 0 ? tracker.points[tracker.points.length - 1]!.lng : -3.6845;
+        // Use real user position if detected, or last tracked point
+        const initialLat = tracker.points.length > 0
+          ? tracker.points[tracker.points.length - 1]!.lat
+          : (userCoords?.lat ?? 40.4168);
+        const initialLng = tracker.points.length > 0
+          ? tracker.points[tracker.points.length - 1]!.lng
+          : (userCoords?.lng ?? -3.7038);
 
         if (!leafletMapRef.current) {
           const map = L.map(mapElementRef.current, {
@@ -80,13 +113,13 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
             className: "pulse-dark-tile",
           }).addTo(map);
 
-          // Pulsating athlete marker
+          // Pulsating athlete marker in Pulse Crimson
           const pulsingIcon = L.divIcon({
             className: "pulse-athlete-marker-container",
             html: `
               <div class="relative flex items-center justify-center size-8">
-                <div class="absolute size-8 rounded-full bg-[#FC5200]/30 animate-ping"></div>
-                <div class="absolute size-5 rounded-full bg-[#FC5200] border-2 border-white shadow-lg"></div>
+                <div class="absolute size-8 rounded-full bg-[#FF2D55]/30 animate-ping"></div>
+                <div class="absolute size-5 rounded-full bg-[#FF2D55] border-2 border-white shadow-lg"></div>
                 <div class="size-2 rounded-full bg-white"></div>
               </div>
             `,
@@ -97,9 +130,9 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
           const marker = L.marker([initialLat, initialLng], { icon: pulsingIcon }).addTo(map);
           markerRef.current = marker;
 
-          // Route polyline with neon gradient look
+          // Route polyline with pulse crimson styling
           const polyline = L.polyline([], {
-            color: "#FC5200",
+            color: "#FF2D55",
             weight: 5,
             opacity: 0.95,
             lineJoin: "round",
@@ -261,8 +294,8 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
         {/* Vector SVG path overlay fallback */}
         {!isLeafletReady && tracker.points.length >= 2 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6">
-            <svg viewBox="0 0 340 300" className="w-full h-full drop-shadow-[0_0_12px_rgba(252,82,0,0.5)]">
-              <path d={svgPathData} fill="none" stroke="#FC5200" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            <svg viewBox="0 0 340 300" className="w-full h-full drop-shadow-[0_0_12px_rgba(255,45,85,0.5)]">
+              <path d={svgPathData} fill="none" stroke="#FF2D55" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         )}
@@ -298,7 +331,7 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
               type="button"
               onClick={() => setActiveTab("map")}
               className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
-                activeTab === "map" ? "bg-[#FC5200] text-white" : "bg-white/5 text-muted-foreground"
+                activeTab === "map" ? "bg-[#FF2D55] text-white" : "bg-white/5 text-muted-foreground"
               }`}
             >
               Métricas en vivo
@@ -307,7 +340,7 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
               type="button"
               onClick={() => setActiveTab("splits")}
               className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
-                activeTab === "splits" ? "bg-[#FC5200] text-white" : "bg-white/5 text-muted-foreground"
+                activeTab === "splits" ? "bg-[#FF2D55] text-white" : "bg-white/5 text-muted-foreground"
               }`}
             >
               Parciales ({tracker.splits.length})
@@ -397,7 +430,7 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
             <div className="flex w-full gap-2">
               <Button
                 size="lg"
-                className="flex-1 h-14 rounded-2xl bg-[#FC5200] hover:bg-[#FC5200]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(252,82,0,0.35)] active:scale-98 transition-transform"
+                className="flex-1 h-14 rounded-2xl bg-[#FF2D55] hover:bg-[#FF2D55]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(255,45,85,0.35)] active:scale-98 transition-transform"
                 onClick={() => tracker.start(false)}
               >
                 <Play className="size-5 fill-white mr-2" /> Iniciar GPS

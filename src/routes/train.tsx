@@ -45,7 +45,7 @@ import { displayMuscle } from "@/lib/pulse/exercise-meta";
 import { cn, daysAgoEs, formatDuration, formatKg, fromKg, toKg } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Search = { id: string };
+type Search = { id?: string };
 type Workout = NonNullable<Awaited<ReturnType<typeof getWorkout>>>;
 type Block = Workout["blocks"][number];
 type Kind = Block["sets"][number]["kind"];
@@ -53,7 +53,7 @@ type Kind = Block["sets"][number]["kind"];
 const KINDS: Kind[] = ["work", "warmup", "drop", "fail"];
 
 export const Route = createFileRoute("/train")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ id: String(s.id ?? "") }),
+  validateSearch: (s: Record<string, unknown>): Search => ({ id: s.id ? String(s.id) : undefined }),
   component: TrainRoute,
 });
 
@@ -74,6 +74,21 @@ function TrainRoute() {
   return (
     <AppPage title="Entrenar">
       <div className="mx-auto max-w-xl space-y-6 pt-4 pb-16">
+        <HScroll gap="gap-2">
+          <Link to="/routines" className="h-8 rounded-full bg-muted px-3 text-xs font-medium leading-8 text-muted-foreground hover:text-white">
+            Rutinas
+          </Link>
+          <Link to="/train" className="h-8 rounded-full bg-primary px-3 text-xs font-medium leading-8 text-primary-foreground">
+            Deportes & GPS
+          </Link>
+          <Link to="/exercises" className="h-8 rounded-full bg-muted px-3 text-xs font-medium leading-8 text-muted-foreground">
+            Ejercicios
+          </Link>
+          <Link to="/plan" className="h-8 rounded-full bg-muted px-3 text-xs font-medium leading-8 text-muted-foreground">
+            Plan semanal
+          </Link>
+        </HScroll>
+
         {liveGpsOpen ? (
           <LiveGpsMap
             sportId={selectedSportId}
@@ -87,7 +102,7 @@ function TrainRoute() {
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Catálogo de deportes
                 </p>
-                <span className="text-xs font-medium text-[#FC5200]">
+                <span className="text-xs font-medium text-[#FF2D55]">
                   {selectedSport.isGpsCapable ? "● GPS al aire libre" : "Gimnasio y sala"}
                 </span>
               </div>
@@ -101,7 +116,7 @@ function TrainRoute() {
             <div className="relative overflow-hidden rounded-[24px] bg-[#18181D] border border-white/10 p-5 space-y-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3.5">
-                  <div className="grid size-14 place-items-center rounded-2xl bg-[#FC5200]/15 text-3xl border border-[#FC5200]/25">
+                  <div className="grid size-14 place-items-center rounded-2xl bg-[#FF2D55]/15 text-3xl border border-[#FF2D55]/25">
                     {selectedSport.emoji}
                   </div>
                   <div>
@@ -130,7 +145,7 @@ function TrainRoute() {
 
                   <Button
                     size="lg"
-                    className="w-full h-14 rounded-2xl bg-[#FC5200] hover:bg-[#FC5200]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(252,82,0,0.35)] active:scale-98 transition-transform"
+                    className="w-full h-14 rounded-2xl bg-[#FF2D55] hover:bg-[#FF2D55]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(255,45,85,0.35)] active:scale-98 transition-transform"
                     onClick={() => setLiveGpsOpen(true)}
                   >
                     <Play className="size-5 fill-white mr-2" /> Iniciar GPS en vivo

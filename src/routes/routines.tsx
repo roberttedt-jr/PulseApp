@@ -94,6 +94,9 @@ function RoutinesList() {
           <Link to="/routines" className="h-8 rounded-full bg-primary px-3 text-xs font-medium leading-8 text-primary-foreground">
             Rutinas
           </Link>
+          <Link to="/train" className="h-8 rounded-full bg-muted px-3 text-xs font-medium leading-8 text-muted-foreground hover:text-white">
+            Deportes & GPS
+          </Link>
           <Link to="/exercises" className="h-8 rounded-full bg-muted px-3 text-xs font-medium leading-8 text-muted-foreground">
             Ejercicios
           </Link>

@@ -42,7 +42,7 @@ export function SheetContent({
           "fixed z-50 flex flex-col overflow-hidden bg-card text-card-foreground shadow-float outline-none",
           side === "bottom" &&
             (fullScreen
-              ? "inset-x-0 bottom-0 mx-auto h-[100dvh] w-full max-w-lg rounded-t-[20px] border-t border-white/12"
+              ? "inset-x-0 bottom-0 mx-auto h-[100dvh] w-full max-w-lg rounded-t-[24px] border-t border-white/12 pt-[env(safe-area-inset-top,0px)]"
               : "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(90dvh,760px)] rounded-t-[28px] border-t border-white/12"),
           side === "right" && "inset-y-0 right-0 h-full w-[min(100%,420px)] max-w-full rounded-l-3xl border-l border-white/12",
         )}
@@ -60,7 +60,10 @@ export function SheetContent({
           {children}
         </div>
         <Drawer.Close
-          className="glass-control absolute top-3.5 right-3.5 z-10 grid size-11 place-items-center rounded-full text-muted-foreground pressable"
+          className={cn(
+            "glass-control absolute right-3.5 z-10 grid size-11 place-items-center rounded-full text-muted-foreground pressable",
+            fullScreen ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.25rem))]" : "top-3.5",
+          )}
           aria-label="Cerrar"
         >
           <X className="size-4" />

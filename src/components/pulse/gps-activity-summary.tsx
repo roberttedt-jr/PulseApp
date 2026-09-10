@@ -97,7 +97,7 @@ export function GpsActivitySummary({
 
       {/* Activity Title & Emoji */}
       <div className="flex items-center gap-3">
-        <div className="grid size-12 place-items-center rounded-2xl bg-[#FC5200]/20 text-2xl border border-[#FC5200]/30">
+        <div className="grid size-12 place-items-center rounded-2xl bg-[#FF2D55]/20 text-2xl border border-[#FF2D55]/30">
           {sport.emoji}
         </div>
         <div>
@@ -108,20 +108,20 @@ export function GpsActivitySummary({
 
       {/* Route Minimap Card */}
       <div className="relative w-full h-44 rounded-2xl bg-[#18181D] border border-white/10 overflow-hidden flex items-center justify-center p-3">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(252,82,0,0.12),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,45,85,0.15),transparent_70%)]" />
         {svgPathData ? (
-          <svg viewBox="0 0 300 160" className="w-full h-full drop-shadow-[0_0_12px_rgba(252,82,0,0.6)]">
+          <svg viewBox="0 0 300 160" className="w-full h-full drop-shadow-[0_0_12px_rgba(255,45,85,0.6)]">
             <defs>
               <linearGradient id="routeGradient" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FC5200" />
-                <stop offset="100%" stopColor="#FF2D55" />
+                <stop offset="0%" stopColor="#FF2D55" />
+                <stop offset="100%" stopColor="#FF7A96" />
               </linearGradient>
             </defs>
             <path d={svgPathData} fill="none" stroke="url(#routeGradient)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         ) : (
           <div className="flex flex-col items-center justify-center text-muted-foreground text-xs gap-1">
-            <Footprints className="size-6 text-[#FC5200]" />
+            <Footprints className="size-6 text-primary" />
             <span>Ruta registrada en Pulse GPS</span>
           </div>
         )}
@@ -202,7 +202,7 @@ export function GpsActivitySummary({
       <div className="space-y-2 pt-2">
         <Button
           size="lg"
-          className="w-full h-14 rounded-2xl bg-[#FC5200] hover:bg-[#FC5200]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(252,82,0,0.35)] active:scale-98 transition-transform"
+          className="w-full h-14 rounded-2xl bg-[#FF2D55] hover:bg-[#FF2D55]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(255,45,85,0.35)] active:scale-98 transition-transform"
           onClick={() => {
             toast.success("Actividad publicada en el feed con kudos activos");
             onPublish();

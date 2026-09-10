@@ -98,11 +98,17 @@ function SettingsPage() {
             {p?.username ? formatHandle(p.username) : "Sin @usuario"}
           </p>
           <p className="mt-1 text-xs font-medium text-stone-300/90">
-            379 entrenamientos completados
+            {data?.lifetimeWorkouts ?? 0} {(data?.lifetimeWorkouts ?? 0) === 1 ? "entrenamiento completado" : "entrenamientos completados"}
           </p>
-          <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-400">
-            <span>🔥</span> 40 semanas en serie
-          </div>
+          {(data?.lifetimeWorkouts ?? 0) > 0 ? (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <span>🔥</span> Atleta activo
+            </div>
+          ) : (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span>⚡</span> Nuevo atleta
+            </div>
+          )}
           <p className="mt-3 truncate text-xs text-muted-foreground">{user?.primaryEmail}</p>
         </div>
 

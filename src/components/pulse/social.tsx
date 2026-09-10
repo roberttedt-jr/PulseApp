@@ -513,10 +513,10 @@ export const PostCard = memo(function PostCard({
       <div className="flex items-start gap-3">
         {post.username ? (
           <Link to="/u/$username" params={{ username: post.username }} className="shrink-0 relative">
-            <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-[#FC5200]")} />
+            <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-primary")} />
           </Link>
         ) : (
-          <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-[#FC5200]")} />
+          <Avatar src={post.image} fallback={post.name} className={cn("size-11", post.prLabel && "ring-2 ring-primary")} />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -527,7 +527,7 @@ export const PostCard = memo(function PostCard({
                   <p className="truncate text-xs text-muted-foreground">
                     {post.handle}
                     <span className="text-muted-foreground"> · {relativeDate(post.createdAt)}</span>
-                    <span className="text-[#FC5200] font-medium"> · Rutina Pulse</span>
+                    <span className="text-primary font-medium"> · Rutina Pulse</span>
                   </p>
                 </Link>
               ) : (
@@ -535,7 +535,7 @@ export const PostCard = memo(function PostCard({
                   <p className="truncate text-sm font-bold text-white">{post.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {post.handle} · {relativeDate(post.createdAt)}
-                    <span className="text-[#FC5200] font-medium"> · Rutina Pulse</span>
+                    <span className="text-primary font-medium"> · Rutina Pulse</span>
                   </p>
                 </>
               )}
@@ -711,14 +711,14 @@ export const PostCard = memo(function PostCard({
           disabled={likeBusy}
           className={cn(
             "inline-flex h-11 items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold pressable-feedback transition-colors",
-            liked ? "text-[#FC5200]" : "text-muted-foreground hover:text-white",
+            liked ? "text-primary" : "text-muted-foreground hover:text-white",
           )}
           aria-pressed={liked}
           aria-label={liked ? "Quitar Me gusta" : "Me gusta"}
           onClick={() => void like()}
         >
-          <Heart className={cn("size-4 transition-transform active:scale-125", liked && "fill-current text-[#FC5200]")} />
-          {likeCount > 0 ? `${likeCount} Kudos` : "Kudos"}
+          <Heart className={cn("size-4 transition-transform active:scale-125", liked && "fill-current text-primary")} />
+          {likeCount > 0 ? `${likeCount} Me gusta` : "Me gusta"}
         </button>
         <button
           type="button"

@@ -559,7 +559,7 @@ export function ConsistencyHeatmap() {
           </p>
 
           <HScroll gap="gap-1.5" snap="none" startAt="end" className="mt-4" contentClassName="py-1 pr-1">
-            <div className="flex w-6 shrink-0 flex-col gap-1.5 pt-4">
+            <div className="sticky left-0 z-10 flex w-6 shrink-0 flex-col gap-1.5 pt-4 bg-card/95 backdrop-blur-sm pr-1">
               {DOW_LABELS.map((l) => (
                 <span
                   key={l}

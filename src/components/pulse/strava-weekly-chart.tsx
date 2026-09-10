@@ -115,9 +115,9 @@ export const StravaWeeklyChart = memo(function StravaWeeklyChart({
   const totalVolDisplay =
     metrics?.totalVolumeKg != null
       ? formatKg(metrics.totalVolumeKg, units)
-      : formatKg(14850, units);
-  const activeTimeDisplay = metrics?.activeTimeFormatted ?? "3h 42min";
-  const totalSetsDisplay = metrics?.totalSets != null ? `${metrics.totalSets} series` : "46 series";
+      : formatKg(0, units);
+  const activeTimeDisplay = metrics?.activeTimeFormatted ?? "0 min";
+  const totalSetsDisplay = metrics?.totalSets != null ? `${metrics.totalSets} series` : "0 series";
 
   return (
     <div className="pulse-card relative overflow-hidden p-5" data-strava-weekly-card="1">

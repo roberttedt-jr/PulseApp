@@ -1,5 +1,5 @@
 /** Tab order for Inicio → Entrenar → Actividad → Progreso → Perfil. */
-export const TAB_PATHS = ["/", "/routines", "/feed", "/progress", "/settings"] as const;
+export const TAB_PATHS = ["/", "/train", "/feed", "/progress", "/settings"] as const;
 
 export const MOTION = {
   tabMs: 280,

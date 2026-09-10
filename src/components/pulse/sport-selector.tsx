@@ -21,7 +21,7 @@ export function SportSelector({
 
   return (
     <div className={`w-full ${className}`}>
-      <HScroll gap="gap-2" className="py-1">
+      <HScroll gap="gap-2" className="py-1" contentClassName="px-1 pr-8">
         {sports.map((sport) => {
           const isSelected = sport.id === selectedSportId;
           return (

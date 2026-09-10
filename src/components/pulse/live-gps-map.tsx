@@ -249,18 +249,15 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
           <div>
             <div className="flex items-center gap-1.5">
               <h2 className="text-base font-bold tracking-tight text-white">{sport.name}</h2>
-              {tracker.isSimulated && (
-                <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                  Simulación
-                </span>
-              )}
             </div>
             <p className="text-[11px] font-medium text-muted-foreground/80">
               {tracker.status === "recording"
                 ? "● Grabando GPS en directo"
                 : tracker.status === "paused"
                 ? "⏸ Pausado"
-                : "Listo para iniciar"}
+                : userCoords
+                ? "📍 GPS activo · Ubicación real"
+                : "Esperando señal GPS..."}
             </p>
           </div>
         </div>
@@ -427,22 +424,18 @@ export function LiveGpsMap({ sportId = "run", onClose, onPublishWorkout }: LiveG
         {/* Action Controls */}
         <div className="mt-4 flex items-center gap-3">
           {tracker.status === "idle" ? (
-            <div className="flex w-full gap-2">
+            <div className="w-full">
               <Button
                 size="lg"
-                className="flex-1 h-14 rounded-2xl bg-[#FF2D55] hover:bg-[#FF2D55]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(255,45,85,0.35)] active:scale-98 transition-transform"
-                onClick={() => tracker.start(false)}
+                className="w-full h-14 rounded-2xl bg-[#FF2D55] hover:bg-[#FF2D55]/90 text-white font-bold text-base shadow-[0_4px_20px_rgba(255,45,85,0.35)] active:scale-98 transition-transform"
+                onClick={() => {
+                  if (geoPermission !== "granted") {
+                    requestLocation();
+                  }
+                  tracker.start();
+                }}
               >
-                <Play className="size-5 fill-white mr-2" /> Iniciar GPS
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="h-14 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs px-3.5"
-                onClick={() => tracker.start(true)}
-                title="Modo simulación de ruta para pruebas"
-              >
-                Simular ruta
+                <Play className="size-5 fill-white mr-2" /> Iniciar GPS en vivo
               </Button>
             </div>
           ) : tracker.status === "recording" ? (

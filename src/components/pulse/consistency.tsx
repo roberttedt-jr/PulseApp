@@ -592,6 +592,16 @@ export function ConsistencyHeatmap() {
                 })}
               </div>
             ))}
+            <div className="sticky right-0 z-10 flex w-6 shrink-0 flex-col gap-1.5 pt-4 bg-card/95 backdrop-blur-sm pl-1">
+              {DOW_LABELS.map((l) => (
+                <span
+                  key={l}
+                  className="grid h-touch items-center text-[9px] font-medium text-muted-foreground"
+                >
+                  {l}
+                </span>
+              ))}
+            </div>
           </HScroll>
 
           <ul className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">

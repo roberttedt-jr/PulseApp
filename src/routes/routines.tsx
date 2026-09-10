@@ -19,6 +19,7 @@ import { AppPage } from "@/components/auth-gate";
 import { LoadingBlock, RoutineCard } from "@/components/pulse/cards";
 import { EmptyState } from "@/components/pulse/empty-state";
 import { HScroll } from "@/components/pulse/h-scroll";
+import { SportSelector } from "@/components/pulse/sport-selector";
 import { TemplatePicker } from "@/components/pulse/template-picker";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -104,6 +105,19 @@ function RoutinesList() {
             Plan semanal
           </Link>
         </HScroll>
+
+        <div className="rounded-[22px] border border-white/10 bg-[#18181D] p-3.5 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Deportes & GPS</span>
+            <Link to="/train" className="text-xs font-semibold text-[#FF2D55] hover:underline">Iniciar GPS →</Link>
+          </div>
+          <SportSelector
+            selectedSportId="run"
+            onSelectSport={() => {
+              void navigate({ to: "/train", search: { id: "" } });
+            }}
+          />
+        </div>
         <button
           type="button"
           onClick={() => start()}

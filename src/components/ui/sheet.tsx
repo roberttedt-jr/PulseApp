@@ -42,8 +42,8 @@ export function SheetContent({
           "fixed z-50 flex flex-col overflow-hidden bg-card text-card-foreground shadow-float outline-none",
           side === "bottom" &&
             (fullScreen
-              ? "inset-x-0 bottom-0 mx-auto h-[100dvh] w-full max-w-lg rounded-t-[24px] border-t border-white/12 pt-[env(safe-area-inset-top,0px)]"
-              : "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(90dvh,760px)] rounded-t-[28px] border-t border-white/12"),
+              ? "inset-x-0 bottom-0 mx-auto h-[100dvh] w-full max-w-lg rounded-t-[24px] border-t border-white/12 pt-[max(56px,calc(env(safe-area-inset-top,0px)+16px))]"
+              : "inset-x-0 bottom-0 mx-auto w-full max-w-lg max-h-[min(88dvh,760px)] rounded-t-[28px] border-t border-white/12"),
           side === "right" && "inset-y-0 right-0 h-full w-[min(100%,420px)] max-w-full rounded-l-3xl border-l border-white/12",
         )}
         {...props}
@@ -61,8 +61,8 @@ export function SheetContent({
         </div>
         <Drawer.Close
           className={cn(
-            "glass-control absolute right-3.5 z-10 grid size-11 place-items-center rounded-full text-muted-foreground pressable",
-            fullScreen ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.25rem))]" : "top-3.5",
+            "glass-control absolute right-3.5 z-20 grid size-11 place-items-center rounded-full text-muted-foreground pressable",
+            fullScreen ? "top-[max(50px,calc(env(safe-area-inset-top,0px)+10px))]" : "top-3",
           )}
           aria-label="Cerrar"
         >

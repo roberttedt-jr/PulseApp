@@ -43,7 +43,19 @@ export type AthleteProfileData = {
   followerCount: number | null;
   followingCount: number | null;
   workoutCount: number | null;
-  stats: { workouts: number; weekWorkouts: number; prs: number } | null;
+  stats: {
+    workouts: number;
+    weekWorkouts: number;
+    prs: number;
+    totalVolumeKg?: number;
+    activeTimeFormatted?: string;
+    totalSets?: number;
+    history12Weeks?: Array<{
+      weekLabel: string;
+      volumeKg: number;
+      sessionCount: number;
+    }>;
+  } | null;
   publicRoutines: RoutinePeek[];
   compareAvailable: boolean;
   posts: FeedPost[];
@@ -135,7 +147,7 @@ export function AthleteProfile({
   });
 
   return (
-    <div className="mx-auto max-w-xl space-y-4 pt-[max(56px,calc(env(safe-area-inset-top,0px)+18px))] pb-12">
+    <div className="mx-auto max-w-xl space-y-4 pt-[max(64px,calc(env(safe-area-inset-top,0px)+28px))] pb-12">
       {/* High-Performance Athletic Header */}
       <section
         className="pulse-card relative overflow-hidden rounded-[28px] border border-white/10 bg-card/70 p-5 backdrop-blur-xl"
@@ -351,15 +363,12 @@ export function AthleteProfile({
           {tab === "progress" && (
             <div className="space-y-4">
               <StravaWeeklyChart
-                metrics={
-                  workoutCount > 0
-                    ? {
-                        totalVolumeKg: (data.stats?.weekWorkouts ?? 0) > 0 ? (data.stats?.weekWorkouts ?? 1) * 2800 : 0,
-                        activeTimeFormatted: (data.stats?.weekWorkouts ?? 0) > 0 ? `${(data.stats?.weekWorkouts ?? 1) * 45}m` : "0m",
-                        totalSets: (data.stats?.weekWorkouts ?? 0) > 0 ? (data.stats?.weekWorkouts ?? 1) * 12 : 0,
-                      }
-                    : undefined
-                }
+                metrics={{
+                  totalVolumeKg: data.stats?.totalVolumeKg ?? 0,
+                  activeTimeFormatted: data.stats?.activeTimeFormatted ?? "0m",
+                  totalSets: data.stats?.totalSets ?? 0,
+                  history12Weeks: data.stats?.history12Weeks,
+                }}
                 units={units}
               />
               <Button

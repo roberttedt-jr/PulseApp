@@ -79,8 +79,8 @@ export function FollowListModal({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent fullScreen className="flex flex-col overflow-hidden px-4 pt-2">
-        <header className="shrink-0 pr-12">
+      <SheetContent className="flex flex-col overflow-hidden px-4 pt-3 h-[85dvh] max-h-[85dvh]">
+        <header className="shrink-0 pr-12 pt-1">
           <SheetTitle>{title}</SheetTitle>
           <Segmented
             ariaLabel="Listas sociales"

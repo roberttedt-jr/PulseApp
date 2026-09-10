@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { to: "/", label: "Inicio", icon: House },
-  { to: "/routines", label: "Entrenar", icon: Dumbbell },
+  { to: "/train", label: "Entrenar", icon: Dumbbell },
   { to: "/feed", label: "Actividad", icon: Users },
   { to: "/progress", label: "Progreso", icon: Activity },
   { to: "/settings", label: "Perfil", icon: UserRound },
@@ -28,7 +28,7 @@ const TABS = [
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/" || pathname.startsWith("/history");
-  if (to === "/routines") {
+  if (to === "/train" || to === "/routines") {
     return (
       pathname.startsWith("/routines") ||
       pathname.startsWith("/train") ||

@@ -25,7 +25,7 @@ function OwnProfilePage() {
   return (
     <AppPage>
       {isPending && !data && (
-        <div className="mx-auto max-w-xl space-y-3 pt-[max(56px,calc(env(safe-area-inset-top,0px)+18px))]" aria-busy="true">
+        <div className="mx-auto max-w-xl space-y-3 pt-[max(64px,calc(env(safe-area-inset-top,0px)+28px))]" aria-busy="true">
           <Skeleton className="h-48 w-full rounded-[22px]" />
           <Skeleton className="h-28 w-full rounded-[22px]" />
         </div>

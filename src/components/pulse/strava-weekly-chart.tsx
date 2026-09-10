@@ -21,22 +21,17 @@ interface StravaWeeklyChartProps {
   units?: "metric" | "imperial";
 }
 
-// Generate realistic default 12-week progressive athletic dataset if none provided
-function generateDefault12Weeks() {
+// Clean 12-week calendar structure with zero volume for unrecorded periods
+function empty12Weeks() {
   const now = new Date();
-  const baseVolumes = [
-    11200, 11800, 12500, 11900, 13400, 14100, 13800, 14900, 15200, 14600, 16100, 14850,
-  ];
-  const sessions = [3, 4, 4, 3, 4, 5, 4, 4, 5, 4, 5, 4];
-
-  return baseVolumes.map((vol, i) => {
+  return Array.from({ length: 12 }, (_, i) => {
     const weekDate = subWeeks(now, 11 - i);
     const weekNum = format(weekDate, "w");
     const weekRange = format(weekDate, "d MMM", { locale: es });
     return {
       weekLabel: `Semana ${weekNum} · ${weekRange}`,
-      volumeKg: vol,
-      sessionCount: sessions[i] ?? 4,
+      volumeKg: 0,
+      sessionCount: 0,
     };
   });
 }
@@ -51,10 +46,11 @@ export const StravaWeeklyChart = memo(function StravaWeeklyChart({
   const history = useMemo(() => {
     return metrics?.history12Weeks && metrics.history12Weeks.length === 12
       ? metrics.history12Weeks
-      : generateDefault12Weeks();
+      : empty12Weeks();
   }, [metrics?.history12Weeks]);
 
   const volumeValues = useMemo(() => history.map((h) => h.volumeKg), [history]);
+  const hasVolume = useMemo(() => volumeValues.some((v) => v > 0), [volumeValues]);
 
   // Dimensions for SVG ViewBox
   const svgWidth = 340;
@@ -145,6 +141,12 @@ export const StravaWeeklyChart = memo(function StravaWeeklyChart({
 
       {/* 12-Week Interactive SVG Bézier Curve Graph */}
       <div className="relative mt-5 select-none touch-none">
+        {!hasVolume && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
+            <p className="text-xs font-semibold text-white/80">Sin entrenamientos en estas semanas</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Completa una sesión para ver tu progresión real</p>
+          </div>
+        )}
         {/* Floating Liquid Glass Tooltip */}
         {tooltipVisible && activePoint && activeWeek && (
           <div

@@ -32,7 +32,7 @@ export function FlowShell({
     onStepChange?.(Math.max(0, Math.min(count - 1, next)));
   }
   return (
-    <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-visible bg-background px-5 pt-[max(3.5rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+    <main className="relative mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col overflow-visible bg-background px-5 pt-[max(64px,calc(env(safe-area-inset-top,0px)+24px))] pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
       <div className="relative flex min-h-11 items-center justify-between gap-3">
         {step > 0 && onBack ? (
           <button

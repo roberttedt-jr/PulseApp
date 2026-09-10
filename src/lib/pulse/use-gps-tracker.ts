@@ -61,7 +61,6 @@ export function useGpsTracker() {
 
   const watchIdRef = useRef<number | null>(null);
   const timerIdRef = useRef<number | null>(null);
-  const simTimerRef = useRef<number | null>(null);
   const lastAltRef = useRef<number | null>(null);
   const lastSplitDistRef = useRef<number>(0);
   const lastSplitTimeRef = useRef<number>(0);
@@ -197,68 +196,26 @@ export function useGpsTracker() {
     );
   }, [addPoint]);
 
-  // Simulation mode (for desktop or testing route visualization)
-  const startSimulation = useCallback(() => {
-    // Madrid Retiro park loop simulation coordinates
-    const baseLat = 40.4153;
-    const baseLng = -3.6845;
-    let step = 0;
-
-    setState((prev) => ({
-      ...prev,
-      status: "recording",
-      isSimulated: true,
-      error: null,
-    }));
-
-    simTimerRef.current = window.setInterval(() => {
-      step += 1;
-      // Circular loop with slight noise and elevation
-      const angle = (step * 3 * Math.PI) / 180;
-      const radius = 0.004; // ~400m radius
-      const lat = baseLat + Math.sin(angle) * radius;
-      const lng = baseLng + Math.cos(angle) * radius * 1.2;
-      const alt = 660 + Math.sin(angle * 2) * 15;
-      // Simulated running speed ~11.5 km/h (3.2 m/s)
-      const speedMs = 3.2 + Math.sin(step) * 0.4;
-
-      addPoint(lat, lng, alt, speedMs);
-    }, 1000);
-  }, [addPoint]);
-
-  const start = useCallback((simulate: boolean = false) => {
+  const start = useCallback(() => {
     lastAltRef.current = null;
     lastSplitDistRef.current = 0;
     lastSplitTimeRef.current = 0;
-
-    if (simulate) {
-      startSimulation();
-    } else {
-      setState((prev) => ({ ...prev, status: "recording", isSimulated: false, error: null }));
-      startRealGps();
-    }
-  }, [startSimulation, startRealGps]);
+    setState((prev) => ({ ...prev, status: "recording", isSimulated: false, error: null }));
+    startRealGps();
+  }, [startRealGps]);
 
   const pause = useCallback(() => {
     if (watchIdRef.current != null) {
       navigator.geolocation?.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
-    if (simTimerRef.current != null) {
-      clearInterval(simTimerRef.current);
-      simTimerRef.current = null;
-    }
     setState((prev) => ({ ...prev, status: "paused" }));
   }, []);
 
   const resume = useCallback(() => {
-    if (state.isSimulated) {
-      startSimulation();
-    } else {
-      setState((prev) => ({ ...prev, status: "recording" }));
-      startRealGps();
-    }
-  }, [state.isSimulated, startSimulation, startRealGps]);
+    setState((prev) => ({ ...prev, status: "recording" }));
+    startRealGps();
+  }, [startRealGps]);
 
   const finish = useCallback(() => {
     pause();
@@ -288,9 +245,6 @@ export function useGpsTracker() {
     return () => {
       if (watchIdRef.current != null) {
         navigator.geolocation?.clearWatch(watchIdRef.current);
-      }
-      if (simTimerRef.current != null) {
-        clearInterval(simTimerRef.current);
       }
       if (timerIdRef.current != null) {
         clearInterval(timerIdRef.current);

@@ -212,11 +212,11 @@
   width: calc(100% + 2rem);
   margin-left: -1rem;
   margin-right: -1rem;
-  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 8px));
+  padding-top: max(58px, calc(env(safe-area-inset-top, 0px) + 16px));
   padding-bottom: 12px;
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  min-height: calc(54px + max(48px, calc(env(safe-area-inset-top, 0px) + 8px)));
+  min-height: calc(52px + max(58px, calc(env(safe-area-inset-top, 0px) + 16px)));
   box-sizing: border-box;
   display: flex;
   align-items: flex-end;
@@ -293,7 +293,7 @@
 
   .pulse-score-num {
     font-family: var(--font-display);
-    font-size: 1.65rem;
+    font-size: 1.85rem;
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1;
@@ -303,10 +303,12 @@
     background-clip: text;
     color: transparent;
     filter: drop-shadow(0 2px 8px rgba(255, 45, 85, 0.45));
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    transform: translateY(-1px);
+    text-align: center;
+    margin: 0;
+    padding: 0;
   }
 
   .pressable,

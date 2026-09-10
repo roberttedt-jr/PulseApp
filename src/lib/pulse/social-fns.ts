@@ -40,6 +40,8 @@ import {
   type ReportTarget,
   type WorkoutVisibility,
 } from "./social";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 type AnyRow = Record<string, any>;
 
@@ -997,7 +999,19 @@ export const getSocialProfile = createServerFn({ method: "GET" })
     let posts: FeedPost[] = [];
     let publicRoutines: RoutinePeek[] = [];
     let workoutCount: number | null = null;
-    let stats: { workouts: number; weekWorkouts: number; prs: number } | null = null;
+    let stats: {
+      workouts: number;
+      weekWorkouts: number;
+      prs: number;
+      totalVolumeKg?: number;
+      activeTimeFormatted?: string;
+      totalSets?: number;
+      history12Weeks?: Array<{
+        weekLabel: string;
+        volumeKg: number;
+        sessionCount: number;
+      }>;
+    } | null = null;
     if (!locked) {
       const rows = await sql<AnyRow>`
         select a.id, a.user_id, a.kind, a.title, a.detail, a.created_at, a.visibility, a.volume, a.duration_seconds,
@@ -1024,24 +1038,84 @@ export const getSocialProfile = createServerFn({ method: "GET" })
         limit 30
       `;
       posts = rows.map((r) => mapPost(r, context.userId));
-      const completed = await sql<AnyRow>`
-        select count(*)::int as n from workouts
-        where user_id = ${userId} and status = 'completed'
-      `;
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const week = await sql<AnyRow>`
-        select count(*)::int as n from workouts
-        where user_id = ${userId} and status = 'completed'
-          and started_at >= ${weekAgo}::timestamptz
-      `;
-      const prs = await sql<AnyRow>`
-        select count(*)::int as n from personal_records where user_id = ${userId}
-      `;
+      const now = new Date();
+      const dayOffset = (now.getDay() + 6) % 7;
+      const thisWeekStart = new Date(now);
+      thisWeekStart.setHours(0, 0, 0, 0);
+      thisWeekStart.setDate(thisWeekStart.getDate() - dayOffset);
+      const twelveWeeksAgo = new Date(thisWeekStart);
+      twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 11 * 7);
+
+      const [completed, weekData, prs, past12WeeksWorkouts] = await Promise.all([
+        sql<AnyRow>`
+          select count(*)::int as n from workouts
+          where user_id = ${userId} and status = 'completed'
+        `,
+        sql<AnyRow>`
+          select
+            count(distinct w.id)::int as workouts,
+            coalesce(sum(case when s.completed then s.weight * s.reps else 0 end), 0) as volume,
+            coalesce(sum(distinct w.duration_seconds), 0) as duration,
+            count(s.id) filter (where s.completed)::int as sets
+          from workouts w
+          left join workout_sets s on s.workout_id = w.id
+          where w.user_id = ${userId} and w.status = 'completed'
+            and w.started_at >= ${thisWeekStart.toISOString()}
+        `,
+        sql<AnyRow>`
+          select count(*)::int as n from personal_records where user_id = ${userId}
+        `,
+        sql<AnyRow>`
+          select
+            w.id,
+            w.started_at,
+            coalesce(sum(case when s.completed then s.weight * s.reps else 0 end), 0) as volume
+          from workouts w
+          left join workout_sets s on s.workout_id = w.id
+          where w.user_id = ${userId} and w.status = 'completed'
+            and w.started_at >= ${twelveWeeksAgo.toISOString()}
+          group by w.id, w.started_at
+          order by w.started_at asc
+        `,
+      ]);
+
+      const wd = weekData[0];
+      const durationSeconds = num(wd?.duration);
+      const durationMins = Math.round(durationSeconds / 60);
+      const activeTimeFormatted = durationMins > 0 ? `${durationMins}m` : "0m";
+
+      const history12Weeks: Array<{ weekLabel: string; volumeKg: number; sessionCount: number }> = [];
+      for (let i = 0; i < 12; i++) {
+        const bucketStart = new Date(twelveWeeksAgo);
+        bucketStart.setDate(bucketStart.getDate() + i * 7);
+        const bucketEnd = new Date(bucketStart);
+        bucketEnd.setDate(bucketEnd.getDate() + 7);
+
+        const bucketWorkouts = past12WeeksWorkouts.filter((w) => {
+          const t = new Date(w.started_at).getTime();
+          return t >= bucketStart.getTime() && t < bucketEnd.getTime();
+        });
+
+        const bucketVol = bucketWorkouts.reduce((sum, w) => sum + num(w.volume), 0);
+        const weekNum = format(bucketStart, "w");
+        const weekRange = format(bucketStart, "d MMM", { locale: es });
+
+        history12Weeks.push({
+          weekLabel: `Semana ${weekNum} · ${weekRange}`,
+          volumeKg: Math.round(bucketVol),
+          sessionCount: bucketWorkouts.length,
+        });
+      }
+
       workoutCount = num(completed[0]?.n);
       stats = {
         workouts: workoutCount,
-        weekWorkouts: num(week[0]?.n),
+        weekWorkouts: num(wd?.workouts),
         prs: num(prs[0]?.n),
+        totalVolumeKg: Math.round(num(wd?.volume)),
+        activeTimeFormatted,
+        totalSets: num(wd?.sets),
+        history12Weeks,
       };
       const routineRows = await sql<AnyRow>`
         select r.id, r.name,
